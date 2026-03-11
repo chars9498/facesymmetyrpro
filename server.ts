@@ -62,11 +62,13 @@ async function startServer() {
     }
 
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        console.error("Missing GEMINI_API_KEY in environment variables");
+      // 시스템 환경 변수에서 키를 먼저 가져옵니다.
+      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+      
+      if (!apiKey || apiKey === 'undefined' || apiKey.length < 10) {
+        console.error("Invalid or missing GEMINI_API_KEY");
         return res.status(500).json({ 
-          error: "서버 설정 오류: GEMINI_API_KEY가 설정되지 않았습니다. 관리자에게 문의하세요." 
+          error: "서버 설정 오류: 유효한 API 키를 찾을 수 없습니다. Settings 메뉴에서 GEMINI_API_KEY를 설정했는지 확인해주세요." 
         });
       }
 
