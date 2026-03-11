@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
   return {
     define: {
       'process.env': { ...env, ...process.env },
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''),
+      'process.env.GEMINI_API_KEY': JSON.stringify(env.REAL_KEY || process.env.REAL_KEY || env.GEMINI_API_KEY || process.env.GEMINI_API_KEY || ''),
+      'process.env.REAL_KEY': JSON.stringify(env.REAL_KEY || process.env.REAL_KEY || ''),
     },
     plugins: [react(), tailwindcss()],
     resolve: {

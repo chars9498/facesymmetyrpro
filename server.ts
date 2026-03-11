@@ -3,10 +3,6 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import path from "path";
 import { fileURLToPath } from "url";
-import dotenv from "dotenv";
-
-// 환경 변수 로드
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,17 +58,35 @@ async function startServer() {
     }
 
     try {
-      // 시스템 환경 변수에서 키를 먼저 가져옵니다.
-      const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
-      
-      if (!apiKey || apiKey === 'undefined' || apiKey.length < 10) {
-        console.error("Invalid or missing GEMINI_API_KEY");
+      // 1. Get API Key - Prioritize REAL_KEY to bypass placeholder issues
+      let apiKey = process.env.REAL_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY;
+
+      if (apiKey) apiKey = apiKey.trim();
+
+      // Diagnostic check for common mistakes
+      const isMissing = !apiKey || apiKey === 'undefined' || apiKey === '';
+      const isTooShort = apiKey && apiKey.length < 10;
+      const isPlaceholder = apiKey && (apiKey.includes('YOUR_') || apiKey.includes('MY_') || apiKey === 'GEMINI_API_KEY');
+
+      if (isMissing || isTooShort || isPlaceholder) {
         return res.status(500).json({ 
-          error: "서버 설정 오류: 유효한 API 키를 찾을 수 없습니다. Settings 메뉴에서 GEMINI_API_KEY를 설정했는지 확인해주세요." 
+          error: "서버 설정 오류: API 키가 올바르게 설정되지 않았습니다.",
+          message: isPlaceholder ? "키 값에 'YOUR_...' 같은 예시 문구나 변수명 자체가 입력된 것 같습니다." : "키가 입력되지 않았거나 너무 짧습니다.",
+          debug: {
+            length: apiKey?.length || 0,
+            start: apiKey?.substring(0, 4) || "None",
+            isPlaceholder: !!isPlaceholder,
+            envName: process.env.REAL_KEY ? "REAL_KEY" : (process.env.GEMINI_API_KEY ? "GEMINI_API_KEY" : (process.env.API_KEY ? "API_KEY" : "NONE"))
+          }
         });
       }
 
       const ai = new GoogleGenAI({ apiKey });
+      
+      // 이미지 데이터 처리
+      const base64Data = image.includes(",") ? image.split(",")[1] : image;
+      const mimeType = image.includes(";") ? image.split(";")[0].split(":")[1] : "image/jpeg";
+
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
@@ -81,8 +95,8 @@ async function startServer() {
               { text: prompt },
               {
                 inlineData: {
-                  mimeType: "image/png",
-                  data: image.split(",")[1], // base64 데이터만 추출
+                  mimeType: mimeType,
+                  data: base64Data,
                 },
               },
             ],
@@ -93,7 +107,21 @@ async function startServer() {
       res.json({ text: response.text });
     } catch (error: any) {
       console.error("AI Analysis Error:", error);
-      res.status(500).json({ error: "분석 중 오류가 발생했습니다: " + error.message });
+      
+      // API 키 진단 정보 포함 (보안 유지하며 힌트 제공)
+      const rawKey = process.env.REAL_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || "";
+      const diag = {
+        length: rawKey.trim().length,
+        start: rawKey.trim().substring(0, 4),
+        end: rawKey.trim().slice(-3),
+        isAIza: rawKey.trim().startsWith('AIza')
+      };
+
+      res.status(500).json({ 
+        error: "분석 중 오류가 발생했습니다.",
+        details: error.message,
+        debug: diag
+      });
     }
   });
 

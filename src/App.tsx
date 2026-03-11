@@ -12,9 +12,6 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Initialize Gemini
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-
 interface AnalysisResult {
   overallScore: number;
   detailedFeedback: string;
@@ -40,6 +37,7 @@ export default function App() {
   const [centerOffset, setCenterOffset] = useState(0); // percentage offset from center
   const [rotationAngle, setRotationAngle] = useState(0); // degrees
   const [error, setError] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [personality, setPersonality] = useState<'fact' | 'angel'>('fact');
@@ -76,6 +74,11 @@ export default function App() {
       }
       setError(message);
       console.error("Camera Error:", err);
+      
+      // If it's a permission error in an iframe, suggest opening in a new tab
+      if (window.self !== window.top && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+        setError(prev => prev + " (팁: 브라우저 상단의 '새 탭에서 열기' 버튼을 클릭하여 실행하면 권한 허용이 더 원활할 수 있습니다.)");
+      }
     }
   };
 
@@ -160,6 +163,7 @@ export default function App() {
   const analyzeImage = async (base64Image: string, selectedPersonality: 'fact' | 'angel') => {
     setIsAnalyzing(true);
     setError(null);
+    setDebugInfo(null);
     setResult(null);
     setCenterOffset(0);
     setRotationAngle(0);
@@ -234,6 +238,7 @@ export default function App() {
       const data = await response.json();
 
       if (!response.ok) {
+        if (data.debug) setDebugInfo(data.debug);
         throw new Error(data.error || "분석 중 오류가 발생했습니다.");
       }
 
@@ -528,9 +533,56 @@ export default function App() {
               <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex flex-col gap-3 text-red-400 backdrop-blur-sm shadow-[0_0_20px_rgba(239,68,68,0.1)]">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="shrink-0 mt-0.5" size={18} />
-                  <div className="space-y-1">
+                  <div className="space-y-1 w-full">
                     <p className="text-[10px] font-bold uppercase tracking-widest">System Error</p>
-                    <p className="text-sm font-mono">{error}</p>
+                    <p className="text-sm font-mono break-all">{error}</p>
+                    
+                    {debugInfo && debugInfo.envName && (
+                      <p className="text-[10px] text-white/50 font-mono">Detected Source: {debugInfo.envName}</p>
+                    )}
+
+                    {(error.includes("API 키") || (debugInfo && debugInfo.isPlaceholder)) && (
+                      <div className="mt-4 p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20 space-y-3">
+                        <p className="text-xs font-bold text-emerald-400 flex items-center gap-2">
+                          <Info size={14} /> API 키 설정 방법
+                        </p>
+                        <ol className="text-[11px] text-white/70 space-y-2 list-decimal ml-4">
+                          <li>좌측 상단의 <b>Settings (톱니바퀴)</b> 메뉴를 클릭합니다.</li>
+                          <li><b>Secrets</b> 탭을 선택합니다.</li>
+                          <li><b>GEMINI_API_KEY</b> 항목에 발급받은 키를 입력합니다.</li>
+                          <li><b>Save</b> 버튼을 눌러 저장합니다.</li>
+                        </ol>
+                        <a 
+                          href="https://aistudio.google.com/app/apikey" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-block text-[10px] text-emerald-500 underline hover:text-emerald-400"
+                        >
+                          Gemini API 키 발급받기 &rarr;
+                        </a>
+                      </div>
+                    )}
+
+                    {debugInfo && (
+                      <div className="mt-4 p-3 bg-black/40 rounded-xl border border-red-500/20 space-y-2">
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-red-300/60">Diagnostic Info (For Support)</p>
+                        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                          <div className="text-white/40">Key Length:</div>
+                          <div className="text-white/80">{debugInfo.length} chars</div>
+                          <div className="text-white/40">Starts With:</div>
+                          <div className="text-white/80">{debugInfo.start}...</div>
+                          <div className="text-white/40">Ends With:</div>
+                          <div className="text-white/80">...{debugInfo.end}</div>
+                          <div className="text-white/40">Format Check:</div>
+                          <div className={cn("font-bold", debugInfo.isAIza ? "text-emerald-400" : "text-red-400")}>
+                            {debugInfo.isAIza ? "VALID (AIza)" : "INVALID (Not AIza)"}
+                          </div>
+                        </div>
+                        <p className="text-[9px] text-white/30 mt-2 italic">
+                          * 위 정보가 실제 키와 다르면 Settings &rarr; Secrets에서 다시 설정해주세요.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
