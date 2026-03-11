@@ -251,7 +251,14 @@ export default function App() {
         throw new Error("AI로부터 응답을 받지 못했습니다.");
       }
 
-      const parsedResult = JSON.parse(text) as AnalysisResult;
+      // Robust JSON extraction
+      let jsonStr = text.trim();
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        jsonStr = jsonMatch[0];
+      }
+
+      const parsedResult = JSON.parse(jsonStr) as AnalysisResult;
       setResult(parsedResult);
 
       // Apply AI Auto-Correction
@@ -701,7 +708,7 @@ export default function App() {
                       <div 
                         className="absolute inset-0 transition-transform duration-500 ease-out"
                         style={{ 
-                          transform: `rotate(${rotationAngle}deg) translateX(${-centerOffset}%) scale(1.1)` 
+                          transform: `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` 
                         }}
                       >
                         {/* Base Image */}
