@@ -58,24 +58,30 @@ async function startServer() {
     }
 
     try {
-      // 1. Get API Key - Prioritize REAL_KEY to bypass placeholder issues
-      let apiKey = process.env.REAL_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY;
+      // 1. Get API Key - Defensive selection logic
+      const getValidKey = () => {
+        const keys = [process.env.REAL_KEY, process.env.GEMINI_API_KEY, process.env.API_KEY];
+        for (const key of keys) {
+          if (!key) continue;
+          const trimmed = key.trim();
+          const isPlaceholder = trimmed.includes('YOUR_') || trimmed.includes('MY_') || trimmed === 'GEMINI_API_KEY' || trimmed === 'undefined';
+          if (trimmed.length >= 10 && !isPlaceholder) {
+            return trimmed;
+          }
+        }
+        return null;
+      };
 
-      if (apiKey) apiKey = apiKey.trim();
+      const apiKey = getValidKey();
+      const rawKey = process.env.REAL_KEY || process.env.GEMINI_API_KEY || process.env.API_KEY || "";
 
-      // Diagnostic check for common mistakes
-      const isMissing = !apiKey || apiKey === 'undefined' || apiKey === '';
-      const isTooShort = apiKey && apiKey.length < 10;
-      const isPlaceholder = apiKey && (apiKey.includes('YOUR_') || apiKey.includes('MY_') || apiKey === 'GEMINI_API_KEY');
-
-      if (isMissing || isTooShort || isPlaceholder) {
+      if (!apiKey) {
         return res.status(500).json({ 
-          error: "서버 설정 오류: API 키가 올바르게 설정되지 않았습니다.",
-          message: isPlaceholder ? "키 값에 'YOUR_...' 같은 예시 문구나 변수명 자체가 입력된 것 같습니다." : "키가 입력되지 않았거나 너무 짧습니다.",
+          error: "서버 설정 오류: 유효한 API 키를 찾을 수 없습니다.",
+          message: "REAL_KEY 또는 GEMINI_API_KEY가 설정되지 않았거나, 여전히 'MY_...'와 같은 예시 값이 들어있습니다.",
           debug: {
-            length: apiKey?.length || 0,
-            start: apiKey?.substring(0, 4) || "None",
-            isPlaceholder: !!isPlaceholder,
+            length: rawKey.trim().length,
+            start: rawKey.trim().substring(0, 4) || "None",
             envName: process.env.REAL_KEY ? "REAL_KEY" : (process.env.GEMINI_API_KEY ? "GEMINI_API_KEY" : (process.env.API_KEY ? "API_KEY" : "NONE"))
           }
         });
