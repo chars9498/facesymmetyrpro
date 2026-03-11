@@ -175,14 +175,15 @@ export default function App() {
             </button>
           </div>
           
-          <div className="flex items-center justify-center sm:justify-start">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <span className="text-xs font-bold text-[#666] px-1">분석 전문가 선택</span>
             <div className="flex items-center gap-1 bg-[#F8F9FA] p-1 rounded-xl border border-black/5 w-full sm:w-auto">
               <button
                 onClick={() => setPersonality('fact')}
                 className={cn(
                   "flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all",
                   personality === 'fact' 
-                    ? "bg-white text-emerald-600 shadow-sm" 
+                    ? "bg-white text-blue-600 shadow-sm" 
                     : "text-[#999] hover:text-[#666]"
                 )}
               >
@@ -193,7 +194,7 @@ export default function App() {
                 className={cn(
                   "flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all",
                   personality === 'angel' 
-                    ? "bg-white text-emerald-600 shadow-sm" 
+                    ? "bg-white text-orange-600 shadow-sm" 
                     : "text-[#999] hover:text-[#666]"
                 )}
               >
@@ -237,6 +238,9 @@ export default function App() {
                       {personality === 'fact' 
                         ? '"안녕하세요, 닥터 팩트입니다. 저는 당신의 얼굴 비대칭을 1mm 단위로 정밀하게 분석하여 냉철한 팩트만을 전달합니다. 객관적인 진단이 필요하시다면 저를 믿어주세요."'
                         : '"반가워요! 저는 엔젤 가이드예요. 당신이 가진 본연의 아름다움을 찾아내고, 더 밝은 미소를 가질 수 있도록 따뜻하게 도와드릴게요. 우리 함께 당신의 매력을 발견해볼까요?"'}
+                    </p>
+                    <p className="text-[10px] opacity-60 pt-2 border-t border-current/10 mt-2">
+                      💡 다른 스타일의 분석이 궁금하다면? 상단 메뉴에서 분석가를 변경해보세요!
                     </p>
                   </div>
                 </div>
