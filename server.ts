@@ -3,6 +3,10 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import path from "path";
 import { fileURLToPath } from "url";
+import dotenv from "dotenv";
+
+// 환경 변수 로드
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,7 +64,10 @@ async function startServer() {
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey) {
-        return res.status(500).json({ error: "서버에 API 키가 설정되지 않았습니다." });
+        console.error("Missing GEMINI_API_KEY in environment variables");
+        return res.status(500).json({ 
+          error: "서버 설정 오류: GEMINI_API_KEY가 설정되지 않았습니다. 관리자에게 문의하세요." 
+        });
       }
 
       const ai = new GoogleGenAI({ apiKey });
