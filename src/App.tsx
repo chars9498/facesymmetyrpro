@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Sparkles, Zap, Trophy, Instagram, MessageCircle, Link2 } from 'lucide-react';
+import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Sparkles, Zap, Trophy, Instagram, MessageCircle, Link2, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
@@ -8,6 +8,9 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as faceMesh from '@mediapipe/face_mesh';
 import { toPng } from 'html-to-image';
+import { fetchCelebrityImage } from './services/wikimediaService';
+
+// ... existing imports ...
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -50,6 +53,8 @@ export default function App() {
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [faceMeshLoaded, setFaceMeshLoaded] = useState(false);
   const [isGeneratingShareImage, setIsGeneratingShareImage] = useState(false);
+  const [celebrityImages, setCelebrityImages] = useState<Record<string, string>>({});
+  const [isStoryMode, setIsStoryMode] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -150,6 +155,26 @@ export default function App() {
       }
     }
   };
+
+  useEffect(() => {
+    if (result?.celebrityMatches) {
+      const fetchImages = async () => {
+        const newImages: Record<string, string> = {};
+        for (const match of result.celebrityMatches) {
+          if (!celebrityImages[match.name]) {
+            const imageUrl = await fetchCelebrityImage(match.name);
+            if (imageUrl) {
+              newImages[match.name] = imageUrl;
+            }
+          }
+        }
+        if (Object.keys(newImages).length > 0) {
+          setCelebrityImages(prev => ({ ...prev, ...newImages }));
+        }
+      };
+      fetchImages();
+    }
+  }, [result?.celebrityMatches]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -1228,18 +1253,34 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                           {result.celebrityMatches.map((match, i) => (
                             <div key={i} className="group relative">
                               <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-all">
                                 <div className="flex items-center gap-4">
-                                  <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs">
-                                    {i + 1}
+                                  <div className="relative">
+                                    <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs overflow-hidden border border-indigo-500/30">
+                                      {celebrityImages[match.name] ? (
+                                        <img 
+                                          src={celebrityImages[match.name]} 
+                                          alt={match.name} 
+                                          className="w-full h-full object-cover"
+                                          referrerPolicy="no-referrer"
+                                        />
+                                      ) : (
+                                        i + 1
+                                      )}
+                                    </div>
+                                    {celebrityImages[match.name] && (
+                                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[8px] font-bold border-2 border-[#0A0A0B]">
+                                        {i + 1}
+                                      </div>
+                                    )}
                                   </div>
                                   <span className="font-bold text-lg tracking-tight">{match.name}</span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <div className="w-32 h-2 bg-white/5 rounded-full overflow-hidden hidden sm:block">
+                                  <div className="w-24 h-2 bg-white/5 rounded-full overflow-hidden hidden sm:block">
                                     <motion.div 
                                       initial={{ width: 0 }}
                                       animate={{ width: `${match.confidence}%` }}
@@ -1270,16 +1311,23 @@ export default function App() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <button 
+                        onClick={() => setIsStoryMode(true)}
+                        className="flex items-center justify-center gap-2 bg-gradient-to-br from-purple-600 to-pink-600 text-white px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        <Instagram size={18} />
+                        Story Mode
+                      </button>
+                      <button 
                         onClick={downloadShareImage}
                         disabled={isGeneratingShareImage}
-                        className="flex items-center justify-center gap-2 bg-gradient-to-br from-purple-600 to-pink-600 text-white px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
+                        className="flex items-center justify-center gap-2 bg-white/10 border border-white/10 text-white px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
                       >
                         {isGeneratingShareImage ? (
                           <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         ) : (
-                          <Instagram size={18} />
+                          <Download size={18} />
                         )}
-                        Insta Story
+                        Download
                       </button>
                       <button 
                         onClick={shareToKakao}
@@ -1374,8 +1422,145 @@ export default function App() {
         </div>
       </main>
 
-      {/* Hidden Canvas for capture */}
-      <canvas ref={canvasRef} className="hidden" />
+      {/* Story Mode Overlay */}
+      <AnimatePresence>
+        {isStoryMode && result && image && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black flex items-center justify-center p-4 sm:p-8"
+          >
+            <div className="absolute inset-0 bg-grid-technical opacity-20" />
+            
+            <div className="relative w-full max-w-[450px] aspect-[9/16] bg-[#050505] rounded-[40px] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] border border-white/10 flex flex-col items-center justify-between p-8 sm:p-12">
+              {/* Background Accents */}
+              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[30%] bg-emerald-500/10 blur-[100px] rounded-full" />
+              <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[30%] bg-blue-500/10 blur-[100px] rounded-full" />
+              
+              {/* Header */}
+              <div className="w-full space-y-2 z-10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-black">
+                      <Scan size={16} />
+                    </div>
+                    <h1 className="text-lg font-black italic tracking-tighter uppercase">Face Symmetry Pro</h1>
+                  </div>
+                  <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-full">
+                    <p className="text-[8px] font-mono text-white/40 uppercase tracking-widest">Biometric Scan v2.5</p>
+                  </div>
+                </div>
+                <div className="h-px w-full bg-gradient-to-r from-emerald-500/50 via-white/10 to-transparent" />
+              </div>
+
+              {/* Main Content */}
+              <div className="w-full flex flex-col items-center gap-6 z-10">
+                {/* Image Preview */}
+                <div className="relative w-full aspect-[4/5] rounded-[30px] overflow-hidden border-2 border-white/10 shadow-2xl">
+                  <img 
+                    src={image} 
+                    alt="Analysis" 
+                    className="w-full h-full object-cover"
+                    style={{ transform: `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` }}
+                    referrerPolicy="no-referrer"
+                  />
+                  
+                  {/* Grid Overlay */}
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute inset-0 flex justify-center">
+                      <div className="w-[1px] h-full bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                    </div>
+                  </div>
+
+                  {/* Score Badge */}
+                  <div className="absolute bottom-6 right-6 bg-black/80 backdrop-blur-xl border border-white/20 p-4 rounded-[20px] shadow-2xl flex flex-col items-center">
+                    <p className="text-[10px] font-mono text-white/40 uppercase tracking-widest mb-0.5">Score</p>
+                    <p className="text-4xl font-black italic text-emerald-400">{result.overallScore}</p>
+                  </div>
+                </div>
+
+                {/* Celebrity Match */}
+                {result.celebrityMatches && (
+                  <div className="w-full grid grid-cols-3 gap-3">
+                    {result.celebrityMatches.map((match, i) => (
+                      <div key={i} className="bg-white/5 border border-white/10 p-3 rounded-[20px] flex flex-col items-center gap-2">
+                        <div className="w-10 h-10 rounded-full overflow-hidden border border-indigo-500/30">
+                          {celebrityImages[match.name] ? (
+                            <img 
+                              src={celebrityImages[match.name]} 
+                              alt={match.name} 
+                              className="w-full h-full object-cover"
+                              referrerPolicy="no-referrer"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs">
+                              {i + 1}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[8px] font-black italic uppercase tracking-tighter truncate w-full max-w-[60px]">{match.name}</p>
+                          <p className="text-[10px] font-black text-indigo-400">{match.confidence}%</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Summary */}
+                <div className="w-full bg-white/5 border border-white/10 p-4 rounded-[25px] backdrop-blur-sm space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500">
+                      <CheckCircle2 size={14} />
+                    </div>
+                    <h2 className="text-sm font-bold italic uppercase tracking-tight">{result.summary}</h2>
+                  </div>
+                  <p className="text-[10px] text-white/60 leading-relaxed break-keep">
+                    {personality === 'fact' 
+                      ? "정밀 분석 결과, 당신의 안면 대칭도는 상위권에 속합니다. 미세한 비대칭이 감지되었으나 이는 자연스러운 현상입니다."
+                      : "당신은 정말 아름다운 균형을 가지고 있네요! 본연의 매력이 잘 드러나는 아주 멋진 얼굴이에요."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="w-full flex items-center justify-between z-10">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-mono text-white/20 uppercase tracking-[0.2em]">Scan Completed</p>
+                  <p className="text-[8px] font-mono text-white/10 uppercase tracking-widest">ID: {Math.random().toString(36).substring(7).toUpperCase()}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-[10px] font-mono text-emerald-500/60 uppercase tracking-widest">Verified</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="absolute bottom-12 flex gap-4">
+              <button 
+                onClick={() => setIsStoryMode(false)}
+                className="bg-white/10 hover:bg-white/20 text-white px-8 py-4 rounded-2xl font-bold uppercase tracking-widest text-xs backdrop-blur-md border border-white/10 transition-all"
+              >
+                Close
+              </button>
+              <button 
+                onClick={downloadShareImage}
+                disabled={isGeneratingShareImage}
+                className="bg-emerald-500 hover:bg-emerald-400 text-black px-8 py-4 rounded-2xl font-bold uppercase tracking-widest text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
+              >
+                {isGeneratingShareImage ? (
+                  <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                ) : (
+                  <Download size={16} />
+                )}
+                Save Image
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Hidden Share Card for Image Generation */}
       {result && image && (
@@ -1451,10 +1636,26 @@ export default function App() {
               {result.celebrityMatches && (
                 <div className="w-full grid grid-cols-3 gap-6">
                   {result.celebrityMatches.map((match, i) => (
-                    <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-[40px] flex flex-col items-center gap-2">
-                      <p className="text-sm font-mono text-white/40 uppercase tracking-widest">Match #{i+1}</p>
-                      <p className="text-3xl font-black italic uppercase tracking-tighter">{match.name}</p>
-                      <p className="text-4xl font-black text-indigo-400">{match.confidence}%</p>
+                    <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-[40px] flex flex-col items-center gap-4">
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500/30">
+                        {celebrityImages[match.name] ? (
+                          <img 
+                            src={celebrityImages[match.name]} 
+                            alt={match.name} 
+                            className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-2xl">
+                            {i + 1}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-center">
+                        <p className="text-sm font-mono text-white/40 uppercase tracking-widest">Match #{i+1}</p>
+                        <p className="text-3xl font-black italic uppercase tracking-tighter">{match.name}</p>
+                        <p className="text-4xl font-black text-indigo-400">{match.confidence}%</p>
+                      </div>
                     </div>
                   ))}
                 </div>
