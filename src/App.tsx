@@ -1,8 +1,9 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Camera, Upload, RefreshCw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2 } from 'lucide-react';
+import { Camera, Upload, RefreshCw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -24,12 +25,17 @@ interface AnalysisResult {
     mouth: { score: number; feedback: string };
     jawline: { score: number; feedback: string };
   };
+  autoCenterOffset?: number; // -10 to 10 percentage
+  rotationAngle?: number; // -15 to 15 degrees
 }
 
 export default function App() {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [mirroredImages, setMirroredImages] = useState<{ left: string, right: string } | null>(null);
+  const [centerOffset, setCenterOffset] = useState(0); // percentage offset from center
+  const [rotationAngle, setRotationAngle] = useState(0); // degrees
   const [error, setError] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
@@ -78,6 +84,87 @@ export default function App() {
     setIsCameraActive(false);
   }, [stream]);
 
+  const createMirroredImages = (imageSrc: string, offsetPercent: number = 0, angle: number = 0): Promise<{ left: string, right: string }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const w = img.width;
+        const h = img.height;
+        
+        // Pre-process: Create a rotated version of the image first
+        const preCanvas = document.createElement('canvas');
+        const preCtx = preCanvas.getContext('2d');
+        if (!preCtx) return;
+        preCanvas.width = w;
+        preCanvas.height = h;
+        
+        preCtx.save();
+        preCtx.translate(w / 2, h / 2);
+        preCtx.rotate((angle * Math.PI) / 180);
+        preCtx.imageSmoothingEnabled = true;
+        preCtx.imageSmoothingQuality = 'high';
+        preCtx.drawImage(img, -w / 2, -h / 2);
+        preCtx.restore();
+
+        const offset = (offsetPercent / 100) * w;
+        const centerX = (w / 2) + offset;
+
+        const createMirror = (isLeft: boolean) => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return '';
+          canvas.width = w;
+          canvas.height = h;
+
+          // Clear background to black
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, w, h);
+
+          ctx.save();
+          if (isLeft) {
+            // Shift image so that centerX aligns with canvas center (w/2)
+            ctx.translate((w / 2) - centerX, 0);
+            ctx.drawImage(preCanvas, 0, 0);
+            ctx.restore();
+
+            // Mirror the left half (0 to w/2) to the right half
+            ctx.save();
+            ctx.translate(w, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(canvas, 0, 0, w / 2, h, 0, 0, w / 2, h);
+            ctx.restore();
+          } else {
+            // Shift image so that centerX aligns with canvas center (w/2)
+            ctx.translate((w / 2) - centerX, 0);
+            ctx.drawImage(preCanvas, 0, 0);
+            ctx.restore();
+
+            // Mirror the right half (w/2 to w) to the left half
+            ctx.save();
+            ctx.translate(w, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(canvas, w / 2, 0, w / 2, h, w / 2, 0, w / 2, h);
+            ctx.restore();
+          }
+          return canvas.toDataURL('image/jpeg');
+        };
+
+        resolve({ 
+          left: createMirror(true), 
+          right: createMirror(false) 
+        });
+      };
+      img.src = imageSrc;
+    });
+  };
+
+  const updateMirrors = async (offset: number, angle: number) => {
+    if (image) {
+      const mirrors = await createMirroredImages(image, offset, angle);
+      setMirroredImages(mirrors);
+    }
+  };
+
   // Attach stream to video element when it becomes available
   React.useEffect(() => {
     if (isCameraActive && videoRef.current && stream) {
@@ -113,32 +200,138 @@ export default function App() {
     }
   };
 
+  const resizeImage = (base64Str: string, maxDimension: number = 1024): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxDimension) {
+            height *= maxDimension / width;
+            width = maxDimension;
+          }
+        } else {
+          if (height > maxDimension) {
+            width *= maxDimension / height;
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(base64Str);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = () => resolve(base64Str);
+      img.src = base64Str;
+    });
+  };
+
   const analyzeImage = async (base64Image: string, selectedPersonality: 'fact' | 'angel') => {
     setIsAnalyzing(true);
     setError(null);
     setResult(null);
+    setMirroredImages(null);
+    setCenterOffset(0);
+    setRotationAngle(0);
 
     try {
-      const base64Data = base64Image.split(',')[1];
+      // Optimize image size for faster analysis
+      const optimizedImage = await resizeImage(base64Image);
+      const base64Data = optimizedImage.split(',')[1];
       
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          image: base64Data,
-          personality: selectedPersonality 
-        }),
-      });
+      const isAngel = selectedPersonality === 'angel';
+      const systemInstruction = isAngel 
+        ? `당신은 따뜻하고 긍정적인 안면 비대칭 분석 전문가 '엔젤 가이드'입니다. 
+           사용자가 자신의 얼굴에 대해 자신감을 가질 수 있도록 격려하면서도, 개선할 수 있는 부분을 부드럽게 조언해야 합니다.
+           
+           **분석 가이드라인 (엔젤 가이드):**
+           1. 사진이 정면이 아니더라도 너무 엄격하게 꾸짖지 마세요. "정면 사진을 올려주시면 더 정확한 매력을 찾아드릴 수 있어요!"라고 다정하게 말하세요.
+           2. 비대칭을 '문제'가 아닌 '개성'이나 '개선 가능한 포인트'로 표현하세요.
+           3. 점수는 너무 짜지 않게, 긍정적인 면을 고려하여 산출하세요.
+           4. 한국어로 매우 친절하고 따뜻하게 분석 결과를 전달하세요.
+           5. 근육 분석 시에도 "이 근육을 조금 더 이완해주면 훨씬 더 밝은 미소가 될 거예요"와 같은 긍정적인 어조를 사용하세요.`
+        : `당신은 세계 최고의 냉철한 안면 비대칭 분석 전문가 '닥터 팩트'입니다. 
+           사용자가 업로드한 사진을 매우 엄격하고 객관적인 기준으로 분석해야 합니다.
+           
+           **분석 가이드라인 (닥터 팩트):**
+           1. 사진이 정면(Frontal View)이 아닌 옆모습이거나 얼굴이 한쪽으로 치우쳐 있다면, 'overallScore'를 50점 이하로 대폭 낮추고 'detailedFeedback'의 첫 문장에 "정면 사진이 아니어서 정확한 분석이 어렵습니다. 정면을 바라보고 다시 촬영해주세요."라고 명시하세요.
+           2. 얼굴이 기울어져 있다면 그 기울어짐 자체를 비대칭의 요소로 간주하여 점수를 깎으세요.
+           3. 칭찬보다는 발견된 '차이점'에 집중하세요. 1mm의 차이라도 지적하세요.
+           4. 한국어로 전문적이고 냉철하게 분석 결과를 전달하세요.`;
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "분석 요청에 실패했습니다.");
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === '') {
+        throw new Error("Gemini API 키가 설정되지 않았습니다. 설정 메뉴에서 API 키를 확인해주세요.");
       }
 
-      const data = await response.json();
-      setResult(data);
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: [
+          {
+            parts: [
+              {
+                text: `${systemInstruction}
+                
+                **JSON 응답 형식:**
+                {
+                  "overallScore": 0-100 사이의 점수,
+                  "detailedFeedback": "전반적인 분석 내용 (마크다운 형식)",
+                  "muscleAnalysis": "비대칭의 원인이 될 수 있는 근육(교근, 측두근, 구륜근 등)에 대한 구체적인 추측성 분석",
+                  "landmarks": {
+                    "eyes": { "score": 0-100, "feedback": "눈 비대칭 분석" },
+                    "nose": { "score": 0-100, "feedback": "코 비대칭 분석" },
+                    "mouth": { "score": 0-100, "feedback": "입매 비대칭 분석" },
+                    "jawline": { "score": 0-100, "feedback": "턱선 비대칭 분석" }
+                  },
+                  "autoCenterOffset": -15에서 15 사이의 숫자 (얼굴의 정중앙선이 이미지의 기하학적 중앙에서 얼마나 벗어났는지 퍼센트로 표시. 얼굴이 왼쪽으로 치우쳤으면 음수, 오른쪽이면 양수. 예: 얼굴이 왼쪽으로 2% 치우쳤다면 -2.0),
+                  "rotationAngle": -15에서 15 사이의 숫자 (양쪽 눈의 수평을 맞추기 위한 회전 각도. 시계방향 회전이 필요하면 양수, 반시계방향이면 음수)
+                }
+                
+                **중요 - 정밀 보정 가이드:**
+                1. **중심선(autoCenterOffset) 기준:** 반드시 '미간(Glabella) - 콧대(Bridge) - 인중(Philtrum) - 턱끝 중앙'을 잇는 가상의 선을 기준으로 하세요. 콧볼이나 입꼬리에 치우치지 않도록 주의하세요.
+                2. **수치 정밀도:** 사용자가 수동 조절을 하지 않아도 될 만큼 소수점 첫째 자리까지 정밀하게 계산하세요. (예: 1.2, -0.7 등)
+                3. **방향 확인:** 얼굴이 이미지 중앙보다 왼쪽에 있다면 음수(-) 값을 주어 가이드라인이 왼쪽으로 이동하게 해야 합니다.`
+              },
+              {
+                inlineData: {
+                  mimeType: "image/jpeg",
+                  data: base64Data
+                }
+              }
+            ]
+          }
+        ],
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      const text = response.text;
+      if (!text) {
+        throw new Error("AI로부터 응답을 받지 못했습니다.");
+      }
+
+      const parsedResult = JSON.parse(text) as AnalysisResult;
+      setResult(parsedResult);
+
+      // Apply AI Auto-Correction
+      const autoOffset = parsedResult.autoCenterOffset || 0;
+      const autoRotation = parsedResult.rotationAngle || 0;
+      setCenterOffset(autoOffset);
+      setRotationAngle(autoRotation);
+
+      const mirrors = await createMirroredImages(base64Image, autoOffset, autoRotation);
+      setMirroredImages(mirrors);
     } catch (err: any) {
       setError(err.message || "분석 중 오류가 발생했습니다. 다시 시도해주세요.");
       console.error(err);
@@ -246,8 +439,8 @@ export default function App() {
                     </h4>
                     <p className="text-sm leading-relaxed text-white/80 italic break-keep">
                       {personality === 'fact' 
-                        ? '"안녕하세요, 닥터 팩트입니다. 저는 당신의 얼굴 비대칭을 1mm 단위로 정밀하게 분석하여 냉철한 팩트만을 전달합니다. 객관적인 진단이 필요하시다면 저를 믿어주세요."'
-                        : '"반가워요! 저는 엔젤 가이드예요. 당신이 가진 본연의 아름다움을 찾아내고, 더 밝은 미소를 가질 수 있도록 따뜻하게 도와드릴게요. 우리 함께 당신의 매력을 발견해볼까요?"'}
+                        ? '"안녕하세요, 닥터 팩트입니다. 저는 당신의 얼굴 비대칭을 1mm 단위로 정밀하게 분석하여 냉철한 팩트만을 전달합니다. 분석 데이터는 보안 프로토콜에 따라 즉시 삭제되니 안심하고 진단받으십시오."'
+                        : '"반가워요! 저는 엔젤 가이드예요. 당신이 가진 본연의 아름다움을 찾아내고, 더 밝은 미소를 가질 수 있도록 따뜻하게 도와드릴게요. 당신의 소중한 사진은 저만 살짝 보고 바로 지울게요. 걱정 마세요!"'}
                     </p>
                     <div className="flex items-center gap-2 pt-2 border-t border-white/5 mt-2">
                       <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
@@ -295,6 +488,13 @@ export default function App() {
                       className="hidden" 
                     />
                   </div>
+
+                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-full">
+                    <ShieldCheck size={14} className="text-emerald-500" />
+                    <p className="text-[10px] text-emerald-500/70 font-medium uppercase tracking-wider">
+                      Privacy Secured: No images are stored on our servers.
+                    </p>
+                  </div>
                 </div>
               ) : isCameraActive ? (
                 <div className="relative aspect-[4/5] bg-black">
@@ -306,8 +506,25 @@ export default function App() {
                   />
                   {/* Face Guide Overlay */}
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                    <div className="w-64 h-80 border-2 border-white/30 rounded-[100px] border-dashed" />
-                    <div className="absolute h-full w-[1px] bg-emerald-500/50 left-1/2" />
+                    {/* Face Silhouette SVG */}
+                    <svg className="w-full h-full text-emerald-500/30" viewBox="0 0 400 500">
+                      <path 
+                        d="M200,80 C140,80 100,130 100,200 C100,300 140,400 200,400 C260,400 300,300 300,200 C300,130 260,80 200,80 Z" 
+                        fill="none" 
+                        stroke="currentColor" 
+                        strokeWidth="2" 
+                        strokeDasharray="8 8"
+                      />
+                      {/* Eye Line */}
+                      <line x1="120" y1="200" x2="280" y2="200" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
+                      {/* Center Line */}
+                      <line x1="200" y1="50" x2="200" y2="450" stroke="rgba(16,185,129,0.5)" strokeWidth="1" />
+                    </svg>
+                    <div className="absolute top-1/4 text-center">
+                      <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
+                        얼굴을 중앙선에 맞춰주세요
+                      </p>
+                    </div>
                   </div>
                   <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4 px-6">
                     <button 
@@ -326,14 +543,24 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div className="relative aspect-auto bg-black flex items-center justify-center">
-                  <img src={image!} alt="Preview" className="max-h-[70vh] w-full object-contain" />
+                <div className="relative aspect-auto bg-black flex items-center justify-center overflow-hidden">
+                  <img 
+                    src={image!} 
+                    alt="Preview" 
+                    className="max-h-[70vh] w-full object-contain transition-transform duration-200" 
+                    style={{ transform: `rotate(${rotationAngle}deg) scale(1.1)` }}
+                  />
                   
                   {/* Symmetry Overlay */}
                   {showOverlay && (
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                      <div className="h-full w-[2px] bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                      {/* Horizontal guides for eyes/mouth if we wanted to be fancy, but vertical is key */}
+                    <div className="absolute inset-0 pointer-events-none">
+                      <div 
+                        className="absolute top-0 bottom-0 w-[2px] bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)] transition-all duration-200" 
+                        style={{ 
+                          left: `calc(50% + ${centerOffset}%)`,
+                          transform: `translateX(-50%)`,
+                        }}
+                      />
                     </div>
                   )}
 
@@ -351,11 +578,20 @@ export default function App() {
                   </div>
 
                   {isAnalyzing && (
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex flex-col items-center justify-center text-white space-y-4">
-                      <RefreshCw size={40} className="animate-spin text-emerald-400" />
-                      <div className="text-center">
-                        <p className="text-lg font-medium">AI 분석 진행 중...</p>
-                        <p className="text-sm text-white/70">얼굴의 특징점을 찾는 중입니다</p>
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center text-white space-y-6 z-50">
+                      <div className="relative">
+                        <RefreshCw size={48} className="animate-spin text-emerald-400" />
+                        <div className="absolute inset-0 animate-ping bg-emerald-500/20 rounded-full" />
+                      </div>
+                      <div className="text-center space-y-2">
+                        <p className="text-xl font-bold tracking-tight text-emerald-400">AI 분석 진행 중...</p>
+                        <div className="flex flex-col gap-1">
+                          <p className="text-sm text-white/70 animate-pulse">얼굴의 특징점을 정밀하게 찾는 중입니다</p>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest">이미지 최적화 및 서버 통신 중</p>
+                        </div>
+                      </div>
+                      <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-emerald-500 animate-[loading_2s_ease-in-out_infinite]" style={{ width: '30%' }} />
                       </div>
                     </div>
                   )}
@@ -450,6 +686,119 @@ export default function App() {
                       <p className="text-white/40 text-xs mt-1 font-mono uppercase tracking-wider">Biometric analysis complete.</p>
                     </div>
                   </div>
+
+                  {/* Radar Chart Analysis */}
+                  <div className="bg-white/5 rounded-3xl border border-white/10 p-6 shadow-2xl backdrop-blur-sm">
+                    <div className="flex items-center gap-2 mb-6">
+                      <BarChart3 size={16} className="text-emerald-500" />
+                      <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-mono">Symmetry Balance Chart</h3>
+                    </div>
+                    <div className="h-[280px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                          { subject: '눈 (Eyes)', A: result.landmarks.eyes.score, full: 100 },
+                          { subject: '코 (Nose)', A: result.landmarks.nose.score, full: 100 },
+                          { subject: '입 (Mouth)', A: result.landmarks.mouth.score, full: 100 },
+                          { subject: '턱 (Jaw)', A: result.landmarks.jawline.score, full: 100 },
+                          { subject: '전체 (Total)', A: result.overallScore, full: 100 },
+                        ]}>
+                          <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 'bold' }} />
+                          <Radar
+                            name="Symmetry"
+                            dataKey="A"
+                            stroke="#10b981"
+                            fill="#10b981"
+                            fillOpacity={0.3}
+                          />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  {/* Mirroring Comparison */}
+                  {mirroredImages && (
+                    <div className="bg-white/5 rounded-3xl border border-white/10 p-6 shadow-2xl backdrop-blur-sm space-y-6">
+                      <div className="flex items-center gap-2">
+                        <FlipHorizontal size={16} className="text-emerald-500" />
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-mono">Mirroring Comparison</h3>
+                      </div>
+                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex flex-col gap-3">
+                        <div className="flex gap-3 items-start">
+                          <Info size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                          <p className="text-[10px] text-emerald-500/80 leading-relaxed">
+                            <strong>가이드:</strong> 얼굴이 중앙선에 정확히 맞지 않으면 대칭 이미지가 부자연스럽게 보일 수 있습니다. 아래 슬라이더를 조절하여 코끝을 중앙에 맞춰보세요.
+                          </p>
+                        </div>
+                        <div className="space-y-4 px-1">
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-[9px] text-emerald-500/60 font-mono uppercase">
+                              <span>Left Shift</span>
+                              <span>Center Adjustment</span>
+                              <span>Right Shift</span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="-15" 
+                              max="15" 
+                              step="0.1"
+                              value={centerOffset}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                setCenterOffset(val);
+                                updateMirrors(val, rotationAngle);
+                              }}
+                              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-[9px] text-emerald-500/60 font-mono uppercase">
+                              <span>Tilt Left</span>
+                              <span>Rotation Correction</span>
+                              <span>Tilt Right</span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="-15" 
+                              max="15" 
+                              step="0.1"
+                              value={rotationAngle}
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                setRotationAngle(val);
+                                updateMirrors(centerOffset, val);
+                              }}
+                              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div className="space-y-2">
+                          <div className="aspect-[4/5] rounded-xl overflow-hidden border border-white/10 bg-black">
+                            <img src={mirroredImages.left} alt="Left Mirror" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                          <p className="text-[9px] text-center text-white/40 font-mono uppercase">Left-Left</p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="aspect-[4/5] rounded-xl overflow-hidden border border-emerald-500/30 bg-black ring-1 ring-emerald-500/20">
+                            <img src={image || ''} alt="Original" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                          <p className="text-[9px] text-center text-emerald-500/60 font-mono uppercase font-bold">Original</p>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="aspect-[4/5] rounded-xl overflow-hidden border border-white/10 bg-black">
+                            <img src={mirroredImages.right} alt="Right Mirror" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                          </div>
+                          <p className="text-[9px] text-center text-white/40 font-mono uppercase">Right-Right</p>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-white/30 text-center italic break-keep leading-relaxed">
+                        * 좌측/우측 얼굴만을 대칭시켜 만든 가상의 얼굴입니다. 실제 얼굴과의 차이를 통해 비대칭 정도를 시각적으로 확인할 수 있습니다.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Detailed Analysis */}
                   <div className="bg-white/5 rounded-3xl border border-white/10 shadow-2xl overflow-hidden backdrop-blur-sm">
