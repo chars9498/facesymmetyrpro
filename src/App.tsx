@@ -218,7 +218,7 @@ export default function App() {
                     ref={videoRef} 
                     autoPlay 
                     playsInline 
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover scale-x-[-1]"
                   />
                   {/* Face Guide Overlay */}
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
