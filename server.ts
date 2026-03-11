@@ -82,15 +82,24 @@ async function startServer() {
         });
       }
 
-      const ai = new GoogleGenAI({ apiKey });
-      
-      // Retry logic with exponential backoff
-      const generateWithRetry = async (maxRetries = 5) => {
+      // Retry logic with exponential backoff and fallback model
+      const generateWithRetry = async (maxRetries = 8) => {
         let lastError;
+        // List of models to try in order of preference
+        const models = ["gemini-3-flash-preview", "gemini-3.1-flash-lite-preview"];
+        
         for (let i = 0; i < maxRetries; i++) {
+          // Switch to fallback model after 2 failed attempts
+          const modelIndex = i >= 2 ? 1 : 0;
+          const currentModel = models[modelIndex];
+          
           try {
+            // Create a new GoogleGenAI instance right before making an API call
+            // to ensure it always uses the most up-to-date API key and state
+            const ai = new GoogleGenAI({ apiKey });
+            
             const response = await ai.models.generateContent({
-              model: "gemini-3-flash-preview",
+              model: currentModel,
               contents: [
                 {
                   parts: [
@@ -114,9 +123,10 @@ async function startServer() {
             const isRetryable = statusCode === 429 || statusCode === 503 || statusCode === 500;
             
             if (isRetryable && i < maxRetries - 1) {
-              // Exponential backoff: 2s, 4s, 8s, 16s... with jitter
+              // More aggressive exponential backoff for persistent errors: 2s, 4s, 8s, 16s, 32s...
               const delay = Math.pow(2, i + 1) * 1000 + Math.random() * 1000;
-              console.log(`Retrying API call (attempt ${i + 1}/${maxRetries}) after ${Math.round(delay)}ms due to status ${statusCode}: ${errorStr.substring(0, 100)}...`);
+              const nextModel = (i + 1 >= 2) ? models[1] : models[0];
+              console.log(`[Retry ${i + 1}/${maxRetries}] Status ${statusCode} on ${currentModel}. Switching to ${nextModel} in ${Math.round(delay)}ms...`);
               await new Promise(resolve => setTimeout(resolve, delay));
               continue;
             }
