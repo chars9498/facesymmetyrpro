@@ -228,9 +228,9 @@ export default function App() {
                 }
                 
                 **중요 - 정밀 보정 가이드:**
-                1. **중심선(autoCenterOffset) 기준:** 반드시 '미간(Glabella) - 콧대(Bridge) - 인중(Philtrum) - 턱끝 중앙'을 잇는 가상의 선을 기준으로 하세요. 콧볼이나 입꼬리에 치우치지 않도록 주의하세요.
+                1. **중심선(autoCenterOffset) 기준:** 반드시 '미간(Glabella) - 콧대(Bridge) - 인중(Philtrum) - 턱끝 중앙'을 잇는 가상의 선을 기준으로 하세요. 절대 눈동자나 한쪽 눈에 치우치지 않도록 주의하세요. 얼굴의 정중앙 수직축을 찾아야 합니다.
                 2. **수치 정밀도:** 사용자가 수동 조절을 하지 않아도 될 만큼 소수점 첫째 자리까지 정밀하게 계산하세요. (예: 1.2, -0.7 등)
-                3. **방향 확인:** 얼굴이 이미지 중앙보다 왼쪽에 있다면 음수(-) 값을 주어 가이드라인이 왼쪽으로 이동하게 해야 합니다.`
+                3. **방향 확인:** 얼굴이 이미지 중앙보다 왼쪽에 있다면 음수(-) 값을 주어 가이드라인이 왼쪽으로 이동하게 해야 합니다. (예: 얼굴이 왼쪽으로 5% 치우침 -> -5.0)`
               },
               {
                 inlineData: {
@@ -613,12 +613,12 @@ export default function App() {
                           <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">Symmetry Analysis Result</div>
                         </div>
                         <div>
-                          <h3 className="text-3xl font-bold uppercase italic tracking-tight leading-tight">
+                          <h3 className="text-3xl font-bold uppercase italic tracking-tight leading-tight break-keep">
                             {result.overallScore >= 90 ? "Optimal Symmetry" : 
                              result.overallScore >= 80 ? "High Symmetry" : 
                              result.overallScore >= 70 ? "Standard Symmetry" : "Deviation Detected"}
                           </h3>
-                          <p className="text-white/60 text-sm mt-2 font-mono leading-relaxed">
+                          <p className="text-white/60 text-sm mt-2 font-mono leading-relaxed break-keep">
                             {personality === 'fact' 
                               ? "생체 인식 데이터 분석 결과, 당신의 안면 대칭도는 위와 같이 산출되었습니다. 이는 해부학적 기준에 따른 객관적 수치입니다."
                               : "당신만의 고유한 아름다움이 담긴 분석 결과예요! 완벽한 대칭보다 더 중요한 건 당신의 밝은 미소라는 걸 잊지 마세요."}
@@ -697,79 +697,83 @@ export default function App() {
                     </div>
 
                     <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black group">
-                      {/* Base Image */}
+                      {/* Transformed Content Layer */}
                       <div 
-                        className="w-full h-full transition-transform duration-500 ease-out"
+                        className="absolute inset-0 transition-transform duration-500 ease-out"
                         style={{ 
-                          transform: `rotate(${rotationAngle}deg) translateX(${centerOffset}%) scale(1.1)` 
+                          transform: `rotate(${rotationAngle}deg) translateX(${-centerOffset}%) scale(1.1)` 
                         }}
                       >
+                        {/* Base Image */}
                         <img src={image || ''} alt="Analysis" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+
+                        {/* Overlay Layer (Moves with image) */}
+                        <AnimatePresence>
+                          {showOverlay && (
+                            <motion.div 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className="absolute inset-0 pointer-events-none"
+                            >
+                              {/* Heatmap Zones */}
+                              {result.asymmetryZones?.map((zone, i) => (
+                                <motion.div
+                                  key={`zone-${i}`}
+                                  initial={{ scale: 0, opacity: 0 }}
+                                  animate={{ scale: 1, opacity: 0.4 }}
+                                  transition={{ delay: 0.5 + i * 0.1 }}
+                                  className="absolute rounded-full blur-xl"
+                                  style={{
+                                    left: `${zone.x}%`,
+                                    top: `${zone.y}%`,
+                                    width: `${zone.radius * 2}%`,
+                                    height: `${zone.radius * 2}%`,
+                                    backgroundColor: zone.intensity > 0.7 ? '#ef4444' : zone.intensity > 0.4 ? '#f59e0b' : '#10b981',
+                                    transform: 'translate(-50%, -50%)'
+                                  }}
+                                />
+                              ))}
+
+                              {/* Landmark Points */}
+                              {result.landmarkPoints?.map((point, i) => (
+                                <motion.div
+                                  key={`point-${i}`}
+                                  initial={{ scale: 0 }}
+                                  animate={{ scale: 1 }}
+                                  transition={{ delay: 1 + i * 0.05, type: 'spring' }}
+                                  className="absolute group/point"
+                                  style={{
+                                    left: `${point.x}%`,
+                                    top: `${point.y}%`,
+                                    transform: 'translate(-50%, -50%)'
+                                  }}
+                                >
+                                  <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_5px_rgba(255,255,255,0.8)]" />
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap bg-black/80 text-[7px] px-1 rounded text-white/60 opacity-0 group-hover/point:opacity-100 transition-opacity">
+                                    {point.label}
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
 
-                      {/* Overlay Layer */}
-                      <AnimatePresence>
-                        {showOverlay && (
-                          <motion.div 
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="absolute inset-0 pointer-events-none"
-                          >
-                            {/* Central Axis */}
-                            <div className="absolute inset-0 flex justify-center">
-                              <div className="w-px h-full bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-10" />
-                            </div>
-                            
-                            {/* Horizontal Grid Lines */}
-                            <div className="absolute inset-0 flex flex-col justify-around opacity-20">
-                              {[...Array(8)].map((_, i) => (
-                                <div key={i} className="w-full h-px bg-white/30" />
-                              ))}
-                            </div>
-
-                            {/* Heatmap Zones */}
-                            {result.asymmetryZones?.map((zone, i) => (
-                              <motion.div
-                                key={`zone-${i}`}
-                                initial={{ scale: 0, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 0.4 }}
-                                transition={{ delay: 0.5 + i * 0.1 }}
-                                className="absolute rounded-full blur-xl"
-                                style={{
-                                  left: `${zone.x}%`,
-                                  top: `${zone.y}%`,
-                                  width: `${zone.radius * 2}%`,
-                                  height: `${zone.radius * 2}%`,
-                                  backgroundColor: zone.intensity > 0.7 ? '#ef4444' : zone.intensity > 0.4 ? '#f59e0b' : '#10b981',
-                                  transform: 'translate(-50%, -50%)'
-                                }}
-                              />
-                            ))}
-
-                            {/* Landmark Points */}
-                            {result.landmarkPoints?.map((point, i) => (
-                              <motion.div
-                                key={`point-${i}`}
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                transition={{ delay: 1 + i * 0.05, type: 'spring' }}
-                                className="absolute group/point"
-                                style={{
-                                  left: `${point.x}%`,
-                                  top: `${point.y}%`,
-                                  transform: 'translate(-50%, -50%)'
-                                }}
-                              >
-                                <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_5px_rgba(255,255,255,0.8)]" />
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap bg-black/80 text-[7px] px-1 rounded text-white/60 opacity-0 group-hover/point:opacity-100 transition-opacity">
-                                  {point.label}
-                                </div>
-                              </motion.div>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
+                      {/* Fixed Reference Grid (Stays in center of container) */}
+                      <div className="absolute inset-0 pointer-events-none">
+                        {/* Central Axis */}
+                        <div className="absolute inset-0 flex justify-center">
+                          <div className="w-px h-full bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-10" />
+                        </div>
+                        
+                        {/* Horizontal Grid Lines */}
+                        <div className="absolute inset-0 flex flex-col justify-around opacity-20">
+                          {[...Array(8)].map((_, i) => (
+                            <div key={i} className="w-full h-px bg-white/30" />
+                          ))}
+                        </div>
+                      </div>
 
                       {/* Manual Controls Overlay (Bottom) */}
                       <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
