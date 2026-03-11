@@ -27,7 +27,9 @@ interface AnalysisResult {
   };
   laymanProtocol: string;
   professionalProtocol: string;
-  autoCenterOffset?: number; // -10 to 10 percentage
+  landmarkPoints: { x: number; y: number; label: string }[];
+  asymmetryZones: { x: number; y: number; radius: number; intensity: number; label: string }[];
+  autoCenterOffset?: number; // -15 to 15 percentage
   rotationAngle?: number; // -15 to 15 degrees
 }
 
@@ -35,7 +37,6 @@ export default function App() {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
-  const [mirroredImages, setMirroredImages] = useState<{ left: string, right: string } | null>(null);
   const [centerOffset, setCenterOffset] = useState(0); // percentage offset from center
   const [rotationAngle, setRotationAngle] = useState(0); // degrees
   const [error, setError] = useState<string | null>(null);
@@ -85,87 +86,6 @@ export default function App() {
     }
     setIsCameraActive(false);
   }, [stream]);
-
-  const createMirroredImages = (imageSrc: string, offsetPercent: number = 0, angle: number = 0): Promise<{ left: string, right: string }> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.onload = () => {
-        const w = img.width;
-        const h = img.height;
-        
-        // Pre-process: Create a rotated version of the image first
-        const preCanvas = document.createElement('canvas');
-        const preCtx = preCanvas.getContext('2d');
-        if (!preCtx) return;
-        preCanvas.width = w;
-        preCanvas.height = h;
-        
-        preCtx.save();
-        preCtx.translate(w / 2, h / 2);
-        preCtx.rotate((angle * Math.PI) / 180);
-        preCtx.imageSmoothingEnabled = true;
-        preCtx.imageSmoothingQuality = 'high';
-        preCtx.drawImage(img, -w / 2, -h / 2);
-        preCtx.restore();
-
-        const offset = (offsetPercent / 100) * w;
-        const centerX = (w / 2) + offset;
-
-        const createMirror = (isLeft: boolean) => {
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          if (!ctx) return '';
-          canvas.width = w;
-          canvas.height = h;
-
-          // Clear background to black
-          ctx.fillStyle = '#000';
-          ctx.fillRect(0, 0, w, h);
-
-          ctx.save();
-          if (isLeft) {
-            // Shift image so that centerX aligns with canvas center (w/2)
-            ctx.translate((w / 2) - centerX, 0);
-            ctx.drawImage(preCanvas, 0, 0);
-            ctx.restore();
-
-            // Mirror the left half (0 to w/2) to the right half
-            ctx.save();
-            ctx.translate(w, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(canvas, 0, 0, w / 2, h, 0, 0, w / 2, h);
-            ctx.restore();
-          } else {
-            // Shift image so that centerX aligns with canvas center (w/2)
-            ctx.translate((w / 2) - centerX, 0);
-            ctx.drawImage(preCanvas, 0, 0);
-            ctx.restore();
-
-            // Mirror the right half (w/2 to w) to the left half
-            ctx.save();
-            ctx.translate(w, 0);
-            ctx.scale(-1, 1);
-            ctx.drawImage(canvas, w / 2, 0, w / 2, h, w / 2, 0, w / 2, h);
-            ctx.restore();
-          }
-          return canvas.toDataURL('image/jpeg');
-        };
-
-        resolve({ 
-          left: createMirror(true), 
-          right: createMirror(false) 
-        });
-      };
-      img.src = imageSrc;
-    });
-  };
-
-  const updateMirrors = async (offset: number, angle: number) => {
-    if (image) {
-      const mirrors = await createMirroredImages(image, offset, angle);
-      setMirroredImages(mirrors);
-    }
-  };
 
   // Attach stream to video element when it becomes available
   React.useEffect(() => {
@@ -241,7 +161,6 @@ export default function App() {
     setIsAnalyzing(true);
     setError(null);
     setResult(null);
-    setMirroredImages(null);
     setCenterOffset(0);
     setRotationAngle(0);
 
@@ -297,6 +216,13 @@ export default function App() {
                   },
                   "laymanProtocol": "일반인이 집에서 따라 할 수 있는 쉬운 비대칭 교정 운동/습관 가이드 (마크다운 형식)",
                   "professionalProtocol": "전문가(의사, 물리치료사 등)를 위한 해부학적 용어를 사용한 전문 교정 프로토콜 (마크다운 형식)",
+                  "landmarkPoints": [
+                    { "x": 0-100 (이미지 가로 대비 %), "y": 0-100 (이미지 세로 대비 %), "label": "눈동자_좌", "side": "left/right/center" },
+                    ...주요 랜드마크 10개 이상 (눈꼬리, 콧볼, 입꼬리, 턱선 등)
+                  ],
+                  "asymmetryZones": [
+                    { "x": 0-100, "y": 0-100, "radius": 5-15, "intensity": 0-1 (비대칭 심각도), "label": "비대칭_구역_이름" }
+                  ],
                   "autoCenterOffset": -15에서 15 사이의 숫자 (얼굴의 정중앙선이 이미지의 기하학적 중앙에서 얼마나 벗어났는지 퍼센트로 표시. 얼굴이 왼쪽으로 치우쳤으면 음수, 오른쪽이면 양수. 예: 얼굴이 왼쪽으로 2% 치우쳤다면 -2.0),
                   "rotationAngle": -15에서 15 사이의 숫자 (양쪽 눈의 수평을 맞추기 위한 회전 각도. 시계방향 회전이 필요하면 양수, 반시계방향이면 음수)
                 }
@@ -333,9 +259,6 @@ export default function App() {
       const autoRotation = parsedResult.rotationAngle || 0;
       setCenterOffset(autoOffset);
       setRotationAngle(autoRotation);
-
-      const mirrors = await createMirroredImages(base64Image, autoOffset, autoRotation);
-      setMirroredImages(mirrors);
     } catch (err: any) {
       setError(err.message || "분석 중 오류가 발생했습니다. 다시 시도해주세요.");
       console.error(err);
@@ -650,44 +573,68 @@ export default function App() {
                   className="space-y-6"
                 >
                   {/* Score Card */}
-                  <div className="bg-white/5 rounded-3xl border border-white/10 p-8 shadow-2xl text-center space-y-4 backdrop-blur-sm">
-                    <div className="inline-flex items-center justify-center p-1 bg-white/[0.02] rounded-full mb-2 border border-white/5">
-                      <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-white/40">Symmetry Index</div>
-                    </div>
-                    <div className="relative inline-block">
-                      <svg className="w-32 h-32 transform -rotate-90">
-                        <circle
-                          cx="64"
-                          cy="64"
-                          r="58"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          className="text-white/5"
-                        />
-                        <circle
-                          cx="64"
-                          cy="64"
-                          r="58"
-                          stroke="currentColor"
-                          strokeWidth="8"
-                          fill="transparent"
-                          strokeDasharray={364.4}
-                          strokeDashoffset={364.4 - (364.4 * result.overallScore) / 100}
-                          className="text-emerald-500 transition-all duration-1000 ease-out drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-4xl font-bold tracking-tighter font-mono">{result.overallScore}</span>
+                  <div className="bg-white/5 rounded-3xl border border-white/10 p-8 shadow-2xl backdrop-blur-sm">
+                    <div className="flex flex-col md:flex-row items-center gap-8">
+                      <div className="flex-shrink-0 relative">
+                        <div className="absolute -inset-4 bg-emerald-500/10 blur-2xl rounded-full animate-pulse" />
+                        <div className="relative">
+                          <svg className="w-40 h-40 transform -rotate-90">
+                            <circle
+                              cx="80"
+                              cy="80"
+                              r="74"
+                              stroke="currentColor"
+                              strokeWidth="10"
+                              fill="transparent"
+                              className="text-white/5"
+                            />
+                            <circle
+                              cx="80"
+                              cy="80"
+                              r="74"
+                              stroke="currentColor"
+                              strokeWidth="10"
+                              fill="transparent"
+                              strokeDasharray={464.7}
+                              strokeDashoffset={464.7 - (464.7 * result.overallScore) / 100}
+                              strokeLinecap="round"
+                              className="text-emerald-500 transition-all duration-1000 ease-out drop-shadow-[0_0_12px_rgba(16,185,129,0.6)]"
+                            />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-5xl font-bold tracking-tighter font-mono leading-none">{result.overallScore}</span>
+                            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">Index</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold uppercase italic tracking-tight">
-                        {result.overallScore >= 90 ? "Optimal Symmetry" : 
-                         result.overallScore >= 80 ? "High Symmetry" : 
-                         result.overallScore >= 70 ? "Standard Symmetry" : "Deviation Detected"}
-                      </h3>
-                      <p className="text-white/40 text-xs mt-1 font-mono uppercase tracking-wider">Biometric analysis complete.</p>
+                      
+                      <div className="flex-1 text-center md:text-left space-y-4">
+                        <div className="inline-flex items-center justify-center p-1 bg-white/[0.02] rounded-full border border-white/5">
+                          <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">Symmetry Analysis Result</div>
+                        </div>
+                        <div>
+                          <h3 className="text-3xl font-bold uppercase italic tracking-tight leading-tight">
+                            {result.overallScore >= 90 ? "Optimal Symmetry" : 
+                             result.overallScore >= 80 ? "High Symmetry" : 
+                             result.overallScore >= 70 ? "Standard Symmetry" : "Deviation Detected"}
+                          </h3>
+                          <p className="text-white/60 text-sm mt-2 font-mono leading-relaxed">
+                            {personality === 'fact' 
+                              ? "생체 인식 데이터 분석 결과, 당신의 안면 대칭도는 위와 같이 산출되었습니다. 이는 해부학적 기준에 따른 객관적 수치입니다."
+                              : "당신만의 고유한 아름다움이 담긴 분석 결과예요! 완벽한 대칭보다 더 중요한 건 당신의 밝은 미소라는 걸 잊지 마세요."}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-2">
+                          <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10">
+                            <p className="text-[8px] text-white/40 uppercase font-mono">Status</p>
+                            <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Verified</p>
+                          </div>
+                          <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10">
+                            <p className="text-[8px] text-white/40 uppercase font-mono">Protocol</p>
+                            <p className="text-[10px] font-bold text-white/80 uppercase tracking-wider">v2.4.0</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -697,17 +644,26 @@ export default function App() {
                       <BarChart3 size={16} className="text-emerald-500" />
                       <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-mono">Symmetry Balance Chart</h3>
                     </div>
-                    <div className="h-[280px] w-full">
+                    <div className="h-[320px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                          { subject: '눈 (Eyes)', A: result.landmarks.eyes.score, full: 100 },
-                          { subject: '코 (Nose)', A: result.landmarks.nose.score, full: 100 },
-                          { subject: '입 (Mouth)', A: result.landmarks.mouth.score, full: 100 },
-                          { subject: '턱 (Jaw)', A: result.landmarks.jawline.score, full: 100 },
-                          { subject: '전체 (Total)', A: result.overallScore, full: 100 },
-                        ]}>
+                        <RadarChart 
+                          cx="50%" 
+                          cy="50%" 
+                          outerRadius="65%" 
+                          data={[
+                            { subject: '눈 (Eyes)', A: result.landmarks.eyes.score, full: 100 },
+                            { subject: '코 (Nose)', A: result.landmarks.nose.score, full: 100 },
+                            { subject: '입 (Mouth)', A: result.landmarks.mouth.score, full: 100 },
+                            { subject: '턱 (Jaw)', A: result.landmarks.jawline.score, full: 100 },
+                            { subject: '전체 (Total)', A: result.overallScore, full: 100 },
+                          ]}
+                          margin={{ top: 10, right: 40, bottom: 10, left: 40 }}
+                        >
                           <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 'bold' }} />
+                          <PolarAngleAxis 
+                            dataKey="subject" 
+                            tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 'bold' }} 
+                          />
                           <Radar
                             name="Symmetry"
                             dataKey="A"
@@ -720,89 +676,134 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Mirroring Comparison */}
-                  {mirroredImages && (
-                    <div className="bg-white/5 rounded-3xl border border-white/10 p-6 shadow-2xl backdrop-blur-sm space-y-6">
+                  {/* Symmetry Visualizer (Heatmap & Grid) */}
+                  <div className="bg-white/5 rounded-3xl border border-white/10 p-6 shadow-2xl backdrop-blur-sm space-y-6">
+                    <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <FlipHorizontal size={16} className="text-emerald-500" />
-                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-mono">Mirroring Comparison</h3>
+                        <Scan size={16} className="text-emerald-500" />
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-mono">Symmetry Heatmap & Grid</h3>
                       </div>
-                      <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 flex flex-col gap-3">
-                        <div className="flex gap-3 items-start">
-                          <Info size={14} className="text-emerald-500 shrink-0 mt-0.5" />
-                          <p className="text-[10px] text-emerald-500/80 leading-relaxed">
-                            <strong>가이드:</strong> 얼굴이 중앙선에 정확히 맞지 않으면 대칭 이미지가 부자연스럽게 보일 수 있습니다. 아래 슬라이더를 조절하여 코끝을 중앙에 맞춰보세요.
-                          </p>
-                        </div>
-                        <div className="space-y-4 px-1">
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-[9px] text-emerald-500/60 font-mono uppercase">
-                              <span>Left Shift</span>
-                              <span>Center Adjustment</span>
-                              <span>Right Shift</span>
-                            </div>
-                            <input 
-                              type="range" 
-                              min="-15" 
-                              max="15" 
-                              step="0.1"
-                              value={centerOffset}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value);
-                                setCenterOffset(val);
-                                updateMirrors(val, rotationAngle);
-                              }}
-                              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                            />
-                          </div>
-
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-[9px] text-emerald-500/60 font-mono uppercase">
-                              <span>Tilt Left</span>
-                              <span>Rotation Correction</span>
-                              <span>Tilt Right</span>
-                            </div>
-                            <input 
-                              type="range" 
-                              min="-15" 
-                              max="15" 
-                              step="0.1"
-                              value={rotationAngle}
-                              onChange={(e) => {
-                                const val = parseFloat(e.target.value);
-                                setRotationAngle(val);
-                                updateMirrors(centerOffset, val);
-                              }}
-                              className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-                            />
-                          </div>
-                        </div>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setShowOverlay(!showOverlay)}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border",
+                            showOverlay ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-white/5 border-white/10 text-white/40"
+                          )}
+                        >
+                          {showOverlay ? "Hide Overlay" : "Show Overlay"}
+                        </button>
                       </div>
-                      <div className="grid grid-cols-3 gap-3">
-                        <div className="space-y-2">
-                          <div className="aspect-[4/5] rounded-xl overflow-hidden border border-white/10 bg-black">
-                            <img src={mirroredImages.left} alt="Left Mirror" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          </div>
-                          <p className="text-[9px] text-center text-white/40 font-mono uppercase">Left-Left</p>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="aspect-[4/5] rounded-xl overflow-hidden border border-emerald-500/30 bg-black ring-1 ring-emerald-500/20">
-                            <img src={image || ''} alt="Original" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          </div>
-                          <p className="text-[9px] text-center text-emerald-500/60 font-mono uppercase font-bold">Original</p>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="aspect-[4/5] rounded-xl overflow-hidden border border-white/10 bg-black">
-                            <img src={mirroredImages.right} alt="Right Mirror" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                          </div>
-                          <p className="text-[9px] text-center text-white/40 font-mono uppercase">Right-Right</p>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-white/30 text-center italic break-keep leading-relaxed">
-                        * 좌측/우측 얼굴만을 대칭시켜 만든 가상의 얼굴입니다. 실제 얼굴과의 차이를 통해 비대칭 정도를 시각적으로 확인할 수 있습니다.
-                      </p>
                     </div>
-                  )}
+
+                    <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black group">
+                      {/* Base Image */}
+                      <div 
+                        className="w-full h-full transition-transform duration-500 ease-out"
+                        style={{ 
+                          transform: `rotate(${rotationAngle}deg) translateX(${centerOffset}%) scale(1.1)` 
+                        }}
+                      >
+                        <img src={image || ''} alt="Analysis" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                      </div>
+
+                      {/* Overlay Layer */}
+                      <AnimatePresence>
+                        {showOverlay && (
+                          <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 pointer-events-none"
+                          >
+                            {/* Central Axis */}
+                            <div className="absolute inset-0 flex justify-center">
+                              <div className="w-px h-full bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-10" />
+                            </div>
+                            
+                            {/* Horizontal Grid Lines */}
+                            <div className="absolute inset-0 flex flex-col justify-around opacity-20">
+                              {[...Array(8)].map((_, i) => (
+                                <div key={i} className="w-full h-px bg-white/30" />
+                              ))}
+                            </div>
+
+                            {/* Heatmap Zones */}
+                            {result.asymmetryZones?.map((zone, i) => (
+                              <motion.div
+                                key={`zone-${i}`}
+                                initial={{ scale: 0, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 0.4 }}
+                                transition={{ delay: 0.5 + i * 0.1 }}
+                                className="absolute rounded-full blur-xl"
+                                style={{
+                                  left: `${zone.x}%`,
+                                  top: `${zone.y}%`,
+                                  width: `${zone.radius * 2}%`,
+                                  height: `${zone.radius * 2}%`,
+                                  backgroundColor: zone.intensity > 0.7 ? '#ef4444' : zone.intensity > 0.4 ? '#f59e0b' : '#10b981',
+                                  transform: 'translate(-50%, -50%)'
+                                }}
+                              />
+                            ))}
+
+                            {/* Landmark Points */}
+                            {result.landmarkPoints?.map((point, i) => (
+                              <motion.div
+                                key={`point-${i}`}
+                                initial={{ scale: 0 }}
+                                animate={{ scale: 1 }}
+                                transition={{ delay: 1 + i * 0.05, type: 'spring' }}
+                                className="absolute group/point"
+                                style={{
+                                  left: `${point.x}%`,
+                                  top: `${point.y}%`,
+                                  transform: 'translate(-50%, -50%)'
+                                }}
+                              >
+                                <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_5px_rgba(255,255,255,0.8)]" />
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap bg-black/80 text-[7px] px-1 rounded text-white/60 opacity-0 group-hover/point:opacity-100 transition-opacity">
+                                  {point.label}
+                                </div>
+                              </motion.div>
+                            ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      {/* Manual Controls Overlay (Bottom) */}
+                      <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-4">
+                            <span className="text-[8px] font-mono text-white/40 uppercase w-12">Offset</span>
+                            <input 
+                              type="range" min="-15" max="15" step="0.1" value={centerOffset}
+                              onChange={(e) => setCenterOffset(parseFloat(e.target.value))}
+                              className="flex-1 h-1 bg-white/10 rounded-full appearance-none accent-emerald-500 pointer-events-auto"
+                            />
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <span className="text-[8px] font-mono text-white/40 uppercase w-12">Rotate</span>
+                            <input 
+                              type="range" min="-15" max="15" step="0.1" value={rotationAngle}
+                              onChange={(e) => setRotationAngle(parseFloat(e.target.value))}
+                              className="flex-1 h-1 bg-white/10 rounded-full appearance-none accent-emerald-500 pointer-events-auto"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex gap-3">
+                      <Info size={14} className="text-emerald-500 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">Analysis Guide</p>
+                        <p className="text-[10px] text-emerald-500/70 leading-relaxed break-keep">
+                          흰색 점은 주요 안면 랜드마크이며, 붉은색 영역은 비대칭 편차가 크게 감지된 구역입니다. 중앙의 수직선은 얼굴의 이상적인 중심축을 나타냅니다.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Detailed Analysis */}
                   <div className="bg-white/5 rounded-3xl border border-white/10 shadow-2xl overflow-hidden backdrop-blur-sm">
