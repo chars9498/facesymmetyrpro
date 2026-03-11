@@ -212,11 +212,11 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <main className="max-w-3xl mx-auto px-6 py-12">
+        <div className="space-y-12">
           
-          {/* Left Column: Input/Preview */}
-          <div className="lg:col-span-7 space-y-6">
+          {/* Input/Preview Section */}
+          <div className="space-y-6">
             <AnimatePresence mode="wait">
               <motion.div
                 key={personality}
@@ -399,8 +399,8 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right Column: Results */}
-          <div className="lg:col-span-5 space-y-6">
+          {/* Results Section */}
+          <div className="space-y-6">
             <AnimatePresence mode="wait">
               {result ? (
                 <motion.div 
@@ -467,16 +467,16 @@ export default function App() {
                         <ResultItem label="턱선 (Jawline)" score={result.landmarks.jawline.score} content={result.landmarks.jawline.feedback} />
                       </div>
                       
-                      <div className="pt-6 border-t border-black/5">
-                        <h4 className="text-sm font-bold text-[#666] uppercase tracking-wider mb-3">근육 및 원인 분석</h4>
-                        <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl text-amber-900 text-sm leading-relaxed">
+                      <div className="pt-6 border-t border-white/5">
+                        <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-3 font-mono">근육 및 원인 분석</h4>
+                        <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl text-amber-200/80 text-sm leading-relaxed break-keep">
                           {result.muscleAnalysis}
                         </div>
                       </div>
                       
-                      <div className="pt-6 border-t border-black/5">
-                        <h4 className="text-sm font-bold text-[#666] uppercase tracking-wider mb-3">전문가 조언</h4>
-                        <div className="prose prose-sm max-w-none text-[#444] leading-relaxed">
+                      <div className="pt-6 border-t border-white/5">
+                        <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-3 font-mono">전문가 조언</h4>
+                        <div className="prose prose-invert prose-sm max-w-none text-white/70 leading-relaxed break-keep">
                           <Markdown>{result.detailedFeedback}</Markdown>
                         </div>
                       </div>
@@ -514,7 +514,7 @@ export default function App() {
       {/* Hidden Canvas for capture */}
       <canvas ref={canvasRef} className="hidden" />
       
-      <footer className="max-w-5xl mx-auto px-6 py-12 border-t border-white/5 text-center">
+      <footer className="max-w-3xl mx-auto px-6 py-12 border-t border-white/5 text-center">
         <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-mono">
           &copy; 2026 Face Symmetry Pro. [DISCLAIMER] BIOMETRIC DATA IS FOR REFERENCE ONLY.
         </p>
