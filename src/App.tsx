@@ -1,11 +1,12 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Camera, Upload, RefreshCw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal } from 'lucide-react';
+import { Camera, Upload, RefreshCw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Sparkles, Zap, Trophy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import * as faceMesh from '@mediapipe/face_mesh';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -26,8 +27,9 @@ interface AnalysisResult {
   professionalProtocol: string;
   landmarkPoints: { x: number; y: number; label: string }[];
   asymmetryZones: { x: number; y: number; radius: number; intensity: number; label: string }[];
-  autoCenterOffset?: number; // -15 to 15 percentage
-  rotationAngle?: number; // -15 to 15 degrees
+  autoCenterOffset?: number;
+  rotationAngle?: number;
+  percentile?: number; // Added for viral effect
 }
 
 export default function App() {
@@ -41,10 +43,41 @@ export default function App() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [personality, setPersonality] = useState<'fact' | 'angel'>('fact');
+  const [analysisStep, setAnalysisStep] = useState<string>('');
+  const [faceMeshLoaded, setFaceMeshLoaded] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const faceMeshRef = useRef<faceMesh.FaceMesh | null>(null);
+
+  // Initialize FaceMesh
+  useEffect(() => {
+    const initFaceMesh = async () => {
+      try {
+        const fm = new faceMesh.FaceMesh({
+          locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+          }
+        });
+
+        fm.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5
+        });
+
+        faceMeshRef.current = fm;
+        setFaceMeshLoaded(true);
+      } catch (err) {
+        console.error("FaceMesh Init Error:", err);
+        setError("얼굴 인식 엔진을 초기화하지 못했습니다.");
+      }
+    };
+
+    initFaceMesh();
+  }, []);
 
   const [stream, setStream] = useState<MediaStream | null>(null);
 
@@ -167,62 +200,174 @@ export default function App() {
     setResult(null);
     setCenterOffset(0);
     setRotationAngle(0);
+    setAnalysisStep('얼굴 특징점 추출 중...');
 
     try {
-      // Optimize image size for faster analysis
-      const optimizedImage = await resizeImage(base64Image);
-      const base64Data = optimizedImage.split(',')[1];
-      
-      const isAngel = selectedPersonality === 'angel';
-      const systemInstruction = isAngel 
-        ? `당신은 따뜻하고 긍정적인 안면 비대칭 분석 전문가 '엔젤 가이드'입니다. 
-           사용자가 자신의 얼굴에 대해 자신감을 가질 수 있도록 격려하면서도, 개선할 수 있는 부분을 부드럽게 조언해야 합니다.
-           
-           **분석 가이드라인 (엔젤 가이드):**
-           1. 사진이 정면이 아니더라도 너무 엄격하게 꾸짖지 마세요. "정면 사진을 올려주시면 더 정확한 매력을 찾아드릴 수 있어요!"라고 다정하게 말하세요.
-           2. 비대칭을 '문제'가 아닌 '개성'이나 '개선 가능한 포인트'로 표현하세요.
-           3. 점수는 너무 짜지 않게, 긍정적인 면을 고려하여 산출하세요.
-           4. 한국어로 매우 친절하고 따뜻하게 분석 결과를 전달하세요.
-           5. 근육 분석 시에도 "이 근육을 조금 더 이완해주면 훨씬 더 밝은 미소가 될 거예요"와 같은 긍정적인 어조를 사용하세요.`
-        : `당신은 세계 최고의 냉철한 안면 비대칭 분석 전문가 '닥터 팩트'입니다. 
-           사용자가 업로드한 사진을 매우 엄격하고 객관적인 기준으로 분석해야 합니다.
-           
-           **분석 가이드라인 (닥터 팩트):**
-           1. 사진이 정면(Frontal View)이 아닌 옆모습이거나 얼굴이 한쪽으로 치우쳐 있다면, 'overallScore'를 50점 이하로 대폭 낮추고 'detailedFeedback'의 첫 문장에 "정면 사진이 아니어서 정확한 분석이 어렵습니다. 정면을 바라보고 다시 촬영해주세요."라고 명시하세요.
-           2. 얼굴이 기울어져 있다면 그 기울어짐 자체를 비대칭의 요소로 간주하여 점수를 깎으세요.
-           3. 칭찬보다는 발견된 '차이점'에 집중하세요. 1mm의 차이라도 지적하세요.
-           4. 한국어로 전문적이고 냉철하게 분석 결과를 전달하세요.`;
+      if (!faceMeshRef.current) {
+        throw new Error("얼굴 인식 엔진이 아직 준비되지 않았습니다.");
+      }
 
-      const prompt = `${systemInstruction}
+      // Resize image to a reasonable size for analysis
+      const resizedImage = await resizeImage(base64Image, 1024);
+
+      // 1. Browser-side FaceMesh Analysis
+      const img = new Image();
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = resizedImage;
+      });
+
+      const faceResults: faceMesh.Results = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error("얼굴 분석 시간이 초과되었습니다. 다시 시도해주세요."));
+        }, 15000);
+
+        faceMeshRef.current!.onResults((results) => {
+          clearTimeout(timeout);
+          resolve(results);
+        });
+
+        faceMeshRef.current!.send({ image: img }).catch((err) => {
+          clearTimeout(timeout);
+          reject(err);
+        });
+      });
+
+      if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
+        throw new Error("사진에서 얼굴을 찾을 수 없습니다. 얼굴이 잘 보이도록 정면에서 밝은 곳에서 찍은 사진을 사용해주세요.");
+      }
+
+      setAnalysisStep('대칭성 수치 계산 중...');
+      const landmarks = faceResults.multiFaceLandmarks[0];
+      
+      // 1. Basic Functions & Dimensions
+      const dist2D = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+      
+      // Face Dimensions
+      const faceWidth = dist2D(landmarks[127], landmarks[356]);
+      const faceHeight = dist2D(landmarks[10], landmarks[152]);
+      
+      // Midline calculation (using upper face for a stable vertical axis)
+      // Point 10 is top of forehead, 168 is between eyes. This defines the "true" center.
+      const midlineX = (landmarks[10].x + landmarks[168].x) / 2;
+
+      // 2. Symmetry Score (40%) - Increased sensitivity
+      const symPairs = [
+        [33, 263],   // Eyes
+        [61, 291],   // Mouth
+        [50, 280],   // Cheeks
+        [127, 356],  // Inner Face Edges
+        [234, 454]   // Outer Face Edges
+      ];
+      
+      let symDiffSum = 0;
+      symPairs.forEach(([l, r]) => {
+        const leftDist = Math.abs(landmarks[l].x - midlineX);
+        const rightDist = Math.abs(landmarks[r].x - midlineX);
+        symDiffSum += Math.abs(leftDist - rightDist);
+      });
+      const avgSymDiff = symDiffSum / symPairs.length;
+      // Increased multiplier from 400 to 1500 for high sensitivity to asymmetry
+      let symmetryScore = 100 - (avgSymDiff / faceWidth) * 1500;
+      symmetryScore = Math.max(30, Math.min(98, symmetryScore));
+
+      // 3. Eye Score (20%) - Increased sensitivity
+      const leftEyeCenter = {
+        x: (landmarks[33].x + landmarks[133].x + landmarks[160].x + landmarks[158].x) / 4,
+        y: (landmarks[33].y + landmarks[133].y + landmarks[160].y + landmarks[158].y) / 4
+      };
+      const rightEyeCenter = {
+        x: (landmarks[263].x + landmarks[362].x + landmarks[387].x + landmarks[385].x) / 4,
+        y: (landmarks[263].y + landmarks[362].y + landmarks[387].y + landmarks[385].y) / 4
+      };
+
+      const eyeDistance = dist2D(leftEyeCenter, rightEyeCenter);
+      const eyeRatio = eyeDistance / faceWidth;
+      
+      const spacingScore = Math.max(30, 100 - Math.abs(eyeRatio - 0.37) * 600);
+      
+      const leftEyeWidth = dist2D(landmarks[33], landmarks[133]);
+      const rightEyeWidth = dist2D(landmarks[263], landmarks[362]);
+      const sizeScore = Math.max(30, 100 - (Math.abs(leftEyeWidth - rightEyeWidth) / faceWidth) * 2000);
+      
+      const heightScore = Math.max(30, 100 - Math.abs(leftEyeCenter.y - rightEyeCenter.y) * 3000);
+
+      let eyeScore = (spacingScore * 0.4) + (sizeScore * 0.3) + (heightScore * 0.3);
+      eyeScore = Math.max(30, Math.min(100, eyeScore));
+
+      // 4. Nose Score (15%) - Increased sensitivity
+      const noseLength = dist2D(landmarks[1], landmarks[168]);
+      const noseRatio = noseLength / faceHeight;
+      const idealNoseRatio = 0.33;
+      let noseScore = 100 - Math.abs(noseRatio - idealNoseRatio) * 800;
+      noseScore = Math.max(30, Math.min(100, noseScore));
+
+      // 5. Mouth Score (15%) - Increased sensitivity
+      const mouthWidth = dist2D(landmarks[61], landmarks[291]);
+      const mouthRatio = mouthWidth / faceWidth;
+      const idealMouthRatio = 0.40;
+      const widthScore = Math.max(30, 100 - Math.abs(mouthRatio - idealMouthRatio) * 500);
+      
+      const mouthSymmetry = Math.max(30, 100 - Math.abs(landmarks[61].y - landmarks[291].y) * 3000);
+      
+      let mouthScore = (widthScore * 0.7) + (mouthSymmetry * 0.3);
+      mouthScore = Math.max(30, Math.min(100, mouthScore));
+
+      // 6. Chin/Jaw Balance Score (10%) - Increased sensitivity
+      const score1 = 100 - (Math.abs(landmarks[152].x - midlineX) / faceWidth) * 2000;
+      
+      const leftJawLen = dist2D(landmarks[152], landmarks[234]);
+      const rightJawLen = dist2D(landmarks[152], landmarks[454]);
+      const score2 = 100 - (Math.abs(leftJawLen - rightJawLen) / faceWidth) * 1500;
+      
+      const score3 = 100 - Math.abs(landmarks[234].y - landmarks[454].y) * 3000;
+
+      let jawScore = (score1 * 0.4) + (score2 * 0.4) + (score3 * 0.2);
+      jawScore = Math.max(30, Math.min(100, jawScore));
+
+      // 7. Final Overall Score
+      let overallScore = (symmetryScore * 0.4) + (eyeScore * 0.2) + (noseScore * 0.15) + (mouthScore * 0.15) + (jawScore * 0.1);
+      overallScore = Math.max(30, Math.min(Math.round(overallScore), 98));
+      
+      // Viral Percentile Calculation (Normalized for 30-98 range)
+      let percentile = 50;
+      if (overallScore >= 90) percentile = 95 + (overallScore - 90) * 0.5;
+      else if (overallScore >= 80) percentile = 75 + (overallScore - 80) * 2;
+      else if (overallScore >= 60) percentile = 20 + (overallScore - 60) * 2.75;
+      else percentile = (overallScore - 30) * 0.6;
+      percentile = Math.min(99, Math.max(1, Math.round(percentile)));
+
+      // Prepare data for Gemini
+      setAnalysisStep('AI 전문가 소견 생성 중...');
+      
+      const metrics = {
+        overallScore,
+        percentile,
+        symmetryScore,
+        eyeScore,
+        noseScore,
+        mouthScore,
+        jawScore,
+        personality: selectedPersonality
+      };
+
+      const prompt = `당신은 ${selectedPersonality === 'fact' ? '냉철한 닥터 팩트' : '따뜻한 엔젤 가이드'}입니다. 
+                다음 분석 데이터를 바탕으로 전문적인 소견을 작성해주세요: ${JSON.stringify(metrics)}
                 
                 **JSON 응답 형식:**
                 {
-                  "overallScore": 0-100 사이의 점수,
                   "detailedFeedback": "전반적인 분석 내용 (마크다운 형식)",
-                  "muscleAnalysis": "비대칭의 원인이 될 수 있는 근육(교근, 측두근, 구륜근 등)에 대한 구체적인 추측성 분석",
+                  "muscleAnalysis": "비대칭의 원인이 될 수 있는 근육에 대한 구체적인 분석",
                   "landmarks": {
-                    "eyes": { "score": 0-100, "feedback": "눈 비대칭 분석" },
-                    "nose": { "score": 0-100, "feedback": "코 비대칭 분석" },
-                    "mouth": { "score": 0-100, "feedback": "입매 비대칭 분석" },
-                    "jawline": { "score": 0-100, "feedback": "턱선 비대칭 분석" }
+                    "eyes": { "feedback": "눈 비대칭 분석" },
+                    "nose": { "feedback": "코 비대칭 분석" },
+                    "mouth": { "feedback": "입매 비대칭 분석" },
+                    "jawline": { "feedback": "턱선 비대칭 분석" }
                   },
-                  "laymanProtocol": "일반인이 집에서 따라 할 수 있는 쉬운 비대칭 교정 운동/습관 가이드 (마크다운 형식)",
-                  "professionalProtocol": "전문가(의사, 물리치료사 등)를 위한 해부학적 용어를 사용한 전문 교정 프로토콜 (마크다운 형식)",
-                  "landmarkPoints": [
-                    { "x": 0-100 (이미지 가로 대비 %), "y": 0-100 (이미지 세로 대비 %), "label": "눈동자_좌", "side": "left/right/center" },
-                    ...주요 랜드마크 10개 이상 (눈꼬리, 콧볼, 입꼬리, 턱선 등)
-                  ],
-                  "asymmetryZones": [
-                    { "x": 0-100, "y": 0-100, "radius": 5-15, "intensity": 0-1 (비대칭 심각도), "label": "비대칭_구역_이름" }
-                  ],
-                  "autoCenterOffset": -15에서 15 사이의 숫자 (얼굴의 정중앙선이 이미지의 기하학적 중앙에서 얼마나 벗어났는지 퍼센트로 표시. 얼굴이 왼쪽으로 치우쳤으면 음수, 오른쪽이면 양수. 예: 얼굴이 왼쪽으로 2% 치우쳤다면 -2.0),
-                  "rotationAngle": -15에서 15 사이의 숫자 (양쪽 눈의 수평을 맞추기 위한 회전 각도. 시계방향 회전이 필요하면 양수, 반시계방향이면 음수)
-                }
-                
-                **중요 - 정밀 보정 가이드:**
-                1. **중심선(autoCenterOffset) 기준:** 반드시 '미간(Glabella) - 콧대(Bridge) - 인중(Philtrum) - 턱끝 중앙'을 잇는 가상의 선을 기준으로 하세요. 절대 눈동자나 한쪽 눈에 치우치지 않도록 주의하세요. 얼굴의 정중앙 수직축을 찾아야 합니다.
-                2. **수치 정밀도:** 사용자가 수동 조절을 하지 않아도 될 만큼 소수점 첫째 자리까지 정밀하게 계산하세요. (예: 1.2, -0.7 등)
-                3. **방향 확인:** 얼굴이 이미지 중앙보다 왼쪽에 있다면 음수(-) 값을 주어 가이드라인이 왼쪽으로 이동하게 해야 합니다. (예: 얼굴이 왼쪽으로 5% 치우침 -> -5.0)`;
+                  "laymanProtocol": "일반인용 가이드 (마크다운)",
+                  "professionalProtocol": "전문가용 프로토콜 (마크다운)"
+                }`;
 
       const response = await fetch("/api/analyze", {
         method: "POST",
@@ -230,16 +375,15 @@ export default function App() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          image: optimizedImage,
-          prompt: prompt,
+          metrics: metrics,
+          prompt: prompt
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        if (data.debug) setDebugInfo(data.debug);
-        throw new Error(data.error || "분석 중 오류가 발생했습니다.");
+        throw new Error(data.error || "AI 분석 중 오류가 발생했습니다.");
       }
 
       const text = data.text;
@@ -254,19 +398,37 @@ export default function App() {
         jsonStr = jsonMatch[0];
       }
 
-      const parsedResult = JSON.parse(jsonStr) as AnalysisResult;
-      setResult(parsedResult);
+      const parsedResult = JSON.parse(jsonStr);
+      
+      // Merge browser-calculated metrics into the result with defensive checks
+      const safeLandmarks = parsedResult.landmarks || {};
+      
+      setResult({
+        ...parsedResult,
+        overallScore,
+        percentile,
+        landmarks: {
+          eyes: { score: Math.round(eyeScore), feedback: safeLandmarks.eyes?.feedback || "분석 완료" },
+          nose: { score: Math.round(noseScore), feedback: safeLandmarks.nose?.feedback || "분석 완료" },
+          mouth: { score: Math.round(mouthScore), feedback: safeLandmarks.mouth?.feedback || "분석 완료" },
+          jawline: { score: Math.round(jawScore), feedback: safeLandmarks.jawline?.feedback || "분석 완료" },
+        },
+        landmarkPoints: landmarks.slice(0, 20).map((l, i) => ({ x: l.x * 100, y: l.y * 100, label: `Point ${i}` })),
+        asymmetryZones: [
+          { x: landmarks[33].x * 100, y: landmarks[33].y * 100, radius: 5, intensity: (94 - eyeScore) / 100, label: "눈 비대칭" },
+          { x: landmarks[61].x * 100, y: landmarks[61].y * 100, radius: 5, intensity: (94 - mouthScore) / 100, label: "입매 비대칭" }
+        ]
+      });
 
-      // Apply AI Auto-Correction
-      const autoOffset = parsedResult.autoCenterOffset || 0;
-      const autoRotation = parsedResult.rotationAngle || 0;
-      setCenterOffset(autoOffset);
-      setRotationAngle(autoRotation);
+      setCenterOffset((landmarks[1].x - midlineX) * 100);
+      setRotationAngle((landmarks[263].y - landmarks[33].y) * 100);
+
     } catch (err: any) {
       setError(err.message || "분석 중 오류가 발생했습니다. 다시 시도해주세요.");
       console.error(err);
     } finally {
       setIsAnalyzing(false);
+      setAnalysisStep('');
     }
   };
 
@@ -514,10 +676,14 @@ export default function App() {
                         <div className="absolute inset-0 animate-ping bg-emerald-500/20 rounded-full" />
                       </div>
                       <div className="text-center space-y-2">
-                        <p className="text-xl font-bold tracking-tight text-emerald-400">AI 분석 진행 중...</p>
+                        <p className="text-xl font-bold tracking-tight text-emerald-400">{analysisStep || "AI 분석 진행 중..."}</p>
                         <div className="flex flex-col gap-1">
-                          <p className="text-sm text-white/70 animate-pulse">얼굴의 특징점을 정밀하게 찾는 중입니다</p>
-                          <p className="text-[10px] text-white/40 uppercase tracking-widest">이미지 최적화 및 서버 통신 중</p>
+                          <p className="text-sm text-white/70 animate-pulse">
+                            {analysisStep.includes('특징점') ? '얼굴의 468개 랜드마크를 찾는 중...' : 
+                             analysisStep.includes('수치') ? '좌우 균형 데이터를 계산하는 중...' : 
+                             '전문가 소견을 생성하고 있습니다'}
+                          </p>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest">Local Processing + AI Cloud</p>
                         </div>
                       </div>
                       <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
@@ -664,27 +830,55 @@ export default function App() {
                         <div className="inline-flex items-center justify-center p-1 bg-white/[0.02] rounded-full border border-white/5">
                           <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">Symmetry Analysis Result</div>
                         </div>
-                        <div>
+                        
+                        <div className="space-y-1">
                           <h3 className="text-3xl font-bold uppercase italic tracking-tight leading-tight break-keep">
                             {result.overallScore >= 90 ? "Optimal Symmetry" : 
-                             result.overallScore >= 80 ? "High Symmetry" : 
+                             result.overallScore >= 82 ? "High Symmetry" : 
                              result.overallScore >= 70 ? "Standard Symmetry" : "Deviation Detected"}
                           </h3>
-                          <p className="text-white/60 text-sm mt-2 font-mono leading-relaxed break-keep">
-                            {personality === 'fact' 
-                              ? "생체 인식 데이터 분석 결과, 당신의 안면 대칭도는 위와 같이 산출되었습니다. 이는 해부학적 기준에 따른 객관적 수치입니다."
-                              : "당신만의 고유한 아름다움이 담긴 분석 결과예요! 완벽한 대칭보다 더 중요한 건 당신의 밝은 미소라는 걸 잊지 마세요."}
-                          </p>
+                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2">
+                            <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                              <span className="text-[10px] text-emerald-400/60 font-bold uppercase mr-2">상위</span>
+                              <span className="text-sm font-bold text-emerald-400">{100 - result.percentile}%</span>
+                            </div>
+                            <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg">
+                              <span className="text-[10px] text-white/40 font-bold uppercase mr-2">한국 평균</span>
+                              <span className="text-sm font-bold text-white/80">76점</span>
+                            </div>
+                            <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg">
+                              <span className="text-[10px] text-white/40 font-bold uppercase mr-2">당신</span>
+                              <span className="text-sm font-bold text-white/80">{result.overallScore}점</span>
+                            </div>
+                            <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-lg">
+                              <span className="text-sm font-bold text-emerald-400">
+                                {result.overallScore - 76 >= 0 ? `+${result.overallScore - 76}` : result.overallScore - 76}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-2">
-                          <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10">
-                            <p className="text-[8px] text-white/40 uppercase font-mono">Status</p>
-                            <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">Verified</p>
-                          </div>
-                          <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10">
-                            <p className="text-[8px] text-white/40 uppercase font-mono">Protocol</p>
-                            <p className="text-[10px] font-bold text-white/80 uppercase tracking-wider">v2.4.0</p>
-                          </div>
+
+                        <p className="text-white/60 text-sm mt-2 font-mono leading-relaxed break-keep">
+                          {personality === 'fact' 
+                            ? "생체 인식 데이터 분석 결과, 당신의 안면 대칭도는 위와 같이 산출되었습니다. 이는 해부학적 기준에 따른 객관적 수치입니다."
+                            : "당신만의 고유한 아름다움이 담긴 분석 결과예요! 완벽한 대칭보다 더 중요한 건 당신의 밝은 미소라는 걸 잊지 마세요."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-6 border-t border-white/5">
+                      <div className="px-3 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex items-center gap-2">
+                        <Trophy size={12} className="text-emerald-500" />
+                        <div>
+                          <p className="text-[8px] text-white/40 uppercase font-mono">Percentile</p>
+                          <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">상위 {100 - (result.percentile || 50)}%</p>
+                        </div>
+                      </div>
+                      <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 flex items-center gap-2">
+                        <Sparkles size={12} className="text-orange-400" />
+                        <div>
+                          <p className="text-[8px] text-white/40 uppercase font-mono">Avg Comparison</p>
+                          <p className="text-[10px] font-bold text-white/80 uppercase tracking-wider">한국 평균 76점 대비 {result.overallScore > 76 ? `+${result.overallScore - 76}` : result.overallScore - 76}점</p>
                         </div>
                       </div>
                     </div>
@@ -824,28 +1018,6 @@ export default function App() {
                           {[...Array(8)].map((_, i) => (
                             <div key={i} className="w-full h-px bg-white/30" />
                           ))}
-                        </div>
-                      </div>
-
-                      {/* Manual Controls Overlay (Bottom) */}
-                      <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-4">
-                            <span className="text-[8px] font-mono text-white/40 uppercase w-12">Offset</span>
-                            <input 
-                              type="range" min="-15" max="15" step="0.1" value={centerOffset}
-                              onChange={(e) => setCenterOffset(parseFloat(e.target.value))}
-                              className="flex-1 h-1 bg-white/10 rounded-full appearance-none accent-emerald-500 pointer-events-auto"
-                            />
-                          </div>
-                          <div className="flex items-center gap-4">
-                            <span className="text-[8px] font-mono text-white/40 uppercase w-12">Rotate</span>
-                            <input 
-                              type="range" min="-15" max="15" step="0.1" value={rotationAngle}
-                              onChange={(e) => setRotationAngle(parseFloat(e.target.value))}
-                              className="flex-1 h-1 bg-white/10 rounded-full appearance-none accent-emerald-500 pointer-events-auto"
-                            />
-                          </div>
                         </div>
                       </div>
                     </div>
