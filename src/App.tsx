@@ -33,6 +33,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [personality, setPersonality] = useState<'fact' | 'angel'>('fact');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -94,7 +95,7 @@ export default function App() {
         const dataUrl = canvasRef.current.toDataURL('image/jpeg');
         setImage(dataUrl);
         stopCamera();
-        analyzeImage(dataUrl);
+        analyzeImage(dataUrl, personality);
       }
     }
   };
@@ -106,13 +107,13 @@ export default function App() {
       reader.onload = (event) => {
         const dataUrl = event.target?.result as string;
         setImage(dataUrl);
-        analyzeImage(dataUrl);
+        analyzeImage(dataUrl, personality);
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const analyzeImage = async (base64Image: string) => {
+  const analyzeImage = async (base64Image: string, selectedPersonality: 'fact' | 'angel') => {
     setIsAnalyzing(true);
     setError(null);
     setResult(null);
@@ -125,7 +126,10 @@ export default function App() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ image: base64Data }),
+        body: JSON.stringify({ 
+          image: base64Data,
+          personality: selectedPersonality 
+        }),
       });
 
       if (!response.ok) {
@@ -161,6 +165,32 @@ export default function App() {
             </div>
             <h1 className="text-xl font-semibold tracking-tight">Face Symmetry Pro</h1>
           </div>
+          
+          <div className="flex items-center gap-2 bg-[#F8F9FA] p-1 rounded-xl border border-black/5">
+            <button
+              onClick={() => setPersonality('fact')}
+              className={cn(
+                "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                personality === 'fact' 
+                  ? "bg-white text-emerald-600 shadow-sm" 
+                  : "text-[#999] hover:text-[#666]"
+              )}
+            >
+              닥터 팩트
+            </button>
+            <button
+              onClick={() => setPersonality('angel')}
+              className={cn(
+                "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                personality === 'angel' 
+                  ? "bg-white text-emerald-600 shadow-sm" 
+                  : "text-[#999] hover:text-[#666]"
+              )}
+            >
+              엔젤 가이드
+            </button>
+          </div>
+
           <button 
             onClick={reset}
             className="p-2 hover:bg-black/5 rounded-full transition-colors"
