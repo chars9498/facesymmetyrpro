@@ -189,30 +189,7 @@ export default function App() {
            3. 칭찬보다는 발견된 '차이점'에 집중하세요. 1mm의 차이라도 지적하세요.
            4. 한국어로 전문적이고 냉철하게 분석 결과를 전달하세요.`;
 
-      const apiKey = process.env.GEMINI_API_KEY;
-      
-      if (!apiKey || apiKey === '') {
-        // Check if platform key selection is available
-        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
-          const hasKey = await window.aistudio.hasSelectedApiKey();
-          if (!hasKey) {
-            setError("공유된 앱에서는 본인의 Gemini API 키가 필요합니다. 아래 'API 키 설정하기' 버튼을 눌러 키를 연결해주세요.");
-            setIsAnalyzing(false);
-            return;
-          }
-        } else {
-          throw new Error("Gemini API 키가 설정되지 않았습니다. 설정(Settings) 메뉴의 Environment Variables에서 GEMINI_API_KEY를 설정하거나, 아래 버튼을 눌러주세요.");
-        }
-      }
-
-      const ai = new GoogleGenAI({ apiKey: apiKey || process.env.GEMINI_API_KEY || '' });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            parts: [
-              {
-                text: `${systemInstruction}
+      const prompt = `${systemInstruction}
                 
                 **JSON 응답 형식:**
                 {
@@ -241,23 +218,26 @@ export default function App() {
                 **중요 - 정밀 보정 가이드:**
                 1. **중심선(autoCenterOffset) 기준:** 반드시 '미간(Glabella) - 콧대(Bridge) - 인중(Philtrum) - 턱끝 중앙'을 잇는 가상의 선을 기준으로 하세요. 절대 눈동자나 한쪽 눈에 치우치지 않도록 주의하세요. 얼굴의 정중앙 수직축을 찾아야 합니다.
                 2. **수치 정밀도:** 사용자가 수동 조절을 하지 않아도 될 만큼 소수점 첫째 자리까지 정밀하게 계산하세요. (예: 1.2, -0.7 등)
-                3. **방향 확인:** 얼굴이 이미지 중앙보다 왼쪽에 있다면 음수(-) 값을 주어 가이드라인이 왼쪽으로 이동하게 해야 합니다. (예: 얼굴이 왼쪽으로 5% 치우침 -> -5.0)`
-              },
-              {
-                inlineData: {
-                  mimeType: "image/jpeg",
-                  data: base64Data
-                }
-              }
-            ]
-          }
-        ],
-        config: {
-          responseMimeType: "application/json"
-        }
+                3. **방향 확인:** 얼굴이 이미지 중앙보다 왼쪽에 있다면 음수(-) 값을 주어 가이드라인이 왼쪽으로 이동하게 해야 합니다. (예: 얼굴이 왼쪽으로 5% 치우침 -> -5.0)`;
+
+      const response = await fetch("/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          image: optimizedImage,
+          prompt: prompt,
+        }),
       });
 
-      const text = response.text;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "분석 중 오류가 발생했습니다.");
+      }
+
+      const text = data.text;
       if (!text) {
         throw new Error("AI로부터 응답을 받지 못했습니다.");
       }
@@ -553,17 +533,6 @@ export default function App() {
                     <p className="text-sm font-mono">{error}</p>
                   </div>
                 </div>
-                {error.includes("API 키") && window.aistudio && (
-                  <button 
-                    onClick={async () => {
-                      await window.aistudio.openSelectKey();
-                      setError(null);
-                    }}
-                    className="bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 transition-all"
-                  >
-                    API 키 설정하기
-                  </button>
-                )}
               </div>
             )}
 
