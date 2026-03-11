@@ -175,15 +175,18 @@ export default function App() {
             </button>
           </div>
           
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-            <span className="text-xs font-bold text-[#666] px-1">분석 전문가 선택</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <span className="text-[10px] tracking-[0.2em] font-bold text-[#999] px-1">
+              분석 전문가 선택
+            </span>
+            <div className="hidden sm:block w-[1px] h-3 bg-black/10" />
             <div className="flex items-center gap-1 bg-[#F8F9FA] p-1 rounded-xl border border-black/5 w-full sm:w-auto">
               <button
                 onClick={() => setPersonality('fact')}
                 className={cn(
                   "flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all",
                   personality === 'fact' 
-                    ? "bg-white text-blue-600 shadow-sm" 
+                    ? "bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-200" 
                     : "text-[#999] hover:text-[#666]"
                 )}
               >
@@ -194,7 +197,7 @@ export default function App() {
                 className={cn(
                   "flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all",
                   personality === 'angel' 
-                    ? "bg-white text-orange-600 shadow-sm" 
+                    ? "bg-orange-50 text-orange-700 shadow-sm ring-1 ring-orange-200" 
                     : "text-[#999] hover:text-[#666]"
                 )}
               >
