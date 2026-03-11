@@ -244,7 +244,7 @@ export default function App() {
                     )}>
                       {personality === 'fact' ? "System: Dr. Fact" : "System: Angel Guide"}
                     </h4>
-                    <p className="text-sm leading-relaxed text-white/80 italic font-mono">
+                    <p className="text-sm leading-relaxed text-white/80 italic break-keep">
                       {personality === 'fact' 
                         ? '"안녕하세요, 닥터 팩트입니다. 저는 당신의 얼굴 비대칭을 1mm 단위로 정밀하게 분석하여 냉철한 팩트만을 전달합니다. 객관적인 진단이 필요하시다면 저를 믿어주세요."'
                         : '"반가워요! 저는 엔젤 가이드예요. 당신이 가진 본연의 아름다움을 찾아내고, 더 밝은 미소를 가질 수 있도록 따뜻하게 도와드릴게요. 우리 함께 당신의 매력을 발견해볼까요?"'}
@@ -537,7 +537,7 @@ function ResultItem({ label, score, content }: { label: string; score: number; c
         </span>
       </div>
       <div className="bg-white/[0.02] p-4 rounded-2xl border border-white/5 group-hover:border-white/10 transition-all group-hover:bg-white/[0.04]">
-        <p className="text-sm text-white/70 leading-relaxed font-mono">{content}</p>
+        <p className="text-sm text-white/70 leading-relaxed break-keep">{content}</p>
       </div>
     </div>
   );
