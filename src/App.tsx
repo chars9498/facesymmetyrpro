@@ -158,46 +158,49 @@ export default function App() {
     <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] font-sans selection:bg-emerald-100">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-black/5 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white">
-              <Scan size={20} />
+        <div className="max-w-5xl mx-auto space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-white shrink-0">
+                <Scan size={20} />
+              </div>
+              <h1 className="text-xl font-semibold tracking-tight whitespace-nowrap">Face Symmetry Pro</h1>
             </div>
-            <h1 className="text-xl font-semibold tracking-tight">Face Symmetry Pro</h1>
+            <button 
+              onClick={reset}
+              className="p-2 hover:bg-black/5 rounded-full transition-colors"
+              title="초기화"
+            >
+              <RefreshCw size={20} className={cn(isAnalyzing && "animate-spin")} />
+            </button>
           </div>
           
-          <div className="flex items-center gap-2 bg-[#F8F9FA] p-1 rounded-xl border border-black/5">
-            <button
-              onClick={() => setPersonality('fact')}
-              className={cn(
-                "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
-                personality === 'fact' 
-                  ? "bg-white text-emerald-600 shadow-sm" 
-                  : "text-[#999] hover:text-[#666]"
-              )}
-            >
-              닥터 팩트
-            </button>
-            <button
-              onClick={() => setPersonality('angel')}
-              className={cn(
-                "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
-                personality === 'angel' 
-                  ? "bg-white text-emerald-600 shadow-sm" 
-                  : "text-[#999] hover:text-[#666]"
-              )}
-            >
-              엔젤 가이드
-            </button>
+          <div className="flex items-center justify-center sm:justify-start">
+            <div className="flex items-center gap-1 bg-[#F8F9FA] p-1 rounded-xl border border-black/5 w-full sm:w-auto">
+              <button
+                onClick={() => setPersonality('fact')}
+                className={cn(
+                  "flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all",
+                  personality === 'fact' 
+                    ? "bg-white text-emerald-600 shadow-sm" 
+                    : "text-[#999] hover:text-[#666]"
+                )}
+              >
+                닥터 팩트
+              </button>
+              <button
+                onClick={() => setPersonality('angel')}
+                className={cn(
+                  "flex-1 sm:flex-none px-4 py-2 text-xs font-bold rounded-lg transition-all",
+                  personality === 'angel' 
+                    ? "bg-white text-emerald-600 shadow-sm" 
+                    : "text-[#999] hover:text-[#666]"
+                )}
+              >
+                엔젤 가이드
+              </button>
+            </div>
           </div>
-
-          <button 
-            onClick={reset}
-            className="p-2 hover:bg-black/5 rounded-full transition-colors"
-            title="초기화"
-          >
-            <RefreshCw size={20} className={cn(isAnalyzing && "animate-spin")} />
-          </button>
         </div>
       </header>
 
@@ -206,6 +209,40 @@ export default function App() {
           
           {/* Left Column: Input/Preview */}
           <div className="lg:col-span-7 space-y-6">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={personality}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className={cn(
+                  "p-5 rounded-2xl border transition-colors",
+                  personality === 'fact' 
+                    ? "bg-slate-50 border-slate-200 text-slate-700" 
+                    : "bg-rose-50 border-rose-100 text-rose-700"
+                )}
+              >
+                <div className="flex items-start gap-4">
+                  <div className={cn(
+                    "w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm",
+                    personality === 'fact' ? "bg-slate-200 text-slate-600" : "bg-rose-200 text-rose-600"
+                  )}>
+                    {personality === 'fact' ? <Scan size={24} /> : <CheckCircle2 size={24} />}
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm uppercase tracking-wider">
+                      {personality === 'fact' ? "Dr. Fact의 인사" : "Angel Guide의 인사"}
+                    </h4>
+                    <p className="text-sm leading-relaxed italic">
+                      {personality === 'fact' 
+                        ? '"안녕하세요, 닥터 팩트입니다. 저는 당신의 얼굴 비대칭을 1mm 단위로 정밀하게 분석하여 냉철한 팩트만을 전달합니다. 객관적인 진단이 필요하시다면 저를 믿어주세요."'
+                        : '"반가워요! 저는 엔젤 가이드예요. 당신이 가진 본연의 아름다움을 찾아내고, 더 밝은 미소를 가질 수 있도록 따뜻하게 도와드릴게요. 우리 함께 당신의 매력을 발견해볼까요?"'}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
             <section className="bg-white rounded-3xl border border-black/5 shadow-sm overflow-hidden relative group">
               {!image && !isCameraActive ? (
                 <div className="aspect-[4/5] flex flex-col items-center justify-center p-12 text-center space-y-6">
