@@ -143,16 +143,27 @@ export default function App() {
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
-      const context = canvasRef.current.getContext('2d');
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      
+      // Ensure video has dimensions
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        console.warn("Video dimensions not ready yet");
+        return;
+      }
+
+      const context = canvas.getContext('2d');
       if (context) {
-        canvasRef.current.width = videoRef.current.videoWidth;
-        canvasRef.current.height = videoRef.current.videoHeight;
-        context.drawImage(videoRef.current, 0, 0);
-        const dataUrl = canvasRef.current.toDataURL('image/jpeg');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+        const dataUrl = canvas.toDataURL('image/jpeg');
         setImage(dataUrl);
         stopCamera();
         analyzeImage(dataUrl, personality);
       }
+    } else {
+      console.error("Refs not ready:", { video: !!videoRef.current, canvas: !!canvasRef.current });
     }
   };
 
@@ -484,16 +495,72 @@ export default function App() {
                   "professionalProtocol": "전문가용 임상 프로토콜 (마크다운). 다음 항목으로만 구성: 1. 연부조직 이완술(Myofascial Release/Massage), 2. 근막 신장술(Clinical Stretching), 3. 기능적 재교육 운동(Functional Corrective Exercise). 반드시 해부학적 전문 용어(예: 교근, 측두근, 흉쇄유돌근, 익상근 등)를 사용하여 매우 전문적으로 작성할 것."
                 }`;
 
-      const response = await fetch("/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          metrics: metrics,
-          prompt: prompt
-        }),
-      });
+      // Frontend retry logic for "Starting Server" warmup page and Rate Limits
+      const fetchWithRetry = async (maxRetries = 5): Promise<Response> => {
+        for (let i = 0; i < maxRetries; i++) {
+          try {
+            const response = await fetch("/api/analyze", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                metrics: metrics,
+                prompt: prompt
+              }),
+            });
+
+            const contentType = response.headers.get("content-type") || "";
+            const isHtml = contentType.includes("text/html");
+            const isJson = contentType.includes("application/json");
+            
+            // Check for retryable conditions
+            let shouldRetry = false;
+            let reason = "";
+
+            if (response.status === 429 || response.status === 503) {
+              shouldRetry = true;
+              reason = `Status ${response.status}`;
+            } else if (isHtml) {
+              const html = await response.clone().text();
+              if (html.includes("Please wait while your application starts")) {
+                shouldRetry = true;
+                reason = "Server Warming Up";
+              } else if (html.includes("Rate exceeded")) {
+                shouldRetry = true;
+                reason = "Rate Exceeded (HTML)";
+              }
+            } else if (!isJson) {
+              const text = await response.clone().text();
+              if (text.includes("Rate exceeded")) {
+                shouldRetry = true;
+                reason = "Rate Exceeded (Text)";
+              }
+            }
+
+            if (shouldRetry && i < maxRetries - 1) {
+              // Exponential backoff with jitter
+              const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+              console.log(`Retrying request (${i + 1}/${maxRetries}) due to ${reason}. Waiting ${Math.round(delay)}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+
+            return response;
+          } catch (err) {
+            if (i < maxRetries - 1) {
+              const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+              console.log(`Fetch error (attempt ${i + 1}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`, err);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            throw err;
+          }
+        }
+        throw new Error("서버 연결에 실패했습니다.");
+      };
+
+      const response = await fetchWithRetry();
 
       const contentType = response.headers.get("content-type");
       let data;
@@ -503,9 +570,9 @@ export default function App() {
       } else {
         const errorText = await response.text();
         console.error("Server returned non-JSON response:", errorText);
-        // If the error is "Rate exceeded", make it more user-friendly
-        const friendlyError = errorText.includes("Rate exceeded") 
-          ? "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." 
+        // If the error is "Rate exceeded" or "high demand", make it more user-friendly
+        const friendlyError = (errorText.includes("Rate exceeded") || errorText.includes("503") || errorText.includes("high demand") || errorText.includes("Please wait while your application starts"))
+          ? "서버가 준비 중이거나 사용량이 많습니다. 잠시 후 다시 시도해주세요." 
           : errorText || `서버 응답 오류 (Status: ${response.status})`;
         throw new Error(friendlyError);
       }
@@ -724,8 +791,10 @@ export default function App() {
                     ref={videoRef} 
                     autoPlay 
                     playsInline 
+                    muted
                     className="w-full h-full object-cover scale-x-[-1]"
                   />
+                  <canvas ref={canvasRef} className="hidden" />
                   {/* Face Guide Overlay */}
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                     {/* Face Silhouette SVG */}

@@ -85,7 +85,7 @@ async function startServer() {
       const ai = new GoogleGenAI({ apiKey });
       
       // Retry logic with exponential backoff
-      const generateWithRetry = async (maxRetries = 3) => {
+      const generateWithRetry = async (maxRetries = 5) => {
         let lastError;
         for (let i = 0; i < maxRetries; i++) {
           try {
@@ -105,16 +105,18 @@ async function startServer() {
             return response;
           } catch (error: any) {
             lastError = error;
+            
+            // Extract status code and message
+            const errorStr = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
+            const statusCode = error.status || (errorStr.includes('503') ? 503 : errorStr.includes('429') ? 429 : errorStr.includes('500') ? 500 : 0);
+            
             // Retry on 429 (Rate limit), 503 (High demand) or 500 (Internal error)
-            const isRetryable = 
-              error.message?.includes('429') || 
-              error.message?.includes('503') || 
-              error.message?.includes('500') || 
-              error.status === 429 ||
-              error.status === 503;
+            const isRetryable = statusCode === 429 || statusCode === 503 || statusCode === 500;
+            
             if (isRetryable && i < maxRetries - 1) {
-              const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-              console.log(`Retrying API call (attempt ${i + 1}) after ${Math.round(delay)}ms due to: ${error.message}`);
+              // Exponential backoff: 2s, 4s, 8s, 16s... with jitter
+              const delay = Math.pow(2, i + 1) * 1000 + Math.random() * 1000;
+              console.log(`Retrying API call (attempt ${i + 1}/${maxRetries}) after ${Math.round(delay)}ms due to status ${statusCode}: ${errorStr.substring(0, 100)}...`);
               await new Promise(resolve => setTimeout(resolve, delay));
               continue;
             }
