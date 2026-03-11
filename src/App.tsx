@@ -31,6 +31,7 @@ interface AnalysisResult {
   laymanProtocol: string;
   professionalProtocol: string;
   landmarkPoints: { x: number; y: number; label: string }[];
+  symmetryLines?: { x1: number; y1: number; x2: number; y2: number; label: string }[];
   asymmetryZones: { x: number; y: number; radius: number; intensity: number; label: string }[];
   autoCenterOffset?: number;
   rotationAngle?: number;
@@ -609,7 +610,34 @@ export default function App() {
           mouth: { score: Math.round(mouthScore), feedback: safeLandmarks.mouth?.feedback || "분석 완료" },
           jawline: { score: Math.round(jawScore), feedback: safeLandmarks.jawline?.feedback || "분석 완료" },
         },
-        landmarkPoints: landmarks.slice(0, 20).map((l, i) => ({ x: l.x * 100, y: l.y * 100, label: `Point ${i}` })),
+        landmarkPoints: [
+          { x: landmarks[33].x * 100, y: landmarks[33].y * 100, label: "왼쪽 눈" },
+          { x: landmarks[263].x * 100, y: landmarks[263].y * 100, label: "오른쪽 눈" },
+          { x: landmarks[61].x * 100, y: landmarks[61].y * 100, label: "왼쪽 입꼬리" },
+          { x: landmarks[291].x * 100, y: landmarks[291].y * 100, label: "오른쪽 입꼬리" },
+          { x: landmarks[234].x * 100, y: landmarks[234].y * 100, label: "왼쪽 광대" },
+          { x: landmarks[454].x * 100, y: landmarks[454].y * 100, label: "오른쪽 광대" },
+          { x: landmarks[1].x * 100, y: landmarks[1].y * 100, label: "코끝" },
+          { x: landmarks[10].x * 100, y: landmarks[10].y * 100, label: "이마 중앙" },
+          { x: landmarks[152].x * 100, y: landmarks[152].y * 100, label: "턱 끝" }
+        ],
+        symmetryLines: [
+          { 
+            x1: landmarks[33].x * 100, y1: landmarks[33].y * 100, 
+            x2: landmarks[263].x * 100, y2: landmarks[263].y * 100, 
+            label: "Eye Line" 
+          },
+          { 
+            x1: landmarks[61].x * 100, y1: landmarks[61].y * 100, 
+            x2: landmarks[291].x * 100, y2: landmarks[291].y * 100, 
+            label: "Mouth Line" 
+          },
+          { 
+            x1: landmarks[234].x * 100, y1: landmarks[234].y * 100, 
+            x2: landmarks[454].x * 100, y2: landmarks[454].y * 100, 
+            label: "Jaw Line" 
+          }
+        ],
         asymmetryZones: [
           { x: landmarks[33].x * 100, y: landmarks[33].y * 100, radius: 5, intensity: (94 - eyeScore) / 100, label: "눈 비대칭" },
           { x: landmarks[61].x * 100, y: landmarks[61].y * 100, radius: 5, intensity: (94 - mouthScore) / 100, label: "입매 비대칭" }
@@ -1214,6 +1242,25 @@ export default function App() {
                                   }}
                                 />
                               ))}
+
+                              {/* Symmetry Analysis Lines */}
+                              <svg className="absolute inset-0 w-full h-full">
+                                {result.symmetryLines?.map((line, i) => (
+                                  <motion.line
+                                    key={`line-${i}`}
+                                    initial={{ pathLength: 0, opacity: 0 }}
+                                    animate={{ pathLength: 1, opacity: 0.5 }}
+                                    transition={{ delay: 0.8 + i * 0.2, duration: 1 }}
+                                    x1={`${line.x1}%`}
+                                    y1={`${line.y1}%`}
+                                    x2={`${line.x2}%`}
+                                    y2={`${line.y2}%`}
+                                    stroke="white"
+                                    strokeWidth="0.5"
+                                    strokeDasharray="2 2"
+                                  />
+                                ))}
+                              </svg>
 
                               {/* Landmark Points */}
                               {result.landmarkPoints?.map((point, i) => (
