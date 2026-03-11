@@ -37,7 +37,7 @@ async function startServer() {
       usageStore[ip] = { count: 0, lastReset: now };
     }
 
-    if (usageStore[ip].count >= 5) {
+    if (usageStore[ip].count >= 100) {
       return false;
     }
 
@@ -53,7 +53,7 @@ async function startServer() {
     // 1. 사용량 제한 확인
     if (!checkRateLimit(ipKey)) {
       return res.status(429).json({ 
-        error: "오늘 사용량을 모두 소진했습니다. (하루 최대 5회) 내일 다시 시도해주세요." 
+        error: "분석 요청이 너무 많습니다. 잠시 후 다시 시도해주세요. (테스트용 한도 100회)" 
       });
     }
 
@@ -105,8 +105,13 @@ async function startServer() {
             return response;
           } catch (error: any) {
             lastError = error;
-            // Retry only on 503 (High demand) or 500 (Internal error)
-            const isRetryable = error.message?.includes('503') || error.message?.includes('500') || error.status === 503;
+            // Retry on 429 (Rate limit), 503 (High demand) or 500 (Internal error)
+            const isRetryable = 
+              error.message?.includes('429') || 
+              error.message?.includes('503') || 
+              error.message?.includes('500') || 
+              error.status === 429 ||
+              error.status === 503;
             if (isRetryable && i < maxRetries - 1) {
               const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
               console.log(`Retrying API call (attempt ${i + 1}) after ${Math.round(delay)}ms due to: ${error.message}`);

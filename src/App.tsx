@@ -478,7 +478,11 @@ export default function App() {
       } else {
         const errorText = await response.text();
         console.error("Server returned non-JSON response:", errorText);
-        throw new Error(`서버 응답 오류 (Status: ${response.status}). 잠시 후 다시 시도해주세요.`);
+        // If the error is "Rate exceeded", make it more user-friendly
+        const friendlyError = errorText.includes("Rate exceeded") 
+          ? "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." 
+          : errorText || `서버 응답 오류 (Status: ${response.status})`;
+        throw new Error(friendlyError);
       }
 
       if (!response.ok) {
