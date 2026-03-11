@@ -57,13 +57,14 @@ async function startServer() {
                 
                 **JSON 응답 형식:**
                 {
-                  "overallScore": 0-100 사이의 점수 (매우 엄격하게 산출),
-                  "detailedFeedback": "전반적인 분석 내용 (마크다운 형식, 비판적이고 객관적으로 작성)",
+                  "overallScore": 0-100 사이의 점수,
+                  "detailedFeedback": "전반적인 분석 내용 (마크다운 형식)",
+                  "muscleAnalysis": "비대칭의 원인이 될 수 있는 근육(교근, 측두근, 구륜근 등)에 대한 구체적인 추측성 분석",
                   "landmarks": {
-                    "eyes": "눈의 높낮이 차이, 크기 차이, 눈썹 비대칭 상세 분석",
-                    "nose": "콧대의 휨 정도, 콧볼의 비대칭 상세 분석",
-                    "mouth": "입꼬리 높낮이, 인중의 기울기 상세 분석",
-                    "jawline": "좌우 턱 근육 발달 차이, 턱 끝의 위치 상세 분석"
+                    "eyes": { "score": 0-100, "feedback": "눈 비대칭 분석" },
+                    "nose": { "score": 0-100, "feedback": "코 비대칭 분석" },
+                    "mouth": { "score": 0-100, "feedback": "입매 비대칭 분석" },
+                    "jawline": { "score": 0-100, "feedback": "턱선 비대칭 분석" }
                   }
                 }
                 

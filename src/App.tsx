@@ -17,11 +17,12 @@ const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
 interface AnalysisResult {
   overallScore: number;
   detailedFeedback: string;
+  muscleAnalysis: string;
   landmarks: {
-    eyes: string;
-    nose: string;
-    mouth: string;
-    jawline: string;
+    eyes: { score: number; feedback: string };
+    nose: { score: number; feedback: string };
+    mouth: { score: number; feedback: string };
+    jawline: { score: number; feedback: string };
   };
 }
 
@@ -361,10 +362,17 @@ export default function App() {
                     </div>
                     <div className="p-6 space-y-6">
                       <div className="grid grid-cols-1 gap-4">
-                        <ResultItem label="눈 (Eyes)" content={result.landmarks.eyes} />
-                        <ResultItem label="코 (Nose)" content={result.landmarks.nose} />
-                        <ResultItem label="입매 (Mouth)" content={result.landmarks.mouth} />
-                        <ResultItem label="턱선 (Jawline)" content={result.landmarks.jawline} />
+                        <ResultItem label="눈 (Eyes)" score={result.landmarks.eyes.score} content={result.landmarks.eyes.feedback} />
+                        <ResultItem label="코 (Nose)" score={result.landmarks.nose.score} content={result.landmarks.nose.feedback} />
+                        <ResultItem label="입매 (Mouth)" score={result.landmarks.mouth.score} content={result.landmarks.mouth.feedback} />
+                        <ResultItem label="턱선 (Jawline)" score={result.landmarks.jawline.score} content={result.landmarks.jawline.feedback} />
+                      </div>
+                      
+                      <div className="pt-6 border-t border-black/5">
+                        <h4 className="text-sm font-bold text-[#666] uppercase tracking-wider mb-3">근육 및 원인 분석</h4>
+                        <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl text-amber-900 text-sm leading-relaxed">
+                          {result.muscleAnalysis}
+                        </div>
                       </div>
                       
                       <div className="pt-6 border-t border-black/5">
@@ -414,11 +422,18 @@ export default function App() {
   );
 }
 
-function ResultItem({ label, content }: { label: string; content: string }) {
+function ResultItem({ label, score, content }: { label: string; score: number; content: string }) {
   return (
     <div className="group">
-      <div className="flex items-center justify-between mb-1">
+      <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-bold text-[#666] uppercase tracking-wider">{label}</span>
+        <span className={cn(
+          "text-xs font-bold px-2 py-0.5 rounded-full",
+          score >= 80 ? "bg-emerald-100 text-emerald-700" :
+          score >= 60 ? "bg-amber-100 text-amber-700" : "bg-red-100 text-red-700"
+        )}>
+          {score}점
+        </span>
       </div>
       <div className="bg-[#F8F9FA] p-4 rounded-2xl border border-black/[0.03] group-hover:border-emerald-200 transition-colors">
         <p className="text-sm leading-relaxed text-[#333]">{content}</p>
