@@ -196,12 +196,12 @@ export default function App() {
         if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
           const hasKey = await window.aistudio.hasSelectedApiKey();
           if (!hasKey) {
-            setError("API 키가 설정되지 않았습니다. 아래 'API 키 설정' 버튼을 눌러 키를 선택해주세요.");
+            setError("공유된 앱에서는 본인의 Gemini API 키가 필요합니다. 아래 'API 키 설정하기' 버튼을 눌러 키를 연결해주세요.");
             setIsAnalyzing(false);
             return;
           }
         } else {
-          throw new Error("Gemini API 키가 설정되지 않았습니다. 설정(Settings) 메뉴의 Environment Variables에서 GEMINI_API_KEY를 설정해주세요.");
+          throw new Error("Gemini API 키가 설정되지 않았습니다. 설정(Settings) 메뉴의 Environment Variables에서 GEMINI_API_KEY를 설정하거나, 아래 버튼을 눌러주세요.");
         }
       }
 
