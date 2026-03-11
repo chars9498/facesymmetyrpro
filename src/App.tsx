@@ -32,6 +32,7 @@ interface AnalysisResult {
   autoCenterOffset?: number;
   rotationAngle?: number;
   percentile?: number; // Added for viral effect
+  celebrityMatches?: { name: string; confidence: number }[];
 }
 
 export default function App() {
@@ -440,6 +441,11 @@ export default function App() {
                 **JSON 응답 형식:**
                 {
                   "summary": "한 줄 요약 (예: '균형 잡힌 완벽한 비율', '매력적인 비대칭의 조화')",
+                  "celebrityMatches": [
+                    { "name": "연예인 이름 1", "confidence": 63 },
+                    { "name": "연예인 이름 2", "confidence": 58 },
+                    { "name": "연예인 이름 3", "confidence": 55 }
+                  ],
                   "detailedFeedback": "전반적인 분석 내용 (마크다운 형식)",
                   "muscleAnalysis": "비대칭의 원인이 될 수 있는 근육에 대한 구체적인 분석",
                   "landmarks": {
@@ -466,7 +472,8 @@ export default function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "AI 분석 중 오류가 발생했습니다.");
+        const errorMessage = data.details || data.error || "AI 분석 중 오류가 발생했습니다.";
+        throw new Error(errorMessage);
       }
 
       const text = data.text;
@@ -1149,6 +1156,61 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Celebrity Match Section */}
+                  {result.celebrityMatches && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 rounded-3xl border border-indigo-500/30 p-8 shadow-2xl backdrop-blur-md space-y-6 relative overflow-hidden"
+                    >
+                      <div className="absolute top-0 right-0 p-4 opacity-10">
+                        <Trophy size={120} className="text-indigo-400" />
+                      </div>
+                      
+                      <div className="relative z-10 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                            <Sparkles size={20} />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-black italic tracking-tighter uppercase">AI Celebrity Match</h3>
+                            <p className="text-indigo-300/60 text-[10px] font-mono uppercase tracking-widest">Visual Similarity Analysis</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          {result.celebrityMatches.map((match, i) => (
+                            <div key={i} className="group relative">
+                              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-all">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs">
+                                    {i + 1}
+                                  </div>
+                                  <span className="font-bold text-lg tracking-tight">{match.name}</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <div className="w-32 h-2 bg-white/5 rounded-full overflow-hidden hidden sm:block">
+                                    <motion.div 
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${match.confidence}%` }}
+                                      transition={{ delay: 0.5 + i * 0.1, duration: 1 }}
+                                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                                    />
+                                  </div>
+                                  <span className="font-mono font-bold text-indigo-400">{match.confidence}%</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <p className="text-center text-white/40 text-[9px] font-mono uppercase tracking-widest pt-2">
+                          * AI 분석 결과이며 실제 닮은 정도와 차이가 있을 수 있습니다.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+
                   {/* Share Section */}
                   <div className="bg-white/5 rounded-3xl border border-white/10 p-8 shadow-2xl backdrop-blur-sm space-y-6">
                     <div className="text-center space-y-2">
@@ -1334,6 +1396,19 @@ export default function App() {
                   <p className="text-8xl font-black italic text-emerald-400">{result.overallScore}</p>
                 </div>
               </div>
+
+              {/* Celebrity Match for Share Card */}
+              {result.celebrityMatches && (
+                <div className="w-full grid grid-cols-3 gap-6">
+                  {result.celebrityMatches.map((match, i) => (
+                    <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-[40px] flex flex-col items-center gap-2">
+                      <p className="text-sm font-mono text-white/40 uppercase tracking-widest">Match #{i+1}</p>
+                      <p className="text-3xl font-black italic uppercase tracking-tighter">{match.name}</p>
+                      <p className="text-4xl font-black text-indigo-400">{match.confidence}%</p>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Summary */}
               <div className="w-full bg-white/5 border border-white/10 p-12 rounded-[50px] backdrop-blur-sm space-y-6">

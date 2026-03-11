@@ -78,19 +78,42 @@ async function startServer() {
 
       const ai = new GoogleGenAI({ apiKey });
       
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            parts: [
-              { text: prompt }
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json"
+      // Retry logic with exponential backoff
+      const generateWithRetry = async (maxRetries = 3) => {
+        let lastError;
+        for (let i = 0; i < maxRetries; i++) {
+          try {
+            const response = await ai.models.generateContent({
+              model: "gemini-3-flash-preview",
+              contents: [
+                {
+                  parts: [
+                    { text: prompt }
+                  ],
+                },
+              ],
+              config: {
+                responseMimeType: "application/json"
+              }
+            });
+            return response;
+          } catch (error: any) {
+            lastError = error;
+            // Retry only on 503 (High demand) or 500 (Internal error)
+            const isRetryable = error.message?.includes('503') || error.message?.includes('500') || error.status === 503;
+            if (isRetryable && i < maxRetries - 1) {
+              const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+              console.log(`Retrying API call (attempt ${i + 1}) after ${Math.round(delay)}ms due to: ${error.message}`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              continue;
+            }
+            throw error;
+          }
         }
-      });
+        throw lastError;
+      };
+
+      const response = await generateWithRetry();
 
       res.json({ text: response.text });
     } catch (error: any) {
