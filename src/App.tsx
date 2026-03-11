@@ -218,14 +218,14 @@ export default function App() {
                 className={cn(
                   "p-5 rounded-2xl border transition-colors",
                   personality === 'fact' 
-                    ? "bg-slate-50 border-slate-200 text-slate-700" 
-                    : "bg-rose-50 border-rose-100 text-rose-700"
+                    ? "bg-blue-50 border-blue-200 text-blue-800" 
+                    : "bg-orange-50 border-orange-100 text-orange-800"
                 )}
               >
                 <div className="flex items-start gap-4">
                   <div className={cn(
                     "w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm",
-                    personality === 'fact' ? "bg-slate-200 text-slate-600" : "bg-rose-200 text-rose-600"
+                    personality === 'fact' ? "bg-blue-200 text-blue-600" : "bg-orange-200 text-orange-600"
                   )}>
                     {personality === 'fact' ? <Scan size={24} /> : <CheckCircle2 size={24} />}
                   </div>
