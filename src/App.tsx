@@ -1,12 +1,13 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Camera, Upload, RefreshCw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Sparkles, Zap, Trophy } from 'lucide-react';
+import { Camera, Upload, RefreshCw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Sparkles, Zap, Trophy, Instagram, MessageCircle, Link2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as faceMesh from '@mediapipe/face_mesh';
+import { toPng } from 'html-to-image';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -15,6 +16,7 @@ function cn(...inputs: ClassValue[]) {
 
 interface AnalysisResult {
   overallScore: number;
+  summary: string;
   detailedFeedback: string;
   muscleAnalysis: string;
   landmarks: {
@@ -45,10 +47,12 @@ export default function App() {
   const [personality, setPersonality] = useState<'fact' | 'angel'>('fact');
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [faceMeshLoaded, setFaceMeshLoaded] = useState(false);
+  const [isGeneratingShareImage, setIsGeneratingShareImage] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const shareCardRef = useRef<HTMLDivElement>(null);
   const faceMeshRef = useRef<faceMesh.FaceMesh | null>(null);
 
   // Initialize FaceMesh
@@ -155,6 +159,84 @@ export default function App() {
         analyzeImage(dataUrl, personality);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const downloadShareImage = async () => {
+    if (!shareCardRef.current) return;
+    
+    setIsGeneratingShareImage(true);
+    try {
+      // Wait a bit for any images to load
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      const dataUrl = await toPng(shareCardRef.current, {
+        quality: 1.0,
+        pixelRatio: 2,
+        width: 1080,
+        height: 1920,
+      });
+      
+      const link = document.createElement('a');
+      link.download = `face-symmetry-result-${Date.now()}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("Share Image Generation Error:", err);
+      setError("공유 이미지 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsGeneratingShareImage(false);
+    }
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    alert("링크가 클립보드에 복사되었습니다!");
+  };
+
+  const shareToKakao = () => {
+    // @ts-ignore
+    if (window.Kakao) {
+      // @ts-ignore
+      const Kakao = window.Kakao;
+      if (!Kakao.isInitialized()) {
+        // This would normally be an environment variable
+        // For now, we'll try to use the Web Share API if Kakao isn't set up
+        if (navigator.share) {
+          navigator.share({
+            title: 'Face Symmetry Pro',
+            text: `내 얼굴 비대칭 점수는 ${result?.overallScore}점! 당신의 점수는?`,
+            url: window.location.href,
+          });
+          return;
+        }
+        alert("카카오톡 공유를 사용하려면 Kakao JavaScript Key 설정이 필요합니다.");
+        return;
+      }
+      
+      Kakao.Share.sendDefault({
+        objectType: 'feed',
+        content: {
+          title: 'Face Symmetry Pro',
+          description: `내 얼굴 비대칭 점수는 ${result?.overallScore}점! 당신의 점수는?`,
+          imageUrl: 'https://images.unsplash.com/photo-1554151228-14d9def656e4?q=80&w=1200&h=630&auto=format&fit=crop',
+          link: {
+            mobileWebUrl: window.location.href,
+            webUrl: window.location.href,
+          },
+        },
+        buttons: [
+          {
+            title: '나도 분석하기',
+            link: {
+              mobileWebUrl: window.location.href,
+              webUrl: window.location.href,
+            },
+          },
+        ],
+      });
+    } else {
+      copyLink();
     }
   };
 
@@ -357,6 +439,7 @@ export default function App() {
                 
                 **JSON 응답 형식:**
                 {
+                  "summary": "한 줄 요약 (예: '균형 잡힌 완벽한 비율', '매력적인 비대칭의 조화')",
                   "detailedFeedback": "전반적인 분석 내용 (마크다운 형식)",
                   "muscleAnalysis": "비대칭의 원인이 될 수 있는 근육에 대한 구체적인 분석",
                   "landmarks": {
@@ -405,6 +488,7 @@ export default function App() {
       
       setResult({
         ...parsedResult,
+        summary: parsedResult.summary || (overallScore > 85 ? "완벽에 가까운 밸런스" : "매력적인 개성적 마스크"),
         overallScore,
         percentile,
         landmarks: {
@@ -1065,6 +1149,43 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Share Section */}
+                  <div className="bg-white/5 rounded-3xl border border-white/10 p-8 shadow-2xl backdrop-blur-sm space-y-6">
+                    <div className="text-center space-y-2">
+                      <h3 className="text-xl font-bold tracking-tighter uppercase italic">Share Your Result</h3>
+                      <p className="text-white/40 text-[10px] font-mono uppercase tracking-widest">Show off your symmetry score to your friends</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <button 
+                        onClick={downloadShareImage}
+                        disabled={isGeneratingShareImage}
+                        className="flex items-center justify-center gap-2 bg-gradient-to-br from-purple-600 to-pink-600 text-white px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
+                      >
+                        {isGeneratingShareImage ? (
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                          <Instagram size={18} />
+                        )}
+                        Insta Story
+                      </button>
+                      <button 
+                        onClick={shareToKakao}
+                        className="flex items-center justify-center gap-2 bg-[#FEE500] text-[#191919] px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.02] transition-all active:scale-95"
+                      >
+                        <MessageCircle size={18} />
+                        Kakao Talk
+                      </button>
+                      <button 
+                        onClick={copyLink}
+                        className="flex items-center justify-center gap-2 bg-white/10 border border-white/10 text-white px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.02] transition-all active:scale-95"
+                      >
+                        <Link2 size={18} />
+                        Copy Link
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Correction Protocols */}
                   <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden shadow-2xl backdrop-blur-sm">
                     <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
@@ -1143,6 +1264,107 @@ export default function App() {
 
       {/* Hidden Canvas for capture */}
       <canvas ref={canvasRef} className="hidden" />
+
+      {/* Hidden Share Card for Image Generation */}
+      {result && image && (
+        <div className="fixed left-[-9999px] top-0">
+          <div 
+            ref={shareCardRef}
+            className="w-[1080px] h-[1920px] bg-[#050505] text-white relative flex flex-col items-center justify-between p-20 overflow-hidden"
+            style={{ fontFamily: "'Inter', sans-serif" }}
+          >
+            {/* Background Accents */}
+            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[30%] bg-emerald-500/10 blur-[150px] rounded-full" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[30%] bg-blue-500/10 blur-[150px] rounded-full" />
+            
+            {/* Header */}
+            <div className="w-full space-y-4 z-10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-black">
+                    <Scan size={24} />
+                  </div>
+                  <h1 className="text-3xl font-black italic tracking-tighter uppercase">Face Symmetry Pro</h1>
+                </div>
+                <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-full">
+                  <p className="text-sm font-mono text-white/40 uppercase tracking-widest">Biometric Scan v2.5</p>
+                </div>
+              </div>
+              <div className="h-px w-full bg-gradient-to-r from-emerald-500/50 via-white/10 to-transparent" />
+            </div>
+
+            {/* Main Content */}
+            <div className="w-full flex flex-col items-center gap-12 z-10">
+              {/* Image Preview with Overlay */}
+              <div className="relative w-[800px] h-[1000px] rounded-[60px] overflow-hidden border-4 border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+                <img 
+                  src={image} 
+                  alt="Analysis" 
+                  className="w-full h-full object-cover"
+                  style={{ transform: `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` }}
+                  referrerPolicy="no-referrer"
+                />
+                
+                {/* Overlay Points */}
+                <div className="absolute inset-0" style={{ transform: `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` }}>
+                  {debugInfo?.landmarks?.map((pt: any, i: number) => (
+                    <div 
+                      key={i}
+                      className="absolute w-2 h-2 bg-white rounded-full shadow-[0_0_5px_rgba(255,255,255,0.8)]"
+                      style={{ left: `${pt.x * 100}%`, top: `${pt.y * 100}%` }}
+                    />
+                  ))}
+                </div>
+
+                {/* Grid Overlay */}
+                <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute inset-0 flex justify-center">
+                    <div className="w-1 h-full bg-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
+                  </div>
+                  <div className="absolute inset-0 flex flex-col justify-around opacity-20">
+                    {[...Array(12)].map((_, i) => (
+                      <div key={i} className="w-full h-px bg-white/30" />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Score Badge */}
+                <div className="absolute bottom-12 right-12 bg-black/80 backdrop-blur-xl border border-white/20 p-8 rounded-[40px] shadow-2xl flex flex-col items-center">
+                  <p className="text-xl font-mono text-white/40 uppercase tracking-widest mb-1">Overall Score</p>
+                  <p className="text-8xl font-black italic text-emerald-400">{result.overallScore}</p>
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="w-full bg-white/5 border border-white/10 p-12 rounded-[50px] backdrop-blur-sm space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500">
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <h2 className="text-4xl font-bold italic uppercase tracking-tight">{result.summary}</h2>
+                </div>
+                <p className="text-2xl text-white/60 leading-relaxed break-keep">
+                  {personality === 'fact' 
+                    ? "정밀 분석 결과, 당신의 안면 대칭도는 상위권에 속합니다. 미세한 비대칭이 감지되었으나 이는 자연스러운 현상입니다."
+                    : "당신은 정말 아름다운 균형을 가지고 있네요! 본연의 매력이 잘 드러나는 아주 멋진 얼굴이에요."}
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="w-full flex items-center justify-between z-10">
+              <div className="space-y-1">
+                <p className="text-xl font-mono text-white/20 uppercase tracking-[0.3em]">Scan Completed</p>
+                <p className="text-sm font-mono text-white/10 uppercase tracking-widest">{new Date().toLocaleString()}</p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <p className="text-2xl font-black italic uppercase tracking-tighter text-white/40">Try it now</p>
+                <p className="text-lg font-mono text-emerald-500/50">facesymmetry.pro</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       <footer className="max-w-3xl mx-auto px-6 py-12 border-t border-white/5 text-center">
         <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-mono">
