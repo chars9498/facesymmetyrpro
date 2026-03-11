@@ -25,6 +25,8 @@ interface AnalysisResult {
     mouth: { score: number; feedback: string };
     jawline: { score: number; feedback: string };
   };
+  laymanProtocol: string;
+  professionalProtocol: string;
   autoCenterOffset?: number; // -10 to 10 percentage
   rotationAngle?: number; // -15 to 15 degrees
 }
@@ -293,6 +295,8 @@ export default function App() {
                     "mouth": { "score": 0-100, "feedback": "입매 비대칭 분석" },
                     "jawline": { "score": 0-100, "feedback": "턱선 비대칭 분석" }
                   },
+                  "laymanProtocol": "일반인이 집에서 따라 할 수 있는 쉬운 비대칭 교정 운동/습관 가이드 (마크다운 형식)",
+                  "professionalProtocol": "전문가(의사, 물리치료사 등)를 위한 해부학적 용어를 사용한 전문 교정 프로토콜 (마크다운 형식)",
                   "autoCenterOffset": -15에서 15 사이의 숫자 (얼굴의 정중앙선이 이미지의 기하학적 중앙에서 얼마나 벗어났는지 퍼센트로 표시. 얼굴이 왼쪽으로 치우쳤으면 음수, 오른쪽이면 양수. 예: 얼굴이 왼쪽으로 2% 치우쳤다면 -2.0),
                   "rotationAngle": -15에서 15 사이의 숫자 (양쪽 눈의 수평을 맞추기 위한 회전 각도. 시계방향 회전이 필요하면 양수, 반시계방향이면 음수)
                 }
@@ -827,6 +831,54 @@ export default function App() {
                         <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-3 font-mono">전문가 조언</h4>
                         <div className="prose prose-invert prose-sm max-w-none text-white/70 leading-relaxed break-keep">
                           <Markdown>{result.detailedFeedback}</Markdown>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Correction Protocols */}
+                  <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden shadow-2xl backdrop-blur-sm">
+                    <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck size={16} className="text-emerald-500" />
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-mono">Correction Protocols</h3>
+                      </div>
+                    </div>
+                    
+                    <div className="p-6 space-y-8">
+                      {/* Layman Protocol */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/20">
+                            <CheckCircle2 size={16} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-white">데일리 홈 케어 가이드</h4>
+                            <p className="text-[10px] text-white/40 uppercase tracking-wider font-mono">Layman Protocol</p>
+                          </div>
+                        </div>
+                        <div className="prose prose-invert prose-sm max-w-none bg-white/[0.03] rounded-2xl p-5 border border-white/5">
+                          <div className="text-xs text-white/70 leading-relaxed markdown-body">
+                            <Markdown>{result.laymanProtocol}</Markdown>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Professional Protocol */}
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20">
+                            <AlertCircle size={16} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-white">전문가용 임상 프로토콜</h4>
+                            <p className="text-[10px] text-white/40 uppercase tracking-wider font-mono">Clinical/Professional Protocol</p>
+                          </div>
+                        </div>
+                        <div className="prose prose-invert prose-sm max-w-none bg-blue-500/[0.03] rounded-2xl p-5 border border-blue-500/10">
+                          <div className="text-xs text-blue-300/70 leading-relaxed font-mono markdown-body">
+                            <Markdown>{result.professionalProtocol}</Markdown>
+                          </div>
                         </div>
                       </div>
                     </div>
