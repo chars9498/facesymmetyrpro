@@ -190,11 +190,22 @@ export default function App() {
            4. 한국어로 전문적이고 냉철하게 분석 결과를 전달하세요.`;
 
       const apiKey = process.env.GEMINI_API_KEY;
+      
       if (!apiKey || apiKey === '') {
-        throw new Error("Gemini API 키가 설정되지 않았습니다. 설정 메뉴에서 API 키를 확인해주세요.");
+        // Check if platform key selection is available
+        if (window.aistudio && typeof window.aistudio.openSelectKey === 'function') {
+          const hasKey = await window.aistudio.hasSelectedApiKey();
+          if (!hasKey) {
+            setError("API 키가 설정되지 않았습니다. 아래 'API 키 설정' 버튼을 눌러 키를 선택해주세요.");
+            setIsAnalyzing(false);
+            return;
+          }
+        } else {
+          throw new Error("Gemini API 키가 설정되지 않았습니다. 설정(Settings) 메뉴의 Environment Variables에서 GEMINI_API_KEY를 설정해주세요.");
+        }
       }
 
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: apiKey || process.env.GEMINI_API_KEY || '' });
       const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: [
@@ -534,12 +545,25 @@ export default function App() {
             </section>
 
             {error && (
-              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-start gap-3 text-red-400 backdrop-blur-sm shadow-[0_0_20px_rgba(239,68,68,0.1)]">
-                <AlertCircle className="shrink-0 mt-0.5" size={18} />
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest">System Error</p>
-                  <p className="text-sm font-mono">{error}</p>
+              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex flex-col gap-3 text-red-400 backdrop-blur-sm shadow-[0_0_20px_rgba(239,68,68,0.1)]">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="shrink-0 mt-0.5" size={18} />
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest">System Error</p>
+                    <p className="text-sm font-mono">{error}</p>
+                  </div>
                 </div>
+                {error.includes("API 키") && window.aistudio && (
+                  <button 
+                    onClick={async () => {
+                      await window.aistudio.openSelectKey();
+                      setError(null);
+                    }}
+                    className="bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-600 transition-all"
+                  >
+                    API 키 설정하기
+                  </button>
+                )}
               </div>
             )}
 
