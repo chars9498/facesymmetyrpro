@@ -14,6 +14,12 @@ async function startServer() {
   // JSON 바디 파서
   app.use(express.json({ limit: '10mb' }));
 
+  // 요청 로깅
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
+
   // 단순 메모리 기반 사용량 제한 (IP당 하루 5회)
   // 실제 서비스에서는 Redis나 DB를 사용하는 것이 좋습니다.
   const usageStore: Record<string, { count: number; lastReset: number }> = {};
@@ -139,6 +145,15 @@ async function startServer() {
       res.sendFile(path.join(__dirname, "dist", "index.html"));
     });
   }
+
+  // 글로벌 에러 핸들러 (HTML 대신 JSON 반환)
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("Global Server Error:", err);
+    res.status(err.status || 500).json({ 
+      error: "서버 내부 오류가 발생했습니다.", 
+      details: err.message 
+    });
+  });
 
   app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);

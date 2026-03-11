@@ -1,9 +1,9 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Camera, Upload, RefreshCw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Sparkles, Zap, Trophy, Instagram, MessageCircle, Link2 } from 'lucide-react';
+import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Sparkles, Zap, Trophy, Instagram, MessageCircle, Link2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
-import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, Radar } from 'recharts';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as faceMesh from '@mediapipe/face_mesh';
@@ -38,13 +38,14 @@ interface AnalysisResult {
 export default function App() {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(true);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [centerOffset, setCenterOffset] = useState(0); // percentage offset from center
   const [rotationAngle, setRotationAngle] = useState(0); // degrees
   const [error, setError] = useState<string | null>(null);
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [showOverlay, setShowOverlay] = useState(true);
+  const [showOverlay, setShowOverlay] = useState(false);
   const [personality, setPersonality] = useState<'fact' | 'angel'>('fact');
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [faceMeshLoaded, setFaceMeshLoaded] = useState(false);
@@ -454,8 +455,8 @@ export default function App() {
                     "mouth": { "feedback": "입매 비대칭 분석" },
                     "jawline": { "feedback": "턱선 비대칭 분석" }
                   },
-                  "laymanProtocol": "일반인용 가이드 (마크다운)",
-                  "professionalProtocol": "전문가용 프로토콜 (마크다운)"
+                  "laymanProtocol": "일반인용 홈케어 가이드 (마크다운)",
+                  "professionalProtocol": "전문가용 임상 프로토콜 (마크다운). 다음 항목으로만 구성: 1. 연부조직 이완술(Myofascial Release/Massage), 2. 근막 신장술(Clinical Stretching), 3. 기능적 재교육 운동(Functional Corrective Exercise). 반드시 해부학적 전문 용어(예: 교근, 측두근, 흉쇄유돌근, 익상근 등)를 사용하여 매우 전문적으로 작성할 것."
                 }`;
 
       const response = await fetch("/api/analyze", {
@@ -469,7 +470,16 @@ export default function App() {
         }),
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get("content-type");
+      let data;
+      
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const errorText = await response.text();
+        console.error("Server returned non-JSON response:", errorText);
+        throw new Error(`서버 응답 오류 (Status: ${response.status}). 잠시 후 다시 시도해주세요.`);
+      }
 
       if (!response.ok) {
         const errorMessage = data.details || data.error || "AI 분석 중 오류가 발생했습니다.";
@@ -690,18 +700,35 @@ export default function App() {
                   {/* Face Guide Overlay */}
                   <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                     {/* Face Silhouette SVG */}
-                    <svg className="w-full h-full text-emerald-500/30" viewBox="0 0 400 500">
+                    <svg className="w-full h-full text-emerald-400/60" viewBox="0 0 400 500">
+                      <defs>
+                        <filter id="glow">
+                          <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+                          <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                          </feMerge>
+                        </filter>
+                      </defs>
+                      
+                      {/* Subtle 3x3 Grid */}
+                      <line x1="133" y1="0" x2="133" y2="500" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                      <line x1="266" y1="0" x2="266" y2="500" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                      <line x1="0" y1="166" x2="400" y2="166" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                      <line x1="0" y1="333" x2="400" y2="333" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+
                       <path 
                         d="M200,80 C140,80 100,130 100,200 C100,300 140,400 200,400 C260,400 300,300 300,200 C300,130 260,80 200,80 Z" 
                         fill="none" 
                         stroke="currentColor" 
-                        strokeWidth="2" 
-                        strokeDasharray="8 8"
+                        strokeWidth="1.5" 
                       />
-                      {/* Eye Line */}
-                      <line x1="120" y1="200" x2="280" y2="200" stroke="currentColor" strokeWidth="1" strokeDasharray="4 4" />
-                      {/* Center Line */}
-                      <line x1="200" y1="50" x2="200" y2="450" stroke="rgba(16,185,129,0.5)" strokeWidth="1" />
+                      
+                      {/* Main Horizontal Leveler (Eyes) - Crosshair */}
+                      <line x1="0" y1="200" x2="400" y2="200" stroke="#10b981" strokeWidth="1.5" />
+                      
+                      {/* Main Vertical Center Line - Crosshair */}
+                      <line x1="200" y1="0" x2="200" y2="500" stroke="#10b981" strokeWidth="1.5" />
                     </svg>
                     <div className="absolute top-1/4 text-center">
                       <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
@@ -733,6 +760,8 @@ export default function App() {
                     className="max-h-[70vh] w-full object-contain transition-transform duration-200" 
                     style={{ transform: `rotate(${rotationAngle}deg) scale(1.1)` }}
                   />
+                  
+                  {/* Leveler Guide for Preview - Removed as per user request */}
                   
                   {/* Symmetry Overlay */}
                   {showOverlay && (
@@ -1001,6 +1030,11 @@ export default function App() {
                             dataKey="subject" 
                             tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 'bold' }} 
                           />
+                          <PolarRadiusAxis 
+                            domain={[0, 100]} 
+                            tick={false} 
+                            axisLine={false} 
+                          />
                           <Radar
                             name="Symmetry"
                             dataKey="A"
@@ -1022,6 +1056,16 @@ export default function App() {
                       </div>
                       <div className="flex gap-2">
                         <button 
+                          onClick={() => setAutoCorrectEnabled(!autoCorrectEnabled)}
+                          className={cn(
+                            "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center gap-1.5",
+                            autoCorrectEnabled ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-400" : "bg-white/5 border-white/10 text-white/40"
+                          )}
+                        >
+                          <RotateCcw size={10} className={cn(autoCorrectEnabled ? "animate-pulse" : "")} />
+                          {autoCorrectEnabled ? "Auto-Leveling ON" : "Auto-Leveling OFF"}
+                        </button>
+                        <button 
                           onClick={() => setShowOverlay(!showOverlay)}
                           className={cn(
                             "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border",
@@ -1038,7 +1082,9 @@ export default function App() {
                       <div 
                         className="absolute inset-0 transition-transform duration-500 ease-out"
                         style={{ 
-                          transform: `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` 
+                          transform: autoCorrectEnabled 
+                            ? `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` 
+                            : `scale(1.0)`
                         }}
                       >
                         {/* Base Image */}
