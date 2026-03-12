@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { analyzeLocally } from "./services/analysisEngine";
 import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Sparkles, Zap, Trophy, MessageCircle, Link2, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -37,6 +37,10 @@ interface AnalysisResult {
   rotationAngle?: number;
   percentile?: number; // Added for viral effect
   celebrityMatches?: { name: string; confidence: number }[];
+  metrics: {
+    midline: number;
+    [key: string]: any;
+  };
 }
 
 export default function App() {
@@ -51,10 +55,13 @@ export default function App() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [personality, setPersonality] = useState<'fact' | 'angel'>('fact');
+  const [gender, setGender] = useState<'male' | 'female'>('male');
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [faceMeshLoaded, setFaceMeshLoaded] = useState(false);
   const [isGeneratingShareImage, setIsGeneratingShareImage] = useState(false);
   const [celebrityImages, setCelebrityImages] = useState<Record<string, string>>({});
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(1);
+  const [reportStep, setReportStep] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -75,8 +82,8 @@ export default function App() {
         fm.setOptions({
           maxNumFaces: 1,
           refineLandmarks: true,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5
+          minDetectionConfidence: 0.35,
+          minTrackingConfidence: 0.35
         });
 
         faceMeshRef.current = fm;
@@ -313,6 +320,28 @@ export default function App() {
     });
   };
 
+  const enhanceImage = (base64Str: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(base64Str);
+          return;
+        }
+        // Apply brightness and contrast boost for better detection
+        ctx.filter = 'brightness(1.2) contrast(1.1) saturate(1.1)';
+        ctx.drawImage(img, 0, 0);
+        resolve(canvas.toDataURL('image/jpeg', 0.9));
+      };
+      img.onerror = () => resolve(base64Str);
+      img.src = base64Str;
+    });
+  };
+
   const analyzeImage = async (base64Image: string, selectedPersonality: 'fact' | 'angel') => {
     setIsAnalyzing(true);
     setError(null);
@@ -327,32 +356,48 @@ export default function App() {
         throw new Error("얼굴 인식 엔진이 아직 준비되지 않았습니다.");
       }
 
-      // Resize image to a reasonable size for analysis
       const resizedImage = await resizeImage(base64Image, 1024);
+      
+      // Get image aspect ratio for correct overlay alignment
+      const imgInfo = new Image();
+      imgInfo.src = resizedImage;
+      await imgInfo.decode();
+      setImageAspectRatio(imgInfo.width / imgInfo.height);
 
-      // 1. Browser-side FaceMesh Analysis
-      const img = new Image();
-      await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
-        img.src = resizedImage;
-      });
-
-      const faceResults: faceMesh.Results = await new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error("얼굴 분석 시간이 초과되었습니다. 다시 시도해주세요."));
-        }, 15000);
-
-        faceMeshRef.current!.onResults((results) => {
-          clearTimeout(timeout);
-          resolve(results);
+      const runFaceMesh = async (imgSrc: string): Promise<faceMesh.Results> => {
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = imgSrc;
         });
 
-        faceMeshRef.current!.send({ image: img }).catch((err) => {
-          clearTimeout(timeout);
-          reject(err);
+        return new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error("얼굴 분석 시간이 초과되었습니다. 다시 시도해주세요."));
+          }, 15000);
+
+          faceMeshRef.current!.onResults((results) => {
+            clearTimeout(timeout);
+            resolve(results);
+          });
+
+          faceMeshRef.current!.send({ image: img }).catch((err) => {
+            clearTimeout(timeout);
+            reject(err);
+          });
         });
-      });
+      };
+
+      // 1. First Attempt
+      let faceResults = await runFaceMesh(resizedImage);
+
+      // 2. If failed, try with enhanced image
+      if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
+        setAnalysisStep('이미지 보정 후 재분석 중...');
+        const enhancedImage = await enhanceImage(resizedImage);
+        faceResults = await runFaceMesh(enhancedImage);
+      }
 
       if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
         throw new Error("사진에서 얼굴을 찾을 수 없습니다. 얼굴이 잘 보이도록 정면에서 밝은 곳에서 찍은 사진을 사용해주세요.");
@@ -364,13 +409,13 @@ export default function App() {
       // 1. Basic Functions & Dimensions
       const dist2D = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
       
-      // Face Dimensions
-      const faceWidth = dist2D(landmarks[127], landmarks[356]);
+      // Face Dimensions - Use outermost points (234, 454) for full width
+      const faceWidth = dist2D(landmarks[234], landmarks[454]);
       const faceHeight = dist2D(landmarks[10], landmarks[152]);
       
-      // Midline calculation (using upper face for a stable vertical axis)
-      // Point 10 is top of forehead, 168 is between eyes. This defines the "true" center.
-      const midlineX = (landmarks[10].x + landmarks[168].x) / 2;
+      // Midline calculation (using multiple points for a stable vertical axis)
+      // Point 10: forehead, 168: between eyes, 1: nose tip, 152: chin
+      const midline = (landmarks[10].x + landmarks[168].x + landmarks[1].x + landmarks[152].x) / 4;
 
       // 2. Symmetry Score (40%) - Increased sensitivity
       const symPairs = [
@@ -383,8 +428,8 @@ export default function App() {
       
       let symDiffSum = 0;
       symPairs.forEach(([l, r]) => {
-        const leftDist = Math.abs(landmarks[l].x - midlineX);
-        const rightDist = Math.abs(landmarks[r].x - midlineX);
+        const leftDist = Math.abs(landmarks[l].x - midline);
+        const rightDist = Math.abs(landmarks[r].x - midline);
         symDiffSum += Math.abs(leftDist - rightDist);
       });
       const avgSymDiff = symDiffSum / symPairs.length;
@@ -435,7 +480,7 @@ export default function App() {
       mouthScore = Math.max(30, Math.min(100, mouthScore));
 
       // 6. Chin/Jaw Balance Score (10%) - Increased sensitivity
-      const score1 = 100 - (Math.abs(landmarks[152].x - midlineX) / faceWidth) * 2000;
+      const score1 = 100 - (Math.abs(landmarks[152].x - midline) / faceWidth) * 2000;
       
       const leftJawLen = dist2D(landmarks[152], landmarks[234]);
       const rightJawLen = dist2D(landmarks[152], landmarks[454]);
@@ -450,6 +495,13 @@ export default function App() {
       let overallScore = (symmetryScore * 0.4) + (eyeScore * 0.2) + (noseScore * 0.15) + (mouthScore * 0.15) + (jawScore * 0.1);
       overallScore = Math.max(30, Math.min(Math.round(overallScore), 98));
       
+      // Calculate detailed metrics for local engine
+      const eyeDiff = Math.abs(leftEyeWidth - rightEyeWidth) / faceWidth;
+      const mouthDiff = Math.abs(dist2D(landmarks[61], {x: midline, y: landmarks[61].y}) - dist2D(landmarks[291], {x: midline, y: landmarks[291].y})) / faceWidth;
+      const jawDiff = Math.abs(leftJawLen - rightJawLen) / faceWidth;
+      const eyeSlant = Math.abs(landmarks[33].y - landmarks[263].y);
+      const mouthSlant = Math.abs(landmarks[61].y - landmarks[291].y);
+
       // Viral Percentile Calculation (Normalized for 30-98 range)
       let percentile = 50;
       if (overallScore >= 90) percentile = 95 + (overallScore - 90) * 0.5;
@@ -458,9 +510,6 @@ export default function App() {
       else percentile = (overallScore - 30) * 0.6;
       percentile = Math.min(99, Math.max(1, Math.round(percentile)));
 
-      // Prepare data for Gemini
-      setAnalysisStep('AI 전문가 소견 생성 중...');
-      
       const metrics = {
         overallScore,
         percentile,
@@ -469,139 +518,25 @@ export default function App() {
         noseScore,
         mouthScore,
         jawScore,
-        personality: selectedPersonality
+        eyeDiff,
+        mouthDiff,
+        jawDiff,
+        eyeSlant,
+        mouthSlant,
+        personality: personality,
+        gender: gender,
+        midline: midline // Pass the actual calculated midline
       };
 
-      const prompt = `당신은 ${selectedPersonality === 'fact' ? '냉철한 닥터 팩트' : '따뜻한 엔젤 가이드'}입니다. 
-                다음 분석 데이터를 바탕으로 전문적인 소견을 작성해주세요: ${JSON.stringify(metrics)}
-                
-                **JSON 응답 형식:**
-                {
-                  "summary": "한 줄 요약 (예: '균형 잡힌 완벽한 비율', '매력적인 비대칭의 조화')",
-                  "celebrityMatches": [
-                    { "name": "연예인 이름 1", "confidence": 63 },
-                    { "name": "연예인 이름 2", "confidence": 58 },
-                    { "name": "연예인 이름 3", "confidence": 55 }
-                  ],
-                  "detailedFeedback": "전반적인 분석 내용 (마크다운 형식)",
-                  "muscleAnalysis": "비대칭의 원인이 될 수 있는 근육에 대한 구체적인 분석",
-                  "landmarks": {
-                    "eyes": { "feedback": "눈 비대칭 분석" },
-                    "nose": { "feedback": "코 비대칭 분석" },
-                    "mouth": { "feedback": "입매 비대칭 분석" },
-                    "jawline": { "feedback": "턱선 비대칭 분석" }
-                  },
-                  "laymanProtocol": "일반인용 홈케어 가이드 (마크다운)",
-                  "professionalProtocol": "전문가용 임상 프로토콜 (마크다운). 다음 항목으로만 구성: 1. 연부조직 이완술(Myofascial Release/Massage), 2. 근막 신장술(Clinical Stretching), 3. 기능적 재교육 운동(Functional Corrective Exercise). 반드시 해부학적 전문 용어(예: 교근, 측두근, 흉쇄유돌근, 익상근 등)를 사용하여 매우 전문적으로 작성할 것."
-                }`;
-
-      // Frontend retry logic for "Starting Server" warmup page and Rate Limits
-      const fetchWithRetry = async (maxRetries = 8): Promise<Response> => {
-        for (let i = 0; i < maxRetries; i++) {
-          try {
-            const response = await fetch("/api/analyze", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                metrics: metrics,
-                prompt: prompt
-              }),
-            });
-
-            const contentType = response.headers.get("content-type") || "";
-            const isHtml = contentType.includes("text/html");
-            const isJson = contentType.includes("application/json");
-            
-            // Check for retryable conditions
-            let shouldRetry = false;
-            let reason = "";
-
-            if (response.status === 429 || response.status === 503) {
-              shouldRetry = true;
-              reason = `Status ${response.status}`;
-            } else if (isHtml) {
-              const html = await response.clone().text();
-              if (html.includes("Please wait while your application starts")) {
-                shouldRetry = true;
-                reason = "Server Warming Up";
-              } else if (html.includes("Rate exceeded")) {
-                shouldRetry = true;
-                reason = "Rate Exceeded (HTML)";
-              }
-            } else if (!isJson) {
-              const text = await response.clone().text();
-              if (text.includes("Rate exceeded")) {
-                shouldRetry = true;
-                reason = "Rate Exceeded (Text)";
-              }
-            }
-
-            if (shouldRetry && i < maxRetries - 1) {
-              // Exponential backoff with jitter: 2s, 4s, 8s, 16s...
-              const delay = Math.pow(2, i + 1) * 1000 + Math.random() * 1000;
-              console.log(`Retrying request (${i + 1}/${maxRetries}) due to ${reason}. Waiting ${Math.round(delay)}ms...`);
-              await new Promise(resolve => setTimeout(resolve, delay));
-              continue;
-            }
-
-            return response;
-          } catch (err) {
-            if (i < maxRetries - 1) {
-              const delay = Math.pow(2, i + 1) * 1000 + Math.random() * 1000;
-              console.log(`Fetch error (attempt ${i + 1}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`, err);
-              await new Promise(resolve => setTimeout(resolve, delay));
-              continue;
-            }
-            throw err;
-          }
-        }
-        throw new Error("서버 연결에 실패했습니다.");
-      };
-
-      const response = await fetchWithRetry();
-
-      const contentType = response.headers.get("content-type");
-      let data;
-      
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
-        const errorText = await response.text();
-        console.error("Server returned non-JSON response:", errorText);
-        // If the error is "Rate exceeded" or "high demand", make it more user-friendly
-        const friendlyError = (errorText.includes("Rate exceeded") || errorText.includes("503") || errorText.includes("high demand") || errorText.includes("Please wait while your application starts"))
-          ? "현재 AI 모델 사용량이 매우 많아 시스템이 여러 번의 자동 복구 및 모델 전환을 시도했으나 실패했습니다. 잠시 후(약 2~3분 뒤) 다시 시도해 주시면 감사하겠습니다." 
-          : errorText || `서버 응답 오류 (Status: ${response.status})`;
-        throw new Error(friendlyError);
-      }
-
-      if (!response.ok) {
-        const errorMessage = data.details || data.error || "AI 분석 중 오류가 발생했습니다.";
-        throw new Error(errorMessage);
-      }
-
-      const text = data.text;
-      if (!text) {
-        throw new Error("AI로부터 응답을 받지 못했습니다.");
-      }
-
-      // Robust JSON extraction
-      let jsonStr = text.trim();
-      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[0];
-      }
-
-      const parsedResult = JSON.parse(jsonStr);
+      // 로컬 분석 엔진 사용
+      const parsedResult = analyzeLocally(metrics);
       
       // Merge browser-calculated metrics into the result with defensive checks
-      const safeLandmarks = parsedResult.landmarks || {};
+      const safeLandmarks: any = parsedResult.landmarks || {};
       
       setResult({
         ...parsedResult,
-        summary: parsedResult.summary || (overallScore > 85 ? "완벽에 가까운 밸런스" : "매력적인 개성적 마스크"),
+        summary: parsedResult.summary,
         overallScore,
         percentile,
         landmarks: {
@@ -611,40 +546,55 @@ export default function App() {
           jawline: { score: Math.round(jawScore), feedback: safeLandmarks.jawline?.feedback || "분석 완료" },
         },
         landmarkPoints: [
-          { x: landmarks[33].x * 100, y: landmarks[33].y * 100, label: "왼쪽 눈" },
-          { x: landmarks[263].x * 100, y: landmarks[263].y * 100, label: "오른쪽 눈" },
-          { x: landmarks[61].x * 100, y: landmarks[61].y * 100, label: "왼쪽 입꼬리" },
-          { x: landmarks[291].x * 100, y: landmarks[291].y * 100, label: "오른쪽 입꼬리" },
-          { x: landmarks[234].x * 100, y: landmarks[234].y * 100, label: "왼쪽 광대" },
-          { x: landmarks[454].x * 100, y: landmarks[454].y * 100, label: "오른쪽 광대" },
-          { x: landmarks[1].x * 100, y: landmarks[1].y * 100, label: "코끝" },
-          { x: landmarks[10].x * 100, y: landmarks[10].y * 100, label: "이마 중앙" },
-          { x: landmarks[152].x * 100, y: landmarks[152].y * 100, label: "턱 끝" }
+          // 1. 전체 얼굴 외곽 윤곽선 (Full Face Contour - 36 points)
+          ...[10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
+          // 2. 눈 부위 (Eyes)
+          ...[33, 160, 158, 133, 153, 144, 33, 263, 387, 385, 362, 380, 373, 263].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
+          // 3. 눈썹 (Eyebrows)
+          ...[70, 63, 105, 66, 107, 336, 296, 334, 293, 300].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
+          // 4. 코 (Nose)
+          ...[168, 6, 197, 195, 5, 4, 1, 19, 94, 2, 164, 98, 97, 327, 326].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
+          // 5. 입술 (Lips)
+          ...[61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146, 61].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
+          // 6. 광대 및 볼 (Cheeks/Midface)
+          ...[205, 203, 92, 425, 423, 322, 116, 117, 118, 345, 346, 347].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
+          
+          // 주요 지표 라벨
+          { x: landmarks[10].x * 100, y: landmarks[10].y * 100, label: "TRICHION" },
+          { x: landmarks[152].x * 100, y: landmarks[152].y * 100, label: "GNATHION" },
+          { x: landmarks[33].x * 100, y: landmarks[33].y * 100, label: "L-EXOC" },
+          { x: landmarks[263].x * 100, y: landmarks[263].y * 100, label: "R-EXOC" }
         ],
         symmetryLines: [
-          { 
-            x1: landmarks[33].x * 100, y1: landmarks[33].y * 100, 
-            x2: landmarks[263].x * 100, y2: landmarks[263].y * 100, 
-            label: "Eye Line" 
-          },
-          { 
-            x1: landmarks[61].x * 100, y1: landmarks[61].y * 100, 
-            x2: landmarks[291].x * 100, y2: landmarks[291].y * 100, 
-            label: "Mouth Line" 
-          },
-          { 
-            x1: landmarks[234].x * 100, y1: landmarks[234].y * 100, 
-            x2: landmarks[454].x * 100, y2: landmarks[454].y * 100, 
-            label: "Jaw Line" 
-          }
+          // 수평 기준선 (Horizontal Analysis)
+          { x1: landmarks[33].x * 100, y1: landmarks[33].y * 100, x2: landmarks[263].x * 100, y2: landmarks[263].y * 100, label: "BIPUPIL LINE" },
+          { x1: landmarks[61].x * 100, y1: landmarks[61].y * 100, x2: landmarks[291].x * 100, y2: landmarks[291].y * 100, label: "COMMISSURE LINE" },
+          { x1: landmarks[234].x * 100, y1: landmarks[234].y * 100, x2: landmarks[454].x * 100, y2: landmarks[454].y * 100, label: "ZYGOMATIC LINE" },
+          
+          // 메쉬 연결선 (Digital Mesh Connections - 성형외과 분석 느낌)
+          // 눈-코-입 연결
+          { x1: landmarks[33].y * 0 + landmarks[33].x * 100, y1: landmarks[33].y * 100, x2: landmarks[168].x * 100, y2: landmarks[168].y * 100, label: "" },
+          { x1: landmarks[263].x * 100, y1: landmarks[263].y * 100, x2: landmarks[168].x * 100, y2: landmarks[168].y * 100, label: "" },
+          { x1: landmarks[168].x * 100, y1: landmarks[168].y * 100, x2: landmarks[1].x * 100, y2: landmarks[1].y * 100, label: "" },
+          { x1: landmarks[1].x * 100, y1: landmarks[1].y * 100, x2: landmarks[61].x * 100, y2: landmarks[61].y * 100, label: "" },
+          { x1: landmarks[1].x * 100, y1: landmarks[1].y * 100, x2: landmarks[291].x * 100, y2: landmarks[291].y * 100, label: "" },
+          
+          // 턱선 메쉬
+          { x1: landmarks[234].x * 100, y1: landmarks[234].y * 100, x2: landmarks[152].x * 100, y2: landmarks[152].y * 100, label: "" },
+          { x1: landmarks[454].x * 100, y1: landmarks[454].y * 100, x2: landmarks[152].x * 100, y2: landmarks[152].y * 100, label: "" },
+          
+          // 수직 중앙선
+          { x1: midline * 100, y1: 0, x2: midline * 100, y2: 100, label: "CENTRAL AXIS" }
         ],
         asymmetryZones: [
-          { x: landmarks[33].x * 100, y: landmarks[33].y * 100, radius: 5, intensity: (94 - eyeScore) / 100, label: "눈 비대칭" },
-          { x: landmarks[61].x * 100, y: landmarks[61].y * 100, radius: 5, intensity: (94 - mouthScore) / 100, label: "입매 비대칭" }
-        ]
+          { x: landmarks[33].x * 100, y: landmarks[33].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - eyeScore) / 20)), label: "EYE ASYMMETRY" },
+          { x: landmarks[61].x * 100, y: landmarks[61].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - mouthScore) / 20)), label: "ORAL ASYMMETRY" },
+          { x: landmarks[234].x * 100, y: landmarks[234].y * 100, radius: 8, intensity: Math.min(1, Math.max(0.6, (96 - jawScore) / 30)), label: "JAW ASYMMETRY" }
+        ],
+        metrics
       });
 
-      setCenterOffset((landmarks[1].x - midlineX) * 100);
+      setCenterOffset((landmarks[1].x - midline) * 100);
       setRotationAngle((landmarks[263].y - landmarks[33].y) * 100);
 
     } catch (err: any) {
@@ -661,16 +611,51 @@ export default function App() {
     setResult(null);
     setError(null);
     setIsCameraActive(false);
+    setReportStep(0);
+  };
+
+  const laymanMarkdownComponents = {
+    ol: ({ children }: any) => <ol className="protocol-list w-full list-none p-0 m-0 flex flex-col gap-4">{children}</ol>,
+    li: ({ children }: any) => (
+      <li className="protocol-item w-full block min-w-0">
+        <div className="protocol-step-label text-emerald-500/60" />
+        <div className="text-white/80 leading-relaxed mt-1">
+          {children}
+        </div>
+      </li>
+    ),
+    p: ({ children }: any) => <p className="m-0">{children}</p>,
+    strong: ({ children }: any) => <strong className="font-bold text-emerald-400">{children}</strong>
+  };
+
+  const professionalMarkdownComponents = {
+    ol: ({ children }: any) => <ol className="protocol-list w-full list-none p-0 m-0 flex flex-col gap-4">{children}</ol>,
+    li: ({ children }: any) => (
+      <li className="protocol-item w-full block min-w-0">
+        <div className="protocol-step-label text-blue-400/60" />
+        <div className="text-blue-100/80 leading-relaxed font-mono mt-1">
+          {children}
+        </div>
+      </li>
+    ),
+    p: ({ children }: any) => <p className="m-0 font-mono">{children}</p>,
+    strong: ({ children }: any) => <strong className="font-bold text-blue-300">{children}</strong>
   };
 
   return (
-    <div className="min-h-screen bg-[#0A0A0B] text-white font-sans selection:bg-emerald-500/30 relative overflow-x-hidden">
+    <div className={cn(
+      "bg-[#0A0A0B] text-white font-sans selection:bg-emerald-500/30 relative overflow-hidden",
+      result ? "h-screen" : "min-h-screen"
+    )}>
       {/* Technical Texture Overlay */}
       <div className="fixed inset-0 bg-grid-technical pointer-events-none" />
       <div className="fixed inset-0 bg-dot-technical opacity-30 pointer-events-none" />
       
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-[#0A0A0B]/80 backdrop-blur-xl border-b border-white/5 px-6 py-4">
+      <header className={cn(
+        "sticky top-0 z-50 bg-[#0A0A0B]/80 backdrop-blur-xl border-b border-white/5 px-6 transition-all duration-500",
+        result ? "py-3" : "py-4"
+      )}>
         <div className="max-w-5xl mx-auto space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -688,45 +673,82 @@ export default function App() {
             </button>
           </div>
           
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <span className="text-[10px] tracking-[0.2em] font-bold text-white/40 px-1 uppercase">
-              Select Analyst
-            </span>
-            <div className="hidden sm:block w-[1px] h-3 bg-white/10" />
-            <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 w-full sm:w-auto">
-              <button
-                onClick={() => setPersonality('fact')}
-                className={cn(
-                  "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
-                  personality === 'fact' 
-                    ? "bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" 
-                    : "text-white/40 hover:text-white/60"
-                )}
-              >
-                Dr. Fact
-              </button>
-              <button
-                onClick={() => setPersonality('angel')}
-                className={cn(
-                  "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
-                  personality === 'angel' 
-                    ? "bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.3)]" 
-                    : "text-white/40 hover:text-white/60"
-                )}
-              >
-                Angel Guide
-              </button>
+          {!result && (
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 animate-in fade-in slide-in-from-top-2 duration-500">
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] tracking-[0.2em] font-bold text-white/40 px-1 uppercase">
+                  Select Gender
+                </span>
+                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 w-full sm:w-auto">
+                  <button
+                    onClick={() => setGender('male')}
+                    className={cn(
+                      "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
+                      gender === 'male' 
+                        ? "bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" 
+                        : "text-white/40 hover:text-white/60"
+                    )}
+                  >
+                    Male
+                  </button>
+                  <button
+                    onClick={() => setGender('female')}
+                    className={cn(
+                      "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
+                      gender === 'female' 
+                        ? "bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.3)]" 
+                        : "text-white/40 hover:text-white/60"
+                    )}
+                  >
+                    Female
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] tracking-[0.2em] font-bold text-white/40 px-1 uppercase">
+                  Select Analyst
+                </span>
+                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 w-full sm:w-auto">
+                  <button
+                    onClick={() => setPersonality('fact')}
+                    className={cn(
+                      "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
+                      personality === 'fact' 
+                        ? "bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
+                        : "text-white/40 hover:text-white/60"
+                    )}
+                  >
+                    Dr. Fact
+                  </button>
+                  <button
+                    onClick={() => setPersonality('angel')}
+                    className={cn(
+                      "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
+                      personality === 'angel' 
+                        ? "bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.3)]" 
+                        : "text-white/40 hover:text-white/60"
+                    )}
+                  >
+                    Angel Guide
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-12">
-        <div className="space-y-12">
+      <main className={cn(
+        "max-w-3xl mx-auto px-6 transition-all duration-500 flex flex-col",
+        result ? "h-[calc(100dvh-60px)] py-1 overflow-hidden" : "py-12"
+      )}>
+        <div className={cn("space-y-8", result && "flex-1 flex flex-col min-h-0 space-y-4")}>
           
-          {/* Input/Preview Section */}
-          <div className="space-y-6">
-            <AnimatePresence mode="wait">
+          {/* Input/Preview Section - Hidden when results are shown to save space */}
+          {!result && (
+            <div className="space-y-6">
+              <AnimatePresence mode="wait">
               <motion.div
                 key={personality}
                 initial={{ opacity: 0, y: 10 }}
@@ -1024,509 +1046,307 @@ export default function App() {
               </ul>
             </div>
           </div>
+        )}
 
-          {/* Results Section */}
-          <div className="space-y-6">
-            <AnimatePresence mode="wait">
-              {result ? (
+        {/* Results Section */}
+          {result && (
+            <div className="flex-1 flex flex-col min-h-0">
+              <AnimatePresence mode="wait">
                 <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="space-y-6"
+                  key={`report-step-${reportStep}`}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex-1 flex flex-col min-h-0 gap-2"
                 >
-                  {/* Score Card */}
-                  <div className="bg-white/5 rounded-3xl border border-white/10 p-8 shadow-2xl backdrop-blur-sm">
-                    <div className="flex flex-col md:flex-row items-center gap-8">
-                      <div className="flex-shrink-0 relative">
-                        <div className="absolute -inset-4 bg-emerald-500/10 blur-2xl rounded-full animate-pulse" />
-                        <div className="relative">
-                          <svg className="w-40 h-40 transform -rotate-90">
-                            <circle
-                              cx="80"
-                              cy="80"
-                              r="74"
-                              stroke="currentColor"
-                              strokeWidth="10"
-                              fill="transparent"
-                              className="text-white/5"
-                            />
-                            <circle
-                              cx="80"
-                              cy="80"
-                              r="74"
-                              stroke="currentColor"
-                              strokeWidth="10"
-                              fill="transparent"
-                              strokeDasharray={464.7}
-                              strokeDashoffset={464.7 - (464.7 * result.overallScore) / 100}
-                              strokeLinecap="round"
-                              className="text-emerald-500 transition-all duration-1000 ease-out drop-shadow-[0_0_12px_rgba(16,185,129,0.6)]"
-                            />
-                          </svg>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-5xl font-bold tracking-tighter font-mono leading-none">{result.overallScore}</span>
-                            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest mt-1">Index</span>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="flex-1 text-center md:text-left space-y-4">
-                        <div className="inline-flex items-center justify-center p-1 bg-white/[0.02] rounded-full border border-white/5">
-                          <div className="px-4 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400">Symmetry Analysis Result</div>
-                        </div>
-                        
-                        <div className="space-y-1">
-                          <h3 className="text-3xl font-bold uppercase italic tracking-tight leading-tight break-keep">
-                            {result.overallScore >= 90 ? "Optimal Symmetry" : 
-                             result.overallScore >= 82 ? "High Symmetry" : 
-                             result.overallScore >= 70 ? "Standard Symmetry" : "Deviation Detected"}
-                          </h3>
-                          <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2">
-                            <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                              <span className="text-[10px] text-emerald-400/60 font-bold uppercase mr-2">상위</span>
-                              <span className="text-sm font-bold text-emerald-400">{100 - result.percentile}%</span>
-                            </div>
-                            <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg">
-                              <span className="text-[10px] text-white/40 font-bold uppercase mr-2">한국 평균</span>
-                              <span className="text-sm font-bold text-white/80">76점</span>
-                            </div>
-                            <div className="px-3 py-1 bg-white/5 border border-white/10 rounded-lg">
-                              <span className="text-[10px] text-white/40 font-bold uppercase mr-2">당신</span>
-                              <span className="text-sm font-bold text-white/80">{result.overallScore}점</span>
-                            </div>
-                            <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-lg">
-                              <span className="text-sm font-bold text-emerald-400">
-                                {result.overallScore - 76 >= 0 ? `+${result.overallScore - 76}` : result.overallScore - 76}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <p className="text-white/60 text-sm mt-2 font-mono leading-relaxed break-keep">
-                          {personality === 'fact' 
-                            ? "생체 인식 데이터 분석 결과, 당신의 안면 대칭도는 위와 같이 산출되었습니다. 이는 해부학적 기준에 따른 객관적 수치입니다."
-                            : "당신만의 고유한 아름다움이 담긴 분석 결과예요! 완벽한 대칭보다 더 중요한 건 당신의 밝은 미소라는 걸 잊지 마세요."}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap justify-center md:justify-start gap-4 pt-6 border-t border-white/5">
-                      <div className="px-3 py-1 bg-emerald-500/10 rounded-lg border border-emerald-500/20 flex items-center gap-2">
-                        <Trophy size={12} className="text-emerald-500" />
-                        <div>
-                          <p className="text-[8px] text-white/40 uppercase font-mono">Percentile</p>
-                          <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">상위 {100 - (result.percentile || 50)}%</p>
-                        </div>
-                      </div>
-                      <div className="px-3 py-1 bg-white/5 rounded-lg border border-white/10 flex items-center gap-2">
-                        <Sparkles size={12} className="text-orange-400" />
-                        <div>
-                          <p className="text-[8px] text-white/40 uppercase font-mono">Avg Comparison</p>
-                          <p className="text-[10px] font-bold text-white/80 uppercase tracking-wider">한국 평균 76점 대비 {result.overallScore > 76 ? `+${result.overallScore - 76}` : result.overallScore - 76}점</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Radar Chart Analysis */}
-                  <div className="bg-white/5 rounded-3xl border border-white/10 p-6 shadow-2xl backdrop-blur-sm">
-                    <div className="flex items-center gap-2 mb-6">
-                      <BarChart3 size={16} className="text-emerald-500" />
-                      <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-mono">Symmetry Balance Chart</h3>
-                    </div>
-                    <div className="h-[320px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart 
-                          cx="50%" 
-                          cy="50%" 
-                          outerRadius="65%" 
-                          data={[
-                            { subject: '눈 (Eyes)', A: result.landmarks.eyes.score, full: 100 },
-                            { subject: '코 (Nose)', A: result.landmarks.nose.score, full: 100 },
-                            { subject: '입 (Mouth)', A: result.landmarks.mouth.score, full: 100 },
-                            { subject: '턱 (Jaw)', A: result.landmarks.jawline.score, full: 100 },
-                            { subject: '전체 (Total)', A: result.overallScore, full: 100 },
-                          ]}
-                          margin={{ top: 10, right: 40, bottom: 10, left: 40 }}
-                        >
-                          <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                          <PolarAngleAxis 
-                            dataKey="subject" 
-                            tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: 'bold' }} 
-                          />
-                          <PolarRadiusAxis 
-                            domain={[0, 100]} 
-                            tick={false} 
-                            axisLine={false} 
-                          />
-                          <Radar
-                            name="Symmetry"
-                            dataKey="A"
-                            stroke="#10b981"
-                            fill="#10b981"
-                            fillOpacity={0.3}
-                          />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {/* Symmetry Visualizer (Heatmap & Grid) */}
-                  <div className="bg-white/5 rounded-3xl border border-white/10 p-6 shadow-2xl backdrop-blur-sm space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Scan size={16} className="text-emerald-500" />
-                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-mono">Symmetry Heatmap & Grid</h3>
-                      </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => setAutoCorrectEnabled(!autoCorrectEnabled)}
-                          className={cn(
-                            "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border flex items-center gap-1.5",
-                            autoCorrectEnabled ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-400" : "bg-white/5 border-white/10 text-white/40"
-                          )}
-                        >
-                          <RotateCcw size={10} className={cn(autoCorrectEnabled ? "animate-pulse" : "")} />
-                          {autoCorrectEnabled ? "Auto-Leveling ON" : "Auto-Leveling OFF"}
-                        </button>
-                        <button 
-                          onClick={() => setShowOverlay(!showOverlay)}
-                          className={cn(
-                            "px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all border",
-                            showOverlay ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-white/5 border-white/10 text-white/40"
-                          )}
-                        >
-                          {showOverlay ? "Show Overlay ON" : "Show Overlay OFF"}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black group">
-                      {/* Transformed Content Layer */}
+                  {/* Progress Indicator */}
+                  <div className="flex items-center gap-1.5 px-2 shrink-0">
+                    {[0, 1, 2].map((step) => (
                       <div 
-                        className="absolute inset-0 transition-transform duration-500 ease-out"
-                        style={{ 
-                          transform: autoCorrectEnabled 
-                            ? `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` 
-                            : `scale(1.0)`
-                        }}
-                      >
-                        {/* Base Image */}
-                        <img src={image || ''} alt="Analysis" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        key={step} 
+                        className={cn(
+                          "h-1 flex-1 rounded-full transition-all duration-500",
+                          step <= reportStep ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" : "bg-white/10"
+                        )}
+                      />
+                    ))}
+                  </div>
 
-                        {/* Overlay Layer (Moves with image) */}
-                        <AnimatePresence>
-                          {showOverlay && (
-                            <motion.div 
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              className="absolute inset-0 pointer-events-none"
-                            >
-                              {/* Heatmap Zones */}
-                              {result.asymmetryZones?.map((zone, i) => (
-                                <motion.div
-                                  key={`zone-${i}`}
-                                  initial={{ scale: 0, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 0.4 }}
-                                  transition={{ delay: 0.5 + i * 0.1 }}
-                                  className="absolute rounded-full blur-xl"
-                                  style={{
-                                    left: `${zone.x}%`,
-                                    top: `${zone.y}%`,
-                                    width: `${zone.radius * 2}%`,
-                                    height: `${zone.radius * 2}%`,
-                                    backgroundColor: zone.intensity > 0.7 ? '#ef4444' : zone.intensity > 0.4 ? '#f59e0b' : '#10b981',
-                                    transform: 'translate(-50%, -50%)'
-                                  }}
-                                />
-                              ))}
-
-                              {/* Symmetry Analysis Lines */}
-                              <svg className="absolute inset-0 w-full h-full">
-                                {result.symmetryLines?.map((line, i) => (
-                                  <motion.line
-                                    key={`line-${i}`}
-                                    initial={{ pathLength: 0, opacity: 0 }}
-                                    animate={{ pathLength: 1, opacity: 0.5 }}
-                                    transition={{ delay: 0.8 + i * 0.2, duration: 1 }}
-                                    x1={`${line.x1}%`}
-                                    y1={`${line.y1}%`}
-                                    x2={`${line.x2}%`}
-                                    y2={`${line.y2}%`}
-                                    stroke="white"
-                                    strokeWidth="0.5"
-                                    strokeDasharray="2 2"
+                  <div className="flex-1 min-h-0 overflow-hidden">
+                    {reportStep === 0 && (
+                      <div className="flex flex-col gap-2 h-full min-h-0">
+                        <div className="grid grid-cols-2 gap-2 shrink-0">
+                          {/* Score Card */}
+                          <div className="bg-white/5 rounded-2xl border border-white/10 p-3 shadow-xl backdrop-blur-sm flex flex-col justify-center items-center">
+                            <div className="relative mb-1 shrink-0">
+                              <div className="absolute -inset-2 bg-emerald-500/10 blur-xl rounded-full animate-pulse" />
+                              <div className="relative">
+                                <svg className="w-16 h-16 transform -rotate-90">
+                                  <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
+                                  <circle
+                                    cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent"
+                                    strokeDasharray={176}
+                                    strokeDashoffset={176 - (176 * result.overallScore) / 100}
+                                    strokeLinecap="round"
+                                    className="text-emerald-500 transition-all duration-1000 ease-out drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]"
                                   />
-                                ))}
-                              </svg>
-
-                              {/* Landmark Points */}
-                              {result.landmarkPoints?.map((point, i) => (
-                                <motion.div
-                                  key={`point-${i}`}
-                                  initial={{ scale: 0 }}
-                                  animate={{ scale: 1 }}
-                                  transition={{ delay: 1 + i * 0.05, type: 'spring' }}
-                                  className="absolute group/point"
-                                  style={{
-                                    left: `${point.x}%`,
-                                    top: `${point.y}%`,
-                                    transform: 'translate(-50%, -50%)'
-                                  }}
-                                >
-                                  <div className="w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_5px_rgba(255,255,255,0.8)]" />
-                                  <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 whitespace-nowrap bg-black/80 text-[7px] px-1 rounded text-white/60 opacity-0 group-hover/point:opacity-100 transition-opacity">
-                                    {point.label}
-                                  </div>
-                                </motion.div>
-                              ))}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-
-                      {/* Fixed Reference Grid (Stays in center of container) */}
-                      <div className="absolute inset-0 pointer-events-none">
-                        {/* Central Axis */}
-                        <div className="absolute inset-0 flex justify-center">
-                          <div className="w-px h-full bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-10" />
-                        </div>
-                        
-                        {/* Horizontal Grid Lines */}
-                        <div className="absolute inset-0 flex flex-col justify-around opacity-20">
-                          {[...Array(8)].map((_, i) => (
-                            <div key={i} className="w-full h-px bg-white/30" />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex gap-3">
-                      <Info size={14} className="text-emerald-500 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">Analysis Guide</p>
-                        <p className="text-[10px] text-emerald-500/70 leading-relaxed break-keep">
-                          흰색 점은 주요 안면 랜드마크이며, 붉은색 영역은 비대칭 편차가 크게 감지된 구역입니다. 중앙의 수직선은 얼굴의 이상적인 중심축을 나타냅니다.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Detailed Analysis */}
-                  <div className="bg-white/5 rounded-3xl border border-white/10 shadow-2xl overflow-hidden backdrop-blur-sm">
-                    <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-                      <h3 className="text-xs font-bold uppercase tracking-[0.2em] flex items-center gap-2 text-white/60">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                        Diagnostic Report
-                      </h3>
-                    </div>
-                    <div className="p-6 space-y-6">
-                      <div className="grid grid-cols-1 gap-4">
-                        <ResultItem label="눈 (Eyes)" score={result.landmarks.eyes.score} content={result.landmarks.eyes.feedback} />
-                        <ResultItem label="코 (Nose)" score={result.landmarks.nose.score} content={result.landmarks.nose.feedback} />
-                        <ResultItem label="입매 (Mouth)" score={result.landmarks.mouth.score} content={result.landmarks.mouth.feedback} />
-                        <ResultItem label="턱선 (Jawline)" score={result.landmarks.jawline.score} content={result.landmarks.jawline.feedback} />
-                      </div>
-                      
-                      <div className="pt-6 border-t border-white/5">
-                        <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-3 font-mono">근육 및 원인 분석</h4>
-                        <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl text-amber-200/80 text-sm leading-relaxed break-keep">
-                          {result.muscleAnalysis}
-                        </div>
-                      </div>
-                      
-                      <div className="pt-6 border-t border-white/5">
-                        <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] mb-3 font-mono">전문가 조언</h4>
-                        <div className="prose prose-invert prose-sm max-w-none text-white/70 leading-relaxed break-keep">
-                          <Markdown>{result.detailedFeedback}</Markdown>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Celebrity Match Section */}
-                  {result.celebrityMatches && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 rounded-3xl border border-indigo-500/30 p-8 shadow-2xl backdrop-blur-md space-y-6 relative overflow-hidden"
-                    >
-                      <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Trophy size={120} className="text-indigo-400" />
-                      </div>
-                      
-                      <div className="relative z-10 space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-indigo-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
-                            <Sparkles size={20} />
-                          </div>
-                          <div>
-                            <h3 className="text-xl font-black italic tracking-tighter uppercase">AI Celebrity Match</h3>
-                            <p className="text-indigo-300/60 text-[10px] font-mono uppercase tracking-widest">Visual Similarity Analysis</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          {result.celebrityMatches.map((match, i) => (
-                            <div key={i} className="group relative">
-                              <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5 group-hover:bg-white/10 transition-all">
-                                <div className="flex items-center gap-4">
-                                  <div className="relative">
-                                    <div className="w-12 h-12 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-xs overflow-hidden border border-indigo-500/30">
-                                      {celebrityImages[match.name] ? (
-                                        <img 
-                                          src={celebrityImages[match.name]} 
-                                          alt={match.name} 
-                                          className="w-full h-full object-cover"
-                                          referrerPolicy="no-referrer"
-                                        />
-                                      ) : (
-                                        i + 1
-                                      )}
-                                    </div>
-                                    {celebrityImages[match.name] && (
-                                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[8px] font-bold border-2 border-[#0A0A0B]">
-                                        {i + 1}
-                                      </div>
-                                    )}
-                                  </div>
-                                  <span className="font-bold text-lg tracking-tight">{match.name}</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <div className="w-24 h-2 bg-white/5 rounded-full overflow-hidden hidden sm:block">
-                                    <motion.div 
-                                      initial={{ width: 0 }}
-                                      animate={{ width: `${match.confidence}%` }}
-                                      transition={{ delay: 0.5 + i * 0.1, duration: 1 }}
-                                      className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
-                                    />
-                                  </div>
-                                  <span className="font-mono font-bold text-indigo-400">{match.confidence}%</span>
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                  <span className="text-xl font-bold tracking-tighter font-mono leading-none">{result.overallScore}</span>
+                                  <span className="text-[5px] font-bold text-white/30 uppercase tracking-widest mt-0.5">Index</span>
                                 </div>
                               </div>
                             </div>
-                          ))}
+                            
+                            <div className="text-center space-y-0.5 shrink-0">
+                              <h3 className="text-xs font-bold uppercase italic tracking-tight">
+                                {result.overallScore >= 90 ? "Optimal" : 
+                                 result.overallScore >= 82 ? "High" : 
+                                 result.overallScore >= 70 ? "Standard" : "Deviation"}
+                              </h3>
+                              <div className="flex items-center justify-center gap-1">
+                                <div className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
+                                  <span className="text-[7px] text-emerald-400/60 font-bold uppercase mr-1">상위</span>
+                                  <span className="text-[10px] font-bold text-emerald-400">{100 - result.percentile}%</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Celebrity Match Section */}
+                          {result.celebrityMatches && (
+                            <div className="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 rounded-2xl border border-indigo-500/30 p-3 shadow-xl backdrop-blur-md flex flex-col justify-center relative overflow-hidden">
+                              <div className="relative z-10 space-y-1.5">
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <Sparkles size={12} className="text-indigo-400" />
+                                  <h3 className="text-[9px] font-black italic tracking-tighter uppercase">AI Match</h3>
+                                </div>
+
+                                <div className="space-y-1">
+                                  {result.celebrityMatches.slice(0, 2).map((match, i) => (
+                                    <div key={i} className="flex items-center justify-between p-1.5 bg-white/5 rounded-lg border border-white/5">
+                                      <div className="flex items-center gap-1.5">
+                                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-[8px] overflow-hidden border border-indigo-500/30">
+                                          {celebrityImages[match.name] ? (
+                                            <img src={celebrityImages[match.name]} alt={match.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                          ) : (i + 1)}
+                                        </div>
+                                        <span className="font-bold text-[10px] tracking-tight truncate max-w-[50px]">{match.name}</span>
+                                      </div>
+                                      <span className="font-mono font-bold text-indigo-400 text-[8px]">{match.confidence}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        
-                        <p className="text-center text-white/40 text-[9px] font-mono uppercase tracking-widest pt-2">
-                          * AI 분석 결과이며 실제 닮은 정도와 차이가 있을 수 있습니다.
-                        </p>
+
+                        {/* Symmetry Visualizer (Moved from Step 1 to Step 0 for better flow) */}
+                        <div className="flex-1 min-h-0 bg-white/5 rounded-2xl border border-white/10 p-2 shadow-xl backdrop-blur-sm flex flex-col">
+                          <div className="flex items-center justify-between mb-1 shrink-0 px-1">
+                            <h3 className="text-[7px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono">Visual Analysis</h3>
+                            <div className="flex gap-1">
+                              <button onClick={() => setAutoCorrectEnabled(!autoCorrectEnabled)} className={cn("p-0.5 rounded transition-all border", autoCorrectEnabled ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-400" : "bg-white/5 border-white/10 text-white/40")}>
+                                <RotateCcw size={8} />
+                              </button>
+                              <button onClick={() => setShowOverlay(!showOverlay)} className={cn("p-0.5 rounded transition-all border", showOverlay ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-white/5 border-white/10 text-white/40")}>
+                                <Scan size={8} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex-1 relative rounded-xl overflow-hidden border border-white/10 bg-black flex items-center justify-center min-h-0">
+                            <div 
+                              className="relative transition-transform duration-500 ease-out"
+                              style={{ 
+                                width: imageAspectRatio > 1 ? '100%' : `${imageAspectRatio * 100}%`,
+                                aspectRatio: imageAspectRatio,
+                                transform: autoCorrectEnabled ? `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` : `scale(1.0)`
+                              }}
+                            >
+                              <img src={image || ''} alt="Analysis" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                              <AnimatePresence>
+                                {showOverlay && (
+                                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 pointer-events-none">
+                                    {/* Landmark Points (White Dots) */}
+                                    {result.landmarkPoints?.map((pt, i) => (
+                                      <div 
+                                        key={`pt-${i}`} 
+                                        className="absolute w-0.5 h-0.5 bg-white rounded-full opacity-30" 
+                                        style={{ left: `${pt.x}%`, top: `${pt.y}%` }} 
+                                      >
+                                        {pt.label && (
+                                          <span className="absolute left-1 top-0 text-[4px] text-white/30 font-mono whitespace-nowrap uppercase tracking-tighter">
+                                            {pt.label}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+
+                                    {result.asymmetryZones?.map((zone, i) => (
+                                      <div key={`zone-${i}`} className="absolute" style={{ left: `${zone.x}%`, top: `${zone.y}%`, width: `${zone.radius * 2}%`, height: `${zone.radius * 2}%`, marginLeft: `-${zone.radius}%`, marginTop: `-${zone.radius}%` }}>
+                                        <motion.div 
+                                          className="w-full h-full rounded-full" 
+                                          style={{ background: `radial-gradient(circle, rgba(239, 68, 68, ${zone.intensity}) 0%, rgba(239, 68, 68, 0) 80%)` }} 
+                                          animate={{ scale: [1, 1.1, 1], opacity: [zone.intensity, zone.intensity * 0.6, zone.intensity] }} 
+                                          transition={{ duration: 2, repeat: Infinity }} 
+                                        />
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                                          <span className="text-[5px] font-bold text-red-500 whitespace-nowrap tracking-tighter bg-black/20 px-0.5 rounded">
+                                            {zone.label}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    ))}
+
+                                    <svg className="absolute inset-0 w-full h-full">
+                                      {result.symmetryLines?.map((line, i) => (
+                                        <line key={`line-${i}`} x1={`${line.x1}%`} y1={`${line.y1}%`} x2={`${line.x2}%`} y2={`${line.y2}%`} stroke="white" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.5" />
+                                      ))}
+                                    </svg>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                            {result.metrics?.midline !== undefined && (
+                              <div className="absolute inset-y-0 w-px bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-10" style={{ left: `${result.metrics.midline * 100}%` }} />
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </motion.div>
-                  )}
+                    )}
 
-                  {/* Share Section */}
-                  <div className="bg-white/5 rounded-3xl border border-white/10 p-8 shadow-2xl backdrop-blur-sm space-y-6">
-                    <div className="text-center space-y-2">
-                      <h3 className="text-xl font-bold tracking-tighter uppercase italic">Share Your Result</h3>
-                      <p className="text-white/40 text-[10px] font-mono uppercase tracking-widest">Show off your symmetry score to your friends</p>
-                    </div>
+                    {reportStep === 1 && (
+                      <div className="flex flex-col gap-2 h-full min-h-0">
+                        {/* Radar Chart & Metrics */}
+                        <div className="flex-1 flex flex-col gap-2 min-h-0">
+                          <div className="bg-white/5 rounded-2xl border border-white/10 p-2 shadow-xl backdrop-blur-sm flex-1 flex flex-col min-h-0">
+                            <h3 className="text-[7px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono mb-0.5 shrink-0 px-1">Balance Chart</h3>
+                            <div className="flex-1 min-h-0">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="65%" data={[
+                                  { subject: '눈', A: result.landmarks.eyes.score },
+                                  { subject: '코', A: result.landmarks.nose.score },
+                                  { subject: '입', A: result.landmarks.mouth.score },
+                                  { subject: '턱', A: result.landmarks.jawline.score },
+                                ]}>
+                                  <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 8 }} />
+                                  <Radar name="Symmetry" dataKey="A" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
+                                </RadarChart>
+                              </ResponsiveContainer>
+                            </div>
+                          </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <button 
-                        onClick={downloadShareImage}
-                        disabled={isGeneratingShareImage}
-                        className="flex items-center justify-center gap-2 bg-white/10 border border-white/10 text-white px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50"
-                      >
-                        {isGeneratingShareImage ? (
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        ) : (
-                          <Download size={18} />
-                        )}
-                        Download
-                      </button>
-                      <button 
-                        onClick={shareToKakao}
-                        className="flex items-center justify-center gap-2 bg-[#FEE500] text-[#191919] px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.02] transition-all active:scale-95"
-                      >
-                        <MessageCircle size={18} />
-                        Kakao Talk
-                      </button>
-                      <button 
-                        onClick={copyLink}
-                        className="flex items-center justify-center gap-2 bg-white/10 border border-white/10 text-white px-6 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:scale-[1.02] transition-all active:scale-95"
-                      >
-                        <Link2 size={18} />
-                        Copy Link
-                      </button>
-                    </div>
+                          <div className="grid grid-cols-2 gap-2 shrink-0">
+                            {[
+                              { label: 'Eyes', score: result.landmarks.eyes.score, feedback: result.landmarks.eyes.feedback },
+                              { label: 'Nose', score: result.landmarks.nose.score, feedback: result.landmarks.nose.feedback },
+                              { label: 'Mouth', score: result.landmarks.mouth.score, feedback: result.landmarks.mouth.feedback },
+                              { label: 'Jaw', score: result.landmarks.jawline.score, feedback: result.landmarks.jawline.feedback }
+                            ].map((m, idx) => (
+                              <div key={idx} className="bg-white/5 p-2 rounded-xl border border-white/10 flex flex-col gap-1">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-[7px] text-white/40 uppercase font-mono">{m.label}</span>
+                                  <span className="text-[10px] font-bold text-emerald-400">{m.score}</span>
+                                </div>
+                                <p className="text-[8px] text-white/60 leading-tight break-words whitespace-normal">
+                                  {m.feedback}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {reportStep === 2 && (
+                      <div className="flex flex-col gap-3 h-full min-h-0 w-full overflow-x-hidden min-w-0">
+                        {/* Diagnostic Summary */}
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-3 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0">
+                          <div className="flex items-center gap-2 mb-1 w-full min-w-0">
+                            <AlertCircle size={12} className="text-amber-500 shrink-0" />
+                            <h4 className="text-[8px] font-bold text-white/40 uppercase tracking-[0.2em] font-mono truncate">Muscle Analysis</h4>
+                          </div>
+                          <div className="grid grid-cols-1 min-w-0 w-full">
+                            <p className="text-[10px] text-white/70 leading-relaxed break-all whitespace-normal w-full block overflow-hidden">
+                              {result.muscleAnalysis}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Correction Protocols */}
+                        <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden shadow-2xl backdrop-blur-sm flex-1 flex flex-col min-h-0 w-full min-w-0">
+                          <div className="flex border-b border-white/10 shrink-0 w-full min-w-0">
+                            <div className="flex-1 py-1.5 text-center text-[8px] font-bold uppercase tracking-widest bg-white/5 text-emerald-400 truncate">
+                              Solution Protocol
+                            </div>
+                          </div>
+                          <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar space-y-4 w-full min-w-0">
+                            <div className="space-y-2 w-full min-w-0">
+                              <h4 className="text-[8px] font-bold text-emerald-500 uppercase tracking-wider px-1">홈 케어 가이드</h4>
+                              <div className="text-[10px] text-white/60 leading-relaxed prose-compact w-full px-1">
+                                <Markdown components={laymanMarkdownComponents}>{result.laymanProtocol}</Markdown>
+                              </div>
+                            </div>
+                            <div className="h-px bg-white/5 w-full" />
+                            <div className="space-y-2 w-full min-w-0">
+                              <h4 className="text-[8px] font-bold text-blue-400 uppercase tracking-wider px-1">임상 프로토콜</h4>
+                              <div className="text-[10px] text-white/60 leading-relaxed prose-compact w-full px-1">
+                                <Markdown components={professionalMarkdownComponents}>{result.professionalProtocol}</Markdown>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Share Section (Compact) */}
+                        <div className="grid grid-cols-3 gap-2 shrink-0">
+                          <button onClick={downloadShareImage} className="bg-white/10 border border-white/10 text-white py-2 rounded-xl font-bold text-[8px] uppercase tracking-widest flex items-center justify-center gap-1.5">
+                            <Download size={12} /> Save
+                          </button>
+                          <button onClick={shareToKakao} className="bg-[#FEE500] text-[#191919] py-2 rounded-xl font-bold text-[8px] uppercase tracking-widest flex items-center justify-center gap-1.5">
+                            <MessageCircle size={12} /> Kakao
+                          </button>
+                          <button onClick={copyLink} className="bg-white/10 border border-white/10 text-white py-2 rounded-xl font-bold text-[8px] uppercase tracking-widest flex items-center justify-center gap-1.5">
+                            <Link2 size={12} /> Link
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Correction Protocols */}
-                  <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden shadow-2xl backdrop-blur-sm">
-                    <div className="p-6 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
-                      <div className="flex items-center gap-2">
-                        <ShieldCheck size={16} className="text-emerald-500" />
-                        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/60 font-mono">Correction Protocols</h3>
-                      </div>
-                    </div>
-                    
-                    <div className="p-6 space-y-8">
-                      {/* Layman Protocol */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 border border-emerald-500/20">
-                            <CheckCircle2 size={16} />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-white">데일리 홈 케어 가이드</h4>
-                            <p className="text-[10px] text-white/40 uppercase tracking-wider font-mono">Layman Protocol</p>
-                          </div>
-                        </div>
-                        <div className="prose prose-invert prose-sm max-w-none bg-white/[0.03] rounded-2xl p-5 border border-white/5">
-                          <div className="text-xs text-white/70 leading-relaxed markdown-body">
-                            <Markdown>{result.laymanProtocol}</Markdown>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Professional Protocol */}
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500 border border-blue-500/20">
-                            <AlertCircle size={16} />
-                          </div>
-                          <div>
-                            <h4 className="text-sm font-bold text-white">전문가용 임상 프로토콜</h4>
-                            <p className="text-[10px] text-white/40 uppercase tracking-wider font-mono">Clinical/Professional Protocol</p>
-                          </div>
-                        </div>
-                        <div className="prose prose-invert prose-sm max-w-none bg-blue-500/[0.03] rounded-2xl p-5 border border-blue-500/10">
-                          <div className="text-xs text-blue-300/70 leading-relaxed font-mono markdown-body">
-                            <Markdown>{result.professionalProtocol}</Markdown>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  {/* Navigation Buttons */}
+                  <div className="flex gap-2 shrink-0">
+                    {reportStep > 0 && (
+                      <button 
+                        onClick={() => setReportStep(prev => prev - 1)}
+                        className="flex-1 bg-white/5 border border-white/10 text-white/60 py-2.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all"
+                      >
+                        이전 단계
+                      </button>
+                    )}
+                    {reportStep < 2 ? (
+                      <button 
+                        onClick={() => setReportStep(prev => prev + 1)}
+                        className="flex-[2] bg-emerald-500 text-white py-2.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition-all"
+                      >
+                        {reportStep === 0 ? "정밀 분석 리포트 보기" : "맞춤형 솔루션 확인"}
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={reset}
+                        className="flex-[2] bg-white text-black py-2.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest hover:bg-gray-200 transition-all"
+                      >
+                        새로운 분석 시작하기
+                      </button>
+                    )}
                   </div>
                 </motion.div>
-              ) : !isAnalyzing ? (
-                <div className="h-full min-h-[400px] bg-white/5 rounded-3xl border border-dashed border-white/10 flex flex-col items-center justify-center p-12 text-center backdrop-blur-sm">
-                  <div className="w-16 h-16 bg-white/5 border border-white/10 rounded-full flex items-center justify-center mb-4 text-white/20">
-                    <ChevronRight size={24} />
-                  </div>
-                  <p className="max-w-[200px] text-white/40 font-mono text-xs uppercase tracking-wider">
-                    [WAITING] Analysis results will be displayed here after scan.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="bg-white/5 rounded-3xl border border-white/10 p-8 shadow-2xl animate-pulse space-y-4 backdrop-blur-sm">
-                    <div className="w-32 h-32 rounded-full bg-white/5 mx-auto border border-white/5" />
-                    <div className="h-6 bg-white/5 rounded w-1/2 mx-auto" />
-                    <div className="h-4 bg-white/5 rounded w-3/4 mx-auto" />
-                  </div>
-                  <div className="bg-white/5 rounded-3xl border border-white/10 p-6 shadow-2xl animate-pulse space-y-4 backdrop-blur-sm">
-                    <div className="h-20 bg-white/5 rounded" />
-                    <div className="h-20 bg-white/5 rounded" />
-                    <div className="h-20 bg-white/5 rounded" />
-                  </div>
-                </div>
-              )}
-            </AnimatePresence>
-          </div>
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       </main>
 
@@ -1637,7 +1457,7 @@ export default function App() {
                   </div>
                   <h2 className="text-4xl font-bold italic uppercase tracking-tight">{result.summary}</h2>
                 </div>
-                <p className="text-2xl text-white/60 leading-relaxed break-keep">
+                <p className="text-2xl text-white/60 leading-relaxed break-words whitespace-normal">
                   {personality === 'fact' 
                     ? "정밀 분석 결과, 당신의 안면 대칭도는 상위권에 속합니다. 미세한 비대칭이 감지되었으나 이는 자연스러운 현상입니다."
                     : "당신은 정말 아름다운 균형을 가지고 있네요! 본연의 매력이 잘 드러나는 아주 멋진 얼굴이에요."}
@@ -1682,8 +1502,8 @@ function ResultItem({ label, score, content }: { label: string; score: number; c
           {score}%
         </span>
       </div>
-      <div className="bg-white/[0.02] p-4 rounded-2xl border border-white/5 group-hover:border-white/10 transition-all group-hover:bg-white/[0.04]">
-        <p className="text-sm text-white/70 leading-relaxed break-keep">{content}</p>
+      <div className="bg-white/[0.02] p-4 rounded-2xl border border-white/5 group-hover:border-white/10 transition-all group-hover:bg-white/[0.04] overflow-hidden">
+        <p className="text-sm text-white/70 leading-relaxed break-words whitespace-normal">{content}</p>
       </div>
     </div>
   );

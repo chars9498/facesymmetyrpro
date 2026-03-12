@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -24,4 +25,77 @@
     50% { transform: translateX(100%); }
     100% { transform: translateX(-100%); }
   }
+}
+
+.protocol-list {
+  counter-reset: protocol-step;
+}
+.protocol-item {
+  counter-increment: protocol-step;
+  position: relative;
+  padding-top: 1.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 1.5rem;
+}
+.protocol-item:first-child {
+  border-top: none;
+  padding-top: 0;
+  margin-top: 0;
+}
+.protocol-step-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-size: 10px;
+  font-family: "JetBrains Mono", monospace;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.protocol-step-label::before {
+  content: "STEP " counter(protocol-step, decimal-leading-zero);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.prose-compact {
+  width: 100%;
+  max-width: 100%;
+}
+.prose-compact p, 
+.prose-compact li, 
+.prose-compact div, 
+.prose-compact span,
+.prose-compact strong {
+  word-break: break-all !important;
+  word-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+  max-width: 100% !important;
+}
+
+.prose-compact p {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+.prose-compact ul, .prose-compact ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+.prose-compact li {
+  margin-top: 0.125rem;
+  margin-bottom: 0.125rem;
 }
