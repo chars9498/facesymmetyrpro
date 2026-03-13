@@ -1,92 +1,77 @@
 
+export type FaceType = 'visual_actor' | 'soft_actor' | 'comedy_face' | 'idol_face';
+
 export interface AnalysisMetrics {
   eyeScore: number;
-  noseScore: number;
+  browsScore: number;
   mouthScore: number;
   jawScore: number;
   eyeDiff: number;
+  browsDiff: number;
   mouthDiff: number;
   jawDiff: number;
   eyeSlant: number;
   mouthSlant: number;
   overallScore: number;
+  symmetryScore: number;
+  percentile: number;
+  midline: number;
   personality: 'fact' | 'angel';
-  gender?: 'male' | 'female';
+  // Raw Ratios for Matching
+  faceRatio: number;
+  eyeDistanceRatio: number;
+  noseLengthRatio: number;
+  mouthWidthRatio: number;
+  jawWidthRatio: number;
+  cheekboneWidthRatio: number;
+  foreheadRatio: number;
+  foreheadWidthRatio: number;
+  philtrumLengthRatio: number;
+  eyeWidthRatio: number;
+  noseWidthRatio: number;
+  lowerFaceRatio: number;
 }
 
 export interface AnalysisResult {
+  overallScore?: number;
+  symmetryScore?: number;
+  proportionScore?: number;
   summary: string;
-  celebrityMatches: { name: string; confidence: number }[];
+  faceShape?: string;
+  strongestFeatures?: string[];
   detailedFeedback: string;
   muscleAnalysis: string;
   landmarks: {
-    eyes: { feedback: string };
-    nose: { feedback: string };
-    mouth: { feedback: string };
-    jawline: { feedback: string };
+    eyes: { score?: number; status: string; feedback: string };
+    brows: { score?: number; status: string; feedback: string };
+    mouth: { score?: number; status: string; feedback: string };
+    jawline: { score?: number; status: string; feedback: string };
   };
+  advancedMetrics: {
+    eyeSpacing: { value: number; status: string; feedback: string };
+    facialProportion: { value: { upper: number; mid: number; lower: number }; status: string; feedback: string };
+    faceRatio: { value: number; status: string; feedback: string };
+  };
+  balancedImage?: string;
   laymanProtocol: string;
   professionalProtocol: string;
+  landmarkPoints?: { x: number; y: number; label: string }[];
+  symmetryLines?: { x1: number; y1: number; x2: number; y2: number; label: string }[];
+  asymmetryZones?: { x: number; y: number; radius: number; intensity: number; label: string }[];
+  autoCenterOffset?: number;
+  rotationAngle?: number;
+  percentile?: number;
+  metrics?: {
+    midline: number;
+    [key: string]: any;
+  };
+  rawLandmarks?: any[];
 }
-
-interface Celebrity {
-  name: string;
-  gender: 'male' | 'female';
-  category: 'visual' | 'friendly';
-  ratios: { eyes: number; nose: number; mouth: number; jaw: number };
-}
-
-const CELEBRITIES: Celebrity[] = [
-  // Female - Visuals
-  { name: "김태희", gender: "female", category: 'visual', ratios: { eyes: 98, nose: 97, mouth: 96, jaw: 98 } },
-  { name: "한가인", gender: "female", category: 'visual', ratios: { eyes: 95, nose: 99, mouth: 94, jaw: 95 } },
-  { name: "수지", gender: "female", category: 'visual', ratios: { eyes: 92, nose: 91, mouth: 93, jaw: 90 } },
-  { name: "아이유", gender: "female", category: 'visual', ratios: { eyes: 88, nose: 86, mouth: 90, jaw: 87 } },
-  { name: "카리나", gender: "female", category: 'visual', ratios: { eyes: 97, nose: 96, mouth: 94, jaw: 99 } },
-  { name: "제니", gender: "female", category: 'visual', ratios: { eyes: 90, nose: 88, mouth: 94, jaw: 89 } },
-  { name: "장원영", gender: "female", category: 'visual', ratios: { eyes: 96, nose: 94, mouth: 93, jaw: 92 } },
-  { name: "한소희", gender: "female", category: 'visual', ratios: { eyes: 92, nose: 90, mouth: 91, jaw: 93 } },
-  { name: "김지원", gender: "female", category: 'visual', ratios: { eyes: 94, nose: 95, mouth: 96, jaw: 93 } },
-  { name: "김고은", gender: "female", category: 'visual', ratios: { eyes: 82, nose: 84, mouth: 81, jaw: 83 } },
-  { name: "박소담", gender: "female", category: 'visual', ratios: { eyes: 81, nose: 83, mouth: 82, jaw: 80 } },
-
-  // Female - Friendly (Lowered scores to avoid overlap)
-  { name: "박나래", gender: "female", category: 'friendly', ratios: { eyes: 62, nose: 60, mouth: 65, jaw: 58 } },
-  { name: "김숙", gender: "female", category: 'friendly', ratios: { eyes: 65, nose: 62, mouth: 60, jaw: 68 } },
-  { name: "장도연", gender: "female", category: 'friendly', ratios: { eyes: 75, nose: 78, mouth: 74, jaw: 80 } },
-
-  // Male - Visuals
-  { name: "원빈", gender: "male", category: 'visual', ratios: { eyes: 97, nose: 98, mouth: 97, jaw: 96 } },
-  { name: "차은우", gender: "male", category: 'visual', ratios: { eyes: 99, nose: 96, mouth: 98, jaw: 97 } },
-  { name: "공유", gender: "male", category: 'visual', ratios: { eyes: 92, nose: 94, mouth: 93, jaw: 98 } },
-  { name: "강동원", gender: "male", category: 'visual', ratios: { eyes: 96, nose: 97, mouth: 92, jaw: 93 } },
-  { name: "정국", gender: "male", category: 'visual', ratios: { eyes: 95, nose: 94, mouth: 97, jaw: 95 } },
-  { name: "뷔", gender: "male", category: 'visual', ratios: { eyes: 96, nose: 98, mouth: 95, jaw: 94 } },
-  { name: "현빈", gender: "male", category: 'visual', ratios: { eyes: 95, nose: 97, mouth: 96, jaw: 98 } },
-  { name: "박보검", gender: "male", category: 'visual', ratios: { eyes: 94, nose: 92, mouth: 95, jaw: 91 } },
-  { name: "송중기", gender: "male", category: 'visual', ratios: { eyes: 93, nose: 91, mouth: 92, jaw: 90 } },
-  { name: "김수현", gender: "male", category: 'visual', ratios: { eyes: 92, nose: 93, mouth: 91, jaw: 93 } },
-  { name: "주우재", gender: "male", category: 'visual', ratios: { eyes: 86, nose: 88, mouth: 84, jaw: 90 } },
-  { name: "덱스", gender: "male", category: 'visual', ratios: { eyes: 88, nose: 86, mouth: 90, jaw: 92 } },
-  { name: "이도현", gender: "male", category: 'visual', ratios: { eyes: 85, nose: 87, mouth: 84, jaw: 86 } },
-  { name: "남주혁", gender: "male", category: 'visual', ratios: { eyes: 84, nose: 86, mouth: 83, jaw: 88 } },
-  { name: "최우식", gender: "male", category: 'visual', ratios: { eyes: 82, nose: 84, mouth: 83, jaw: 81 } },
-  { name: "손석구", gender: "male", category: 'visual', ratios: { eyes: 83, nose: 88, mouth: 85, jaw: 90 } },
-  { name: "류준열", gender: "male", category: 'visual', ratios: { eyes: 78, nose: 84, mouth: 86, jaw: 82 } },
-
-  // Male - Friendly (Lowered scores to avoid overlap)
-  { name: "유재석", gender: "male", category: 'friendly', ratios: { eyes: 65, nose: 68, mouth: 62, jaw: 64 } },
-  { name: "조세호", gender: "male", category: 'friendly', ratios: { eyes: 60, nose: 58, mouth: 65, jaw: 56 } },
-  { name: "양세형", gender: "male", category: 'friendly', ratios: { eyes: 62, nose: 64, mouth: 66, jaw: 60 } },
-  { name: "강호동", gender: "male", category: 'friendly', ratios: { eyes: 55, nose: 60, mouth: 58, jaw: 65 } },
-  { name: "박명수", gender: "male", category: 'friendly', ratios: { eyes: 54, nose: 62, mouth: 56, jaw: 58 } },
-];
 
 const getRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
 export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
   const isFact = metrics.personality === 'fact';
-  const targetGender = metrics.gender || 'male';
   
   // 1. Summary Generation
   const summaries = metrics.overallScore > 90 
@@ -95,129 +80,189 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
     ? ["전반적으로 조화로운 대칭성을 가진 얼굴", "미세한 비대칭이 매력으로 승화된 구조", "안정적인 골격 정렬을 유지 중인 상태"]
     : ["개성적인 비대칭이 조화를 이루는 마스크", "특정 부위의 근육 불균형이 관찰되는 구조", "교정이 필요한 비대칭적 요소가 존재하는 상태"];
 
-  // 2. Celebrity Matching Logic (Weighted Similarity)
-  const celebrityMatches = CELEBRITIES
-    .filter(cel => cel.gender === targetGender)
-    .map(cel => {
-      // Weighted Euclidean distance calculation
-      // Jaw (2.0), Nose (1.5), and Eyes (1.2) are prioritized as per user feedback
-      const weights = { eyes: 1.2, nose: 1.5, mouth: 1, jaw: 2 };
-      
-      const distance = Math.sqrt(
-        weights.eyes * Math.pow(cel.ratios.eyes - metrics.eyeScore, 2) +
-        weights.nose * Math.pow(cel.ratios.nose - metrics.noseScore, 2) +
-        weights.mouth * Math.pow(cel.ratios.mouth - metrics.mouthScore, 2) +
-        weights.jaw * Math.pow(cel.ratios.jaw - metrics.jawScore, 2)
-      );
-      
-      // Category-based balancing: 
-      // If a user's average score is above 75, we assume they have a "Visual" profile
-      const avgUserScore = (metrics.eyeScore + metrics.noseScore + metrics.mouthScore + metrics.jawScore) / 4;
-      let categoryPenalty = 0;
-      if (avgUserScore > 75 && cel.category === 'friendly') {
-        categoryPenalty = 35; // Increased penalty to be even stricter
-      } else if (avgUserScore < 60 && cel.category === 'visual') {
-        categoryPenalty = 15;
-      }
+  // 2. Face Shape Analysis
+  let faceShape = "Oval";
+  const ratio = metrics.faceRatio;
+  const jawRatio = metrics.jawWidthRatio / metrics.cheekboneWidthRatio;
+  const foreheadRatio = metrics.foreheadWidthRatio / metrics.cheekboneWidthRatio;
 
-      // Convert distance to confidence (lower distance = higher confidence)
-      // Max possible distance is now sqrt(100^2 * 5) ≈ 223
-      const confidence = Math.max(5, Math.min(99, Math.round(100 - (distance * 1.0) - categoryPenalty)));
-      
-      return { name: cel.name, confidence };
-    })
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 3);
+  if (ratio > 1.55) {
+    faceShape = "Oblong (긴 얼굴형)";
+  } else if (jawRatio > 0.92 && ratio < 1.35) {
+    faceShape = "Square (각진형)";
+  } else if (ratio < 1.30) {
+    faceShape = "Round (둥근형)";
+  } else if (foreheadRatio > jawRatio) {
+    faceShape = "Heart (하트형)";
+  } else {
+    faceShape = "Oval (타원형)";
+  }
 
-  // 3. Detailed Feedback Generation Logic
-  const getFeedback = (score: number, slant: number, diff: number, type: 'eye' | 'mouth' | 'jaw' | 'nose') => {
+  // 3. Strongest Features Analysis (Viral Elements)
+  const strongestFeatures = [];
+  
+  // Eye Spacing
+  if (metrics.eyeDistanceRatio > 0.32 && metrics.eyeDistanceRatio < 0.38) {
+    strongestFeatures.push("균형 잡힌 미간 너비 (Ideal Eye Spacing)");
+  }
+  
+  // Jawline
+  if (metrics.jawScore > 85) {
+    strongestFeatures.push("선명하고 입체적인 턱선 (Strong Jawline)");
+  }
+  
+  // Midface
+  if (metrics.lowerFaceRatio > 0.3 && metrics.lowerFaceRatio < 0.36) {
+    strongestFeatures.push("매력적인 안면 비율 (Attractive Proportions)");
+  }
+
+  // 4. Advanced Metrics Calculation
+  // 1) Eye Spacing Ratio
+  const eyeSpacingVal = metrics.eyeDistanceRatio / (metrics.eyeWidthRatio || 0.2);
+  let eyeSpacingStatus = "균형 양호";
+  let eyeSpacingFeedback = "양쪽 눈 사이 간격이 눈 너비와 비슷한 비율로 나타나 안면 균형이 비교적 안정적으로 보입니다.";
+  if (eyeSpacingVal < 0.9) {
+    eyeSpacingStatus = "좁은 간격";
+    eyeSpacingFeedback = "눈 사이 간격이 눈 너비에 비해 약간 좁은 편으로 나타납니다.";
+  } else if (eyeSpacingVal > 1.1) {
+    eyeSpacingStatus = "넓은 간격";
+    eyeSpacingFeedback = "눈 사이 간격이 눈 너비에 비해 약간 넓은 편으로 나타납니다.";
+  }
+
+  // 2) Facial Proportion (Vertical 3-way)
+  // upperFaceRatio, noseLengthRatio, lowerFaceRatio
+  const totalVertical = metrics.foreheadRatio + metrics.noseLengthRatio + metrics.lowerFaceRatio;
+  const upperP = Math.round((metrics.foreheadRatio / totalVertical) * 100);
+  const midP = Math.round((metrics.noseLengthRatio / totalVertical) * 100);
+  const lowerP = Math.round((metrics.lowerFaceRatio / totalVertical) * 100);
+  
+  let propStatus = "이상적 비율";
+  let propFeedback = "얼굴의 세로 비율이 1:1:1에 근접하여 매우 안정적인 조화를 이룹니다.";
+  if (midP > 36) {
+    propStatus = "중안부 긴 편";
+    propFeedback = "중안부 비율이 다른 부위에 비해 약간 긴 편으로 나타납니다.";
+  } else if (lowerP > 36) {
+    propStatus = "하안부 긴 편";
+    propFeedback = "하안부 비율이 다른 부위에 비해 약간 긴 편으로 나타납니다.";
+  } else if (upperP > 36) {
+    propStatus = "상안부 긴 편";
+    propFeedback = "상안부 비율이 다른 부위에 비해 약간 긴 편으로 나타납니다.";
+  }
+
+  // 3) Face Shape Ratio (Width-to-Height)
+  // faceWidth / faceHeight (brow to chin)
+  const faceRatioVal = metrics.faceRatio; // This was calculated as height/width in App.tsx, let's adjust or use as is
+  // User asked for Width / Height (1.6 ~ 1.9 range usually for specific definitions, but let's follow their logic)
+  // Actually the user provided: faceWidth / faceHeight (brow to chin)
+  // In App.tsx: faceHeight = dist2D(alignedLandmarks[10], alignedLandmarks[152]); faceWidth = dist2D(alignedLandmarks[234], alignedLandmarks[454]);
+  // Let's assume we pass the correct ratio from App.tsx
+  const widthHeightRatio = 1 / metrics.faceRatio; 
+  let ratioStatus = "균형 범위";
+  let ratioFeedback = "얼굴 가로세로 비율이 비교적 균형 잡힌 범위에 있습니다.";
+  if (widthHeightRatio < 0.7) {
+    ratioStatus = "슬림한 비율";
+    ratioFeedback = "얼굴이 가로 폭에 비해 세로로 긴 슬림한 비율을 보입니다.";
+  } else if (widthHeightRatio > 0.85) {
+    ratioStatus = "넓은 비율";
+    ratioFeedback = "얼굴의 가로 폭이 세로 길이에 비해 상대적으로 넓은 편입니다.";
+  }
+
+  const proportionScore = Math.round(100 - (Math.abs(33.3 - upperP) + Math.abs(33.3 - midP) + Math.abs(33.3 - lowerP)) * 2);
+
+  // 4. Detailed Feedback Generation Logic (Observational Style)
+  const getFeedback = (score: number, type: 'eye' | 'mouth' | 'jaw' | 'brows') => {
     const pool = {
       eye: [
-        { min: 97, texts: [
-          "안륜근(Orbicularis oculi)의 좌우 긴장도가 완벽하게 균일하며 상안검거근의 기능적 대칭이 매우 우수합니다.",
-          "안와(Orbit)의 수평 정렬이 이상적이며, 눈둘레근의 수축력이 좌우 균등하게 분포되어 있습니다.",
-          "양측 안검거근의 장력이 대칭적이며, 눈꼬리의 각도가 해부학적 황금비율에 근접해 있습니다."
+        { min: 85, status: "균형 매우 우수", texts: [
+          "좌우 눈 높이와 간격이 매우 안정적으로 나타나며 얼굴 상부의 균형이 잘 유지되고 있습니다."
         ] },
-        { min: 88, texts: [
-          "전반적으로 안정적인 안륜근 정렬을 보이나, 미세한 측두근 긴장 차이로 인한 수평 편차가 존재합니다.",
-          "상안검거근의 대칭성이 양호하며, 일상적인 표정 근육 사용에 따른 자연스러운 편차 수준입니다.",
-          "눈 주위 근육의 탄력이 균형 잡혀 있으며, 미세한 시선 방향에 따른 일시적 비대칭으로 분석됩니다."
+        { min: 70, status: "균형 양호", texts: [
+          "좌우 눈의 위치가 전반적으로 균형을 이루고 있으며 눈 주변 구조가 비교적 안정적으로 보입니다."
         ] },
-        { min: 75, texts: [
-          "측두근(Temporalis)의 비대칭적 수축으로 인해 안와의 수평 정렬에 유의미한 편차가 관찰됩니다.",
-          "상안검거근의 비대칭적 약화로 인해 안검하수 양상의 편차가 존재하며, 이는 눈 피로도에 영향을 줄 수 있습니다.",
-          "눈썹 주위 근육(Corrugator)의 편측 긴장으로 인해 눈매의 높낮이 차이가 가시화된 상태입니다."
+        { min: 55, status: "약한 비대칭", texts: [
+          "좌우 눈 높이에 약간의 차이가 보이며 얼굴 상부 균형이 완전히 동일하지 않을 수 있습니다."
         ] },
-        { min: 0, texts: [
-          "안륜근의 심한 불균형과 전두근의 보상적 수축이 관찰됩니다. 안구 주위 근육의 이완이 시급한 상태입니다.",
-          "심부 근막의 유착으로 인해 눈꼬리 높이의 가시적인 비대칭이 두드러지며 전문적인 교정이 권장됩니다.",
-          "상안검거근의 기능 저하가 비대칭적으로 진행되어 안면 상부의 전반적인 정렬을 무너뜨리고 있습니다."
+        { min: 0, status: "비대칭 뚜렷", texts: [
+          "양쪽 눈의 높이나 기울기에 비교적 뚜렷한 차이가 나타나며 얼굴 상부의 좌우 균형이 다르게 보일 수 있습니다."
+        ] }
+      ],
+      brows: [
+        { min: 85, status: "균형 매우 우수", texts: [
+          "양쪽 눈썹의 높이와 곡선이 안정적으로 정렬되어 있어 상안부 균형이 매우 자연스럽게 유지됩니다."
+        ] },
+        { min: 70, status: "균형 양호", texts: [
+          "좌우 눈썹의 높이가 전반적으로 균형을 이루며 표정 근육의 사용이 비교적 안정적으로 나타납니다."
+        ] },
+        { min: 55, status: "약한 비대칭", texts: [
+          "좌우 눈썹 높이에 약간의 차이가 있어 표정 변화 시 상안부 균형이 조금 달라 보일 수 있습니다."
+        ] },
+        { min: 0, status: "비대칭 뚜렷", texts: [
+          "눈썹 높이나 각도에 비교적 뚜렷한 차이가 나타나며 상안부 좌우 균형이 다르게 보일 수 있습니다."
         ] }
       ],
       mouth: [
-        { min: 97, texts: [
-          "구륜근(Orbicularis oris)과 대관골근의 협응 능력이 매우 대칭적이며 미소 시 균형감이 탁월합니다.",
-          "입술 주위 근육의 동적 대칭성이 완벽하며, 구각거근의 수축력이 좌우 동일하게 작용합니다.",
-          "입꼬리 올림근들의 길항 작용이 조화로워 표정 변화 시에도 정중선이 흔들림 없이 유지됩니다."
+        { min: 85, status: "균형 매우 우수", texts: [
+          "입꼬리 높이와 입 주변 근육의 균형이 안정적으로 나타나며 하안부의 조화가 자연스럽습니다."
         ] },
-        { min: 88, texts: [
-          "구각거근(Levator anguli oris)의 미세한 편측 활성화가 관찰되나 전반적인 미소 라인은 안정적입니다.",
-          "소근(Risorius)의 좌우 긴장도 차이가 미미하며, 일상적인 대화 시 대칭성이 잘 유지되고 있습니다.",
-          "입술 주위 근육의 긴장도가 비교적 균일하며, 특정 방향으로의 저작 습관만 주의하면 될 수준입니다."
+        { min: 70, status: "균형 양호", texts: [
+          "입꼬리 높이가 전반적으로 균형을 이루고 있으며 표정 근육의 움직임이 비교적 안정적으로 보입니다."
         ] },
-        { min: 75, texts: [
-          "구각거근의 편측 과활성화로 인해 구각의 수평선이 비대칭적으로 형성되었습니다. 저작 습관 확인이 필요합니다.",
-          "소근과 하순저근의 불균형으로 인해 미소 시 비대칭적 수축이 두드러지며 한쪽 입꼬리가 처지는 경향이 있습니다.",
-          "대관골근의 비대칭적 수축력이 입술의 정중선을 한쪽으로 견인하고 있는 양상이 관찰됩니다."
+        { min: 55, status: "약한 비대칭", texts: [
+          "좌우 입꼬리 높이에 약간의 차이가 보이며 표정 근육의 사용 패턴이 조금 다를 수 있습니다."
         ] },
-        { min: 0, texts: [
-          "구륜근의 심부 유착과 광대근의 기능적 저하가 동시에 관찰됩니다. 안면 하부의 근육 재교육이 필요한 단계입니다.",
-          "입술 비대칭 지수가 높으며, 이는 하악의 편위와 연관된 복합적인 근육 불균형의 결과로 분석됩니다.",
-          "구강 주위 근육의 전반적인 톤 저하와 편측 근육의 과도한 단축이 심각한 비대칭을 유발하고 있습니다."
+        { min: 0, status: "비대칭 뚜렷", texts: [
+          "입꼬리 위치나 입 라인의 기울기에 비교적 뚜렷한 차이가 나타나 하안부 균형이 다르게 보일 수 있습니다."
         ] }
       ],
       jaw: [
-        { min: 95, texts: ["하악골(Mandible)의 정렬이 정중선에 정확히 일치하며 교근의 부피가 좌우 균등하게 분포되어 있습니다.", "턱관절의 가동 범위가 대칭적이며, 하악각의 골격적 정렬이 매우 우수한 상태입니다."] },
-        { min: 85, texts: ["교근(Masseter)의 미세한 부피 차이가 관찰되나 하악의 중심축 정렬은 비교적 안정적입니다.", "턱관절 주위 인대의 긴장도가 양호하며, 골격적 비대칭보다는 근육량의 미세한 차이가 주원인입니다."] },
-        { min: 70, texts: ["편측 교근의 과도한 비대로 인해 하악각의 가시적 비대칭과 골격적 변위가 의심됩니다.", "측두하악관절(TMJ)의 기능적 불균형으로 인해 하악의 편위 현상이 관찰되며 저작 시 소음이 동반될 수 있습니다."] },
-        { min: 0, texts: ["하악의 정중선 이탈이 뚜렷하며, 이는 경추 정렬의 불균형과 연관된 심각한 골격적 비대칭일 가능성이 높습니다.", "교근과 익상근의 심한 비대칭적 수축으로 인해 하악각의 변형이 진행되고 있는 것으로 분석됩니다."] }
-      ],
-      nose: [
-        { min: 90, texts: ["비중격의 정렬이 정중선에 일치하며 비근근(Procerus)의 긴장도가 매우 낮아 안정적입니다.", "코의 중심축이 안면 정중선과 완벽히 일치하며 콧볼의 대칭성이 우수합니다."] },
-        { min: 0, texts: ["비중격의 미세한 편위가 관찰되나 기능적 문제는 없으며, 비근근의 미세한 긴장이 관찰됩니다.", "콧볼 주위 근육의 비대칭적 수축으로 인해 코의 중심선이 미세하게 한쪽으로 치우쳐 보입니다."] }
+        { min: 85, status: "균형 매우 우수", texts: [
+          "턱선의 좌우 볼륨과 윤곽이 안정적으로 유지되어 얼굴 하부의 균형이 매우 자연스럽게 나타납니다."
+        ] },
+        { min: 70, status: "균형 양호", texts: [
+          "턱선의 좌우 균형이 비교적 안정적으로 보이며 얼굴 하부 구조가 자연스럽게 정렬되어 있습니다."
+        ] },
+        { min: 55, status: "약한 비대칭", texts: [
+          "턱선의 좌우 볼륨이나 각도에 약간의 차이가 있어 얼굴 하부 균형이 조금 달라 보일 수 있습니다."
+        ] },
+        { min: 0, status: "비대칭 뚜렷", texts: [
+          "턱선의 좌우 윤곽 차이가 비교적 뚜렷하게 나타나 얼굴 하부의 비대칭이 강조되어 보일 수 있습니다."
+        ] }
       ]
     };
 
     const selected = pool[type].find(p => score >= p.min);
-    return getRandom(selected?.texts || ["분석 데이터를 바탕으로 상태를 확인 중입니다."]);
+    return {
+      status: selected?.status || "분석 완료",
+      feedback: getRandom(selected?.texts || ["분석 데이터를 바탕으로 상태를 확인 중입니다."])
+    };
   };
 
-  const eyeFeedback = getFeedback(metrics.eyeScore, metrics.eyeSlant, metrics.eyeDiff, 'eye');
-  const mouthFeedback = getFeedback(metrics.mouthScore, metrics.mouthSlant, metrics.mouthDiff, 'mouth');
-  const jawFeedback = getFeedback(metrics.jawScore, 0, metrics.jawDiff, 'jaw');
-  const noseFeedback = getFeedback(metrics.noseScore, 0, 0, 'nose');
+  const eyeRes = getFeedback(metrics.eyeScore, 'eye');
+  const mouthRes = getFeedback(metrics.mouthScore, 'mouth');
+  const jawRes = getFeedback(metrics.jawScore, 'jaw');
+  const browsRes = getFeedback(metrics.browsScore, 'brows');
 
   // 4. Dynamic Muscle Analysis
-  const primaryCause = metrics.jawDiff > metrics.eyeDiff ? '교근(Masseter)' : '측두근(Temporalis)';
-  const secondaryCause = metrics.mouthSlant > 0.03 ? '대관골근(Zygomaticus)' : '익상근(Pterygoid)';
+  const primaryCause = metrics.jawDiff > metrics.eyeDiff ? '턱 주변 근육' : '눈 주변 근육';
+  const secondaryCause = metrics.mouthSlant > 0.03 ? '입가 근육' : '얼굴 측면 근육';
   
   const muscleAnalysis = metrics.overallScore > 92
-    ? "전반적인 근육 대칭성이 매우 우수합니다. 현재의 생활 습관을 유지하며 미세한 근육 긴장만 관리해주시면 충분합니다."
-    : `현재 비대칭의 주요 원인은 **${primaryCause}**과 **흉쇄유돌근(SCM)**의 비대칭적 긴장에 기인합니다. 특히 ${secondaryCause}의 기능적 저하가 안면 하부의 정렬에 영향을 미치고 있는 것으로 분석됩니다.`;
+    ? "전반적인 안면 근육의 균형이 매우 우수합니다. 현재의 건강한 생활 습관을 유지하며 미세한 긴장만 관리해주시면 충분합니다."
+    : `현재 비대칭의 주요 원인은 **${primaryCause}**과 **목 주변 근육**의 비대칭적 긴장에 기인한 것으로 보입니다. 특히 ${secondaryCause}의 사용 패턴 차이가 안면 하부의 정렬에 영향을 미치고 있는 것으로 분석됩니다.`;
 
   // 4. Protocols
   const laymanProtocol = `
     ### 🏠 데일리 홈케어 가이드
-    1. **${metrics.jawDiff > 0.05 ? '저작 습관 개선' : '수면 자세 교정'}**: 한쪽으로만 음식을 씹는 습관을 버리고 양쪽을 골고루 사용하세요.
-    2. **온열 찜질**: 비대칭이 심한 쪽의 턱 근육에 하루 15분간 온찜질을 시행하여 근육 긴장을 완화하세요.
-    3. **거울 피드백**: 미소 연습 시 거울을 보며 낮은 쪽 입꼬리를 의도적으로 더 올리는 연습을 하세요.
+    1. **${metrics.jawDiff > 0.05 ? '저작 습관 개선' : '수면 자세 교정'}**: 한쪽으로만 음식을 씹는 습관을 피하고 양쪽을 골고루 사용해 보세요.
+    2. **온열 찜질**: 긴장도가 느껴지는 턱 근육 부위에 하루 15분간 온찜질을 하면 근육 이완에 도움이 됩니다.
+    3. **거울 피드백**: 거울을 보며 입꼬리 높이를 맞추는 미소 연습을 통해 표정 근육의 균형을 잡아보세요.
   `;
 
   const professionalProtocol = `
-    ### 🩺 임상 교정 프로토콜
-    1. **연부조직 이완술(Myofascial Release)**: 과활성화된 **교근(Masseter)**과 **측두근(Temporalis)** 부위에 IASTM 도구를 활용한 심부 연부조직 이완술을 시행하여 근막 유착을 해소합니다.
-    2. **근막 신장술(Clinical Stretching)**: 단축된 **흉쇄유돌근(SCM)**과 **사각근(Scalene)**에 대해 PNF(고유수용성 신경근 촉진법) 스트레칭을 적용하여 경추 정렬을 정상화합니다.
-    3. **기능적 재교육 운동(Functional Exercise)**: **내익상근(Medial Pterygoid)**의 대칭적 수축을 유도하는 하악 저항 운동과 안면 신경 재교육 프로그램을 통해 동적 대칭성을 확보합니다.
+    ### 🩺 전문가용 관리 프로토콜
+    1. **근막 이완 관리**: 긴장이 집중된 **턱 및 측두 부위**의 심부 연부조직을 부드럽게 이완하여 근막의 유착을 해소하는 것이 좋습니다.
+    2. **정렬 개선 스트레칭**: 목과 어깨 주변 근육의 균형을 맞추는 스트레칭을 통해 전신 정렬을 바로잡는 것이 안면 대칭에 긍정적인 영향을 줍니다.
+    3. **표정 재교육**: 특정 근육의 과도한 사용을 줄이고 약화된 부위를 활성화하는 안면 근육 운동 프로그램을 권장합니다.
   `;
 
   // 5. Detailed Feedback Generation
@@ -232,30 +277,47 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
   const getExpertAdvice = () => {
     if (isFact) {
       if (metrics.overallScore > 96) {
-        return `정밀 분석 결과, 안면 대칭 지수가 상위 0.5%에 해당하는 극히 드문 황금 비율입니다. 골격적 정렬과 연부조직의 분포가 해부학적으로 완벽에 가까우며, 현재의 생활 습관을 유지하는 것만으로도 충분합니다.`;
+        return `정밀 분석 결과, 안면 대칭 지수가 매우 높은 수준으로 나타났습니다. 골격적 정렬과 연부조직의 분포가 조화로우며, 현재의 생활 습관을 유지하는 것만으로도 충분해 보입니다.`;
       }
       
       if (metrics.eyeSlant < 0.01 && metrics.jawDiff < 0.01) {
-        return `현재 측정된 수치(${metrics.eyeSlant.toFixed(4)}rad, ${metrics.jawDiff.toFixed(4)})는 의학적으로 '완전 대칭' 범주에 속합니다. 인간의 얼굴에서 나타날 수 있는 가장 이상적인 균형 상태이며, 미세한 차이는 근육의 실시간 움직임에 따른 자연스러운 현상입니다.`;
+        return `현재 측정된 수치는 매우 이상적인 균형 상태를 보여줍니다. 얼굴에서 나타날 수 있는 가장 조화로운 상태 중 하나이며, 미세한 차이는 근육의 실시간 움직임에 따른 자연스러운 현상으로 보입니다.`;
       }
 
-      const severity = metrics.eyeSlant > 0.06 || metrics.jawDiff > 0.09 ? '심부 근막의 강한 유착과 골격적 변위' : '연부조직의 비대칭적 발달';
-      const recommendation = metrics.overallScore < 75 ? '전문적인 도수 치료나 근막 이완술이 권장되는' : '꾸준한 홈케어와 습관 교정으로 충분히 개선 가능한';
+      const severity = metrics.eyeSlant > 0.06 || metrics.jawDiff > 0.09 ? '근육의 강한 긴장과 정렬 차이' : '연부조직의 비대칭적 발달';
+      const recommendation = metrics.overallScore < 75 ? '전문적인 관리가 도움이 될 수 있는' : '꾸준한 홈케어와 습관 교정으로 충분히 개선 가능한';
       
-      return `분석 결과, 안면 골격의 수평 편차는 ${metrics.eyeSlant.toFixed(3)}rad이며, 하악각의 비대칭 지수는 ${metrics.jawDiff.toFixed(3)}입니다. 이는 ${recommendation} ${severity}에 의한 결과로 판단됩니다.`;
+      return `분석 결과, 안면의 수평 정렬과 하악각의 균형에서 약간의 차이가 관찰됩니다. 이는 ${recommendation} ${severity}에 의한 결과로 보입니다.`;
     }
     return getRandom(angelFeedbacks);
   };
+
+  // 7. Overall Balance Summary
+  let balanceSummary = "전반적인 얼굴 균형이 비교적 안정적인 편입니다.";
+  if (metrics.overallScore >= 85) balanceSummary = "전반적인 얼굴 균형이 매우 우수하고 이상적입니다.";
+  else if (metrics.overallScore >= 70) balanceSummary = "전반적인 얼굴 균형이 비교적 안정적인 편입니다.";
+  else if (metrics.overallScore >= 55) balanceSummary = "전반적인 얼굴 균형에 약간의 차이가 관찰됩니다.";
+  else balanceSummary = "전반적인 얼굴 균형이 다소 비대칭적으로 보일 수 있습니다.";
+
   return {
-    summary: getRandom(summaries),
-    celebrityMatches,
+    overallScore: metrics.overallScore,
+    symmetryScore: metrics.overallScore,
+    proportionScore: proportionScore,
+    summary: balanceSummary,
+    faceShape,
+    strongestFeatures: strongestFeatures.slice(0, 3),
     detailedFeedback: getExpertAdvice(),
     muscleAnalysis: muscleAnalysis.trim(),
     landmarks: {
-      eyes: { feedback: eyeFeedback },
-      nose: { feedback: noseFeedback },
-      mouth: { feedback: mouthFeedback },
-      jawline: { feedback: jawFeedback }
+      eyes: eyeRes,
+      brows: browsRes,
+      mouth: mouthRes,
+      jawline: jawRes
+    },
+    advancedMetrics: {
+      eyeSpacing: { value: eyeSpacingVal, status: eyeSpacingStatus, feedback: eyeSpacingFeedback },
+      facialProportion: { value: { upper: upperP, mid: midP, lower: lowerP }, status: propStatus, feedback: propFeedback },
+      faceRatio: { value: widthHeightRatio, status: ratioStatus, feedback: ratioFeedback }
     },
     laymanProtocol: laymanProtocol.trim(),
     professionalProtocol: professionalProtocol.trim()

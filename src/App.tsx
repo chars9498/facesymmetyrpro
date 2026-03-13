@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { analyzeLocally } from "./services/analysisEngine";
-import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Sparkles, Zap, Trophy, MessageCircle, Link2, Download } from 'lucide-react';
+import { analyzeLocally, type AnalysisResult } from "./services/analysisEngine";
+import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
@@ -8,44 +8,66 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as faceMesh from '@mediapipe/face_mesh';
 import { toPng } from 'html-to-image';
-import { fetchCelebrityImage } from './services/wikimediaService';
 
-// ... existing imports ...
+const { FACEMESH_TESSELATION } = faceMesh;
+
+const FaceMeshCanvas = ({ landmarks, width, height }: { landmarks: any[], width: number, height: number }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || !landmarks) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, width, height);
+    
+    // Draw Tessellation
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 0.5;
+    
+    if (FACEMESH_TESSELATION) {
+      for (const edge of FACEMESH_TESSELATION) {
+        const p1 = landmarks[edge[0]];
+        const p2 = landmarks[edge[1]];
+        if (p1 && p2) {
+          ctx.moveTo(p1.x * width, p1.y * height);
+          ctx.lineTo(p2.x * width, p2.y * height);
+        }
+      }
+    }
+    ctx.stroke();
+
+    // Draw Points
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    for (const pt of landmarks) {
+      ctx.beginPath();
+      ctx.arc(pt.x * width, pt.y * height, 0.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }, [landmarks, width, height]);
+
+  return (
+    <canvas 
+      ref={canvasRef} 
+      width={width} 
+      height={height} 
+      className="absolute inset-0 w-full h-full pointer-events-none"
+    />
+  );
+};
+
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-interface AnalysisResult {
-  overallScore: number;
-  summary: string;
-  detailedFeedback: string;
-  muscleAnalysis: string;
-  landmarks: {
-    eyes: { score: number; feedback: string };
-    nose: { score: number; feedback: string };
-    mouth: { score: number; feedback: string };
-    jawline: { score: number; feedback: string };
-  };
-  laymanProtocol: string;
-  professionalProtocol: string;
-  landmarkPoints: { x: number; y: number; label: string }[];
-  symmetryLines?: { x1: number; y1: number; x2: number; y2: number; label: string }[];
-  asymmetryZones: { x: number; y: number; radius: number; intensity: number; label: string }[];
-  autoCenterOffset?: number;
-  rotationAngle?: number;
-  percentile?: number; // Added for viral effect
-  celebrityMatches?: { name: string; confidence: number }[];
-  metrics: {
-    midline: number;
-    [key: string]: any;
-  };
-}
-
 export default function App() {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isFakeScanning, setIsFakeScanning] = useState(false);
+  const [scanningLandmarks, setScanningLandmarks] = useState<any[] | null>(null);
   const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(true);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [centerOffset, setCenterOffset] = useState(0); // percentage offset from center
@@ -55,12 +77,11 @@ export default function App() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [personality, setPersonality] = useState<'fact' | 'angel'>('fact');
-  const [gender, setGender] = useState<'male' | 'female'>('male');
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [faceMeshLoaded, setFaceMeshLoaded] = useState(false);
   const [isGeneratingShareImage, setIsGeneratingShareImage] = useState(false);
-  const [celebrityImages, setCelebrityImages] = useState<Record<string, string>>({});
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(1);
+  const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const [reportStep, setReportStep] = useState(0);
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -173,26 +194,6 @@ export default function App() {
       console.error("Refs not ready:", { video: !!videoRef.current, canvas: !!canvasRef.current });
     }
   };
-
-  useEffect(() => {
-    if (result?.celebrityMatches) {
-      const fetchImages = async () => {
-        const newImages: Record<string, string> = {};
-        for (const match of result.celebrityMatches) {
-          if (!celebrityImages[match.name]) {
-            const imageUrl = await fetchCelebrityImage(match.name);
-            if (imageUrl) {
-              newImages[match.name] = imageUrl;
-            }
-          }
-        }
-        if (Object.keys(newImages).length > 0) {
-          setCelebrityImages(prev => ({ ...prev, ...newImages }));
-        }
-      };
-      fetchImages();
-    }
-  }, [result?.celebrityMatches]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -342,6 +343,93 @@ export default function App() {
     });
   };
 
+  const generateSoftSymmetry = async (
+    imgSrc: string,
+    landmarks: any[],
+    width: number,
+    height: number
+  ): Promise<string> => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return imgSrc;
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = imgSrc;
+      await img.decode();
+
+      // 1. Face Alignment
+      const leftEye = landmarks[33];
+      const rightEye = landmarks[263];
+      const angle = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
+
+      // 2. Robust Midline Detection
+      // glabella: 168, nose tip: 1, philtrum: 164, chin: 152
+      const midlinePoints = [landmarks[168], landmarks[1], landmarks[164], landmarks[152]];
+      const midlineX = (midlinePoints.reduce((sum, p) => sum + p.x, 0) / midlinePoints.length) * width;
+
+      // Draw original aligned
+      ctx.save();
+      ctx.translate(midlineX, height / 2);
+      ctx.rotate(-angle);
+      ctx.translate(-midlineX, -height / 2);
+      ctx.drawImage(img, 0, 0, width, height);
+      ctx.restore();
+      
+      const alignedData = ctx.getImageData(0, 0, width, height);
+      
+      // Create mirrored version in memory
+      const mirroredCanvas = document.createElement('canvas');
+      mirroredCanvas.width = width;
+      mirroredCanvas.height = height;
+      const mCtx = mirroredCanvas.getContext('2d');
+      if (!mCtx) return imgSrc;
+
+      mCtx.save();
+      mCtx.translate(midlineX, 0);
+      mCtx.scale(-1, 1);
+      mCtx.translate(-midlineX, 0);
+      mCtx.drawImage(canvas, 0, 0);
+      mCtx.restore();
+
+      const mirroredData = mCtx.getImageData(0, 0, width, height);
+      const resultData = ctx.createImageData(width, height);
+
+      // 3, 4, 5. Soft Symmetry Blending with Feathering
+      const blendWidth = width * 0.1; // 10% width for feathering
+      const symmetryInfluence = 0.3; // 30% influence as requested
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const idx = (y * width + x) * 4;
+          const distToMidline = Math.abs(x - midlineX);
+          
+          // blendFactor: 0 at midline, 1 at blendWidth
+          const featherFactor = Math.min(1, distToMidline / blendWidth);
+          
+          // Soft blend: 70% original, 30% mirrored
+          const influence = symmetryInfluence; 
+          
+          for (let i = 0; i < 3; i++) { // RGB
+            const original = alignedData.data[idx + i];
+            const mirrored = mirroredData.data[idx + i];
+            resultData.data[idx + i] = original * (1 - influence) + mirrored * influence;
+          }
+          resultData.data[idx + 3] = 255;
+        }
+      }
+
+      ctx.putImageData(resultData, 0, 0);
+      return canvas.toDataURL('image/jpeg', 0.85);
+    } catch (e) {
+      console.error("Soft symmetry generation failed", e);
+      return imgSrc;
+    }
+  };
+
   const analyzeImage = async (base64Image: string, selectedPersonality: 'fact' | 'angel') => {
     setIsAnalyzing(true);
     setError(null);
@@ -363,6 +451,7 @@ export default function App() {
       imgInfo.src = resizedImage;
       await imgInfo.decode();
       setImageAspectRatio(imgInfo.width / imgInfo.height);
+      setImageDimensions({ width: imgInfo.width, height: imgInfo.height });
 
       const runFaceMesh = async (imgSrc: string): Promise<faceMesh.Results> => {
         const img = new Image();
@@ -404,198 +493,175 @@ export default function App() {
       }
 
       setAnalysisStep('대칭성 수치 계산 중...');
-      const landmarks = faceResults.multiFaceLandmarks[0];
+      const rawLandmarks = faceResults.multiFaceLandmarks[0];
+      setScanningLandmarks(rawLandmarks);
       
-      // 1. Basic Functions & Dimensions
+      // 1. Face Alignment (Roll Correction)
       const dist2D = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
       
-      // Face Dimensions - Use outermost points (234, 454) for full width
-      const faceWidth = dist2D(landmarks[234], landmarks[454]);
-      const faceHeight = dist2D(landmarks[10], landmarks[152]);
-      
-      // Midline calculation (using multiple points for a stable vertical axis)
-      // Point 10: forehead, 168: between eyes, 1: nose tip, 152: chin
-      const midline = (landmarks[10].x + landmarks[168].x + landmarks[1].x + landmarks[152].x) / 4;
-
-      // 2. Symmetry Score (40%) - Increased sensitivity
-      const symPairs = [
-        [33, 263],   // Eyes
-        [61, 291],   // Mouth
-        [50, 280],   // Cheeks
-        [127, 356],  // Inner Face Edges
-        [234, 454]   // Outer Face Edges
-      ];
-      
-      let symDiffSum = 0;
-      symPairs.forEach(([l, r]) => {
-        const leftDist = Math.abs(landmarks[l].x - midline);
-        const rightDist = Math.abs(landmarks[r].x - midline);
-        symDiffSum += Math.abs(leftDist - rightDist);
-      });
-      const avgSymDiff = symDiffSum / symPairs.length;
-      // Increased multiplier from 400 to 1500 for high sensitivity to asymmetry
-      let symmetryScore = 100 - (avgSymDiff / faceWidth) * 1500;
-      symmetryScore = Math.max(30, Math.min(98, symmetryScore));
-
-      // 3. Eye Score (20%) - Increased sensitivity
       const leftEyeCenter = {
-        x: (landmarks[33].x + landmarks[133].x + landmarks[160].x + landmarks[158].x) / 4,
-        y: (landmarks[33].y + landmarks[133].y + landmarks[160].y + landmarks[158].y) / 4
+        x: (rawLandmarks[33].x + rawLandmarks[133].x) / 2,
+        y: (rawLandmarks[33].y + rawLandmarks[133].y) / 2
       };
       const rightEyeCenter = {
-        x: (landmarks[263].x + landmarks[362].x + landmarks[387].x + landmarks[385].x) / 4,
-        y: (landmarks[263].y + landmarks[362].y + landmarks[387].y + landmarks[385].y) / 4
+        x: (rawLandmarks[263].x + rawLandmarks[362].x) / 2,
+        y: (rawLandmarks[263].y + rawLandmarks[362].y) / 2
+      };
+      const eyeCenterMid = {
+        x: (leftEyeCenter.x + rightEyeCenter.x) / 2,
+        y: (leftEyeCenter.y + rightEyeCenter.y) / 2
+      };
+      const rollAngle = Math.atan2(rightEyeCenter.y - leftEyeCenter.y, rightEyeCenter.x - leftEyeCenter.x);
+
+      // Rotate all landmarks to align eyes horizontally
+      const alignedLandmarks = rawLandmarks.map((p: any) => {
+        const tx = p.x - eyeCenterMid.x;
+        const ty = p.y - eyeCenterMid.y;
+        const rx = tx * Math.cos(-rollAngle) - ty * Math.sin(-rollAngle);
+        const ry = tx * Math.sin(-rollAngle) + ty * Math.cos(-rollAngle);
+        return { x: rx, y: ry, z: p.z };
+      });
+
+      // 2. Midline Regression (Best fit vertical line through central points)
+      const centralIndices = [8, 1, 2, 152];
+      const midlineX = centralIndices.reduce((sum, idx) => sum + alignedLandmarks[idx].x, 0) / centralIndices.length;
+
+      // 3. Normalization Factor (Face Width)
+      const faceWidth = dist2D(alignedLandmarks[234], alignedLandmarks[454]);
+      const faceHeight = dist2D(alignedLandmarks[10], alignedLandmarks[152]);
+
+      // 4. Symmetry Error Calculation by Region
+      // Formula: score = 100 * exp(-k * normalizedError)
+      const calculateRegionScore = (pairs: number[][], k: number) => {
+        let errorSum = 0;
+        pairs.forEach(([l, r]) => {
+          const distL = Math.abs(alignedLandmarks[l].x - midlineX);
+          const distR = Math.abs(alignedLandmarks[r].x - midlineX);
+          const heightDiff = Math.abs(alignedLandmarks[l].y - alignedLandmarks[r].y);
+          errorSum += (Math.abs(distL - distR) / faceWidth) + (heightDiff / faceWidth);
+        });
+        const avgError = errorSum / (pairs.length * 2);
+        return Math.max(30, Math.min(100, Math.round(100 * Math.exp(-k * avgError))));
       };
 
+      const eyePairs = [[33, 263], [133, 362], [159, 386], [145, 374]];
+      const browPairs = [[70, 300], [105, 334], [63, 293], [107, 336]];
+      const mouthPairs = [[61, 291], [78, 308], [95, 324], [82, 312]];
+      const jawPairs = [[234, 454], [172, 397], [150, 379], [132, 361]];
+
+      const eyeScore = calculateRegionScore(eyePairs, 15);
+      const browsScore = calculateRegionScore(browPairs, 12);
+      const mouthScore = calculateRegionScore(mouthPairs, 18);
+      const jawScore = calculateRegionScore(jawPairs, 10);
+
+      // 5. Overall Symmetry Score (Weighted)
+      const overallScore = Math.round((eyeScore * 0.35) + (browsScore * 0.15) + (mouthScore * 0.20) + (jawScore * 0.30));
+      const symmetryScore = overallScore;
+
+      // 6. Other Metrics for Engine
+      const noseLength = dist2D(alignedLandmarks[1], alignedLandmarks[168]);
+      const mouthWidth = dist2D(alignedLandmarks[61], alignedLandmarks[291]);
       const eyeDistance = dist2D(leftEyeCenter, rightEyeCenter);
-      const eyeRatio = eyeDistance / faceWidth;
       
-      const spacingScore = Math.max(30, 100 - Math.abs(eyeRatio - 0.37) * 600);
-      
-      const leftEyeWidth = dist2D(landmarks[33], landmarks[133]);
-      const rightEyeWidth = dist2D(landmarks[263], landmarks[362]);
-      const sizeScore = Math.max(30, 100 - (Math.abs(leftEyeWidth - rightEyeWidth) / faceWidth) * 2000);
-      
-      const heightScore = Math.max(30, 100 - Math.abs(leftEyeCenter.y - rightEyeCenter.y) * 3000);
+      const foreheadHeight = dist2D(alignedLandmarks[10], alignedLandmarks[168]);
+      const foreheadWidth = dist2D(alignedLandmarks[103], alignedLandmarks[332]);
+      const philtrumLength = dist2D(alignedLandmarks[2], alignedLandmarks[0]);
+      const eyeWidth = (dist2D(alignedLandmarks[33], alignedLandmarks[133]) + dist2D(alignedLandmarks[263], alignedLandmarks[362])) / 2;
+      const noseWidth = dist2D(alignedLandmarks[102], alignedLandmarks[331]);
+      const lowerFaceHeight = dist2D(alignedLandmarks[164], alignedLandmarks[152]);
 
-      let eyeScore = (spacingScore * 0.4) + (sizeScore * 0.3) + (heightScore * 0.3);
-      eyeScore = Math.max(30, Math.min(100, eyeScore));
+      const metrics = {
+        overallScore,
+        percentile: 50,
+        symmetryScore,
+        eyeScore,
+        browsScore,
+        mouthScore,
+        jawScore,
+        eyeDiff: Math.abs(dist2D(alignedLandmarks[33], alignedLandmarks[133]) - dist2D(alignedLandmarks[263], alignedLandmarks[362])) / faceWidth,
+        browsDiff: Math.abs(alignedLandmarks[70].y - alignedLandmarks[300].y) / faceWidth,
+        mouthDiff: Math.abs(alignedLandmarks[61].x - midlineX - (midlineX - alignedLandmarks[291].x)) / faceWidth,
+        jawDiff: Math.abs(dist2D(alignedLandmarks[152], alignedLandmarks[234]) - dist2D(alignedLandmarks[152], alignedLandmarks[454])) / faceWidth,
+        eyeSlant: Math.abs(alignedLandmarks[33].y - alignedLandmarks[263].y) / faceWidth,
+        mouthSlant: Math.abs(alignedLandmarks[61].y - alignedLandmarks[291].y) / faceWidth,
+        personality: personality,
+        midline: midlineX,
+        faceRatio: faceHeight / faceWidth,
+        eyeDistanceRatio: eyeDistance / faceWidth,
+        noseLengthRatio: noseLength / faceHeight,
+        mouthWidthRatio: mouthWidth / faceWidth,
+        jawWidthRatio: dist2D(alignedLandmarks[132], alignedLandmarks[361]) / faceWidth,
+        cheekboneWidthRatio: dist2D(alignedLandmarks[127], alignedLandmarks[356]) / faceWidth,
+        foreheadRatio: foreheadHeight / faceHeight,
+        foreheadWidthRatio: foreheadWidth / faceWidth,
+        philtrumLengthRatio: philtrumLength / faceHeight,
+        eyeWidthRatio: eyeWidth / faceWidth,
+        noseWidthRatio: noseWidth / faceWidth,
+        lowerFaceRatio: lowerFaceHeight / faceHeight
+      };
 
-      // 4. Nose Score (15%) - Increased sensitivity
-      const noseLength = dist2D(landmarks[1], landmarks[168]);
-      const noseRatio = noseLength / faceHeight;
-      const idealNoseRatio = 0.33;
-      let noseScore = 100 - Math.abs(noseRatio - idealNoseRatio) * 800;
-      noseScore = Math.max(30, Math.min(100, noseScore));
-
-      // 5. Mouth Score (15%) - Increased sensitivity
-      const mouthWidth = dist2D(landmarks[61], landmarks[291]);
-      const mouthRatio = mouthWidth / faceWidth;
-      const idealMouthRatio = 0.40;
-      const widthScore = Math.max(30, 100 - Math.abs(mouthRatio - idealMouthRatio) * 500);
-      
-      const mouthSymmetry = Math.max(30, 100 - Math.abs(landmarks[61].y - landmarks[291].y) * 3000);
-      
-      let mouthScore = (widthScore * 0.7) + (mouthSymmetry * 0.3);
-      mouthScore = Math.max(30, Math.min(100, mouthScore));
-
-      // 6. Chin/Jaw Balance Score (10%) - Increased sensitivity
-      const score1 = 100 - (Math.abs(landmarks[152].x - midline) / faceWidth) * 2000;
-      
-      const leftJawLen = dist2D(landmarks[152], landmarks[234]);
-      const rightJawLen = dist2D(landmarks[152], landmarks[454]);
-      const score2 = 100 - (Math.abs(leftJawLen - rightJawLen) / faceWidth) * 1500;
-      
-      const score3 = 100 - Math.abs(landmarks[234].y - landmarks[454].y) * 3000;
-
-      let jawScore = (score1 * 0.4) + (score2 * 0.4) + (score3 * 0.2);
-      jawScore = Math.max(30, Math.min(100, jawScore));
-
-      // 7. Final Overall Score
-      let overallScore = (symmetryScore * 0.4) + (eyeScore * 0.2) + (noseScore * 0.15) + (mouthScore * 0.15) + (jawScore * 0.1);
-      overallScore = Math.max(30, Math.min(Math.round(overallScore), 98));
-      
-      // Calculate detailed metrics for local engine
-      const eyeDiff = Math.abs(leftEyeWidth - rightEyeWidth) / faceWidth;
-      const mouthDiff = Math.abs(dist2D(landmarks[61], {x: midline, y: landmarks[61].y}) - dist2D(landmarks[291], {x: midline, y: landmarks[291].y})) / faceWidth;
-      const jawDiff = Math.abs(leftJawLen - rightJawLen) / faceWidth;
-      const eyeSlant = Math.abs(landmarks[33].y - landmarks[263].y);
-      const mouthSlant = Math.abs(landmarks[61].y - landmarks[291].y);
-
-      // Viral Percentile Calculation (Normalized for 30-98 range)
+      // Recalculate percentile
       let percentile = 50;
       if (overallScore >= 90) percentile = 95 + (overallScore - 90) * 0.5;
       else if (overallScore >= 80) percentile = 75 + (overallScore - 80) * 2;
       else if (overallScore >= 60) percentile = 20 + (overallScore - 60) * 2.75;
       else percentile = (overallScore - 30) * 0.6;
-      percentile = Math.min(99, Math.max(1, Math.round(percentile)));
-
-      const metrics = {
-        overallScore,
-        percentile,
-        symmetryScore,
-        eyeScore,
-        noseScore,
-        mouthScore,
-        jawScore,
-        eyeDiff,
-        mouthDiff,
-        jawDiff,
-        eyeSlant,
-        mouthSlant,
-        personality: personality,
-        gender: gender,
-        midline: midline // Pass the actual calculated midline
-      };
-
+      metrics.percentile = Math.min(99, Math.max(1, Math.round(percentile)));
       // 로컬 분석 엔진 사용
       const parsedResult = analyzeLocally(metrics);
       
+      // 10. Start Fake Scanning Presentation (1.5s)
+      setIsFakeScanning(true);
+      const scanningSteps = [
+        "Analyzing facial symmetry...",
+        "Detecting landmarks...",
+        "Calculating proportions..."
+      ];
+      
+      for (let i = 0; i < scanningSteps.length; i++) {
+        setAnalysisStep(scanningSteps[i]);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      
+      setIsFakeScanning(false);
+      setScanningLandmarks(null);
+
+      // Generate Soft Symmetry Image
+      const balancedImage = await generateSoftSymmetry(resizedImage, rawLandmarks, imgInfo.width, imgInfo.height);
+
       // Merge browser-calculated metrics into the result with defensive checks
       const safeLandmarks: any = parsedResult.landmarks || {};
       
+      const overallBalance = Math.round((overallScore + (parsedResult.proportionScore || 80)) / 2);
+
       setResult({
         ...parsedResult,
         summary: parsedResult.summary,
-        overallScore,
+        overallScore: overallBalance,
+        symmetryScore: overallScore,
         percentile,
+        balancedImage,
         landmarks: {
-          eyes: { score: Math.round(eyeScore), feedback: safeLandmarks.eyes?.feedback || "분석 완료" },
-          nose: { score: Math.round(noseScore), feedback: safeLandmarks.nose?.feedback || "분석 완료" },
-          mouth: { score: Math.round(mouthScore), feedback: safeLandmarks.mouth?.feedback || "분석 완료" },
-          jawline: { score: Math.round(jawScore), feedback: safeLandmarks.jawline?.feedback || "분석 완료" },
+          eyes: { score: Math.round(eyeScore), status: safeLandmarks.eyes?.status || "분석 완료", feedback: safeLandmarks.eyes?.feedback || "분석 완료" },
+          brows: { score: Math.round(browsScore), status: safeLandmarks.brows?.status || "분석 완료", feedback: safeLandmarks.brows?.feedback || "분석 완료" },
+          mouth: { score: Math.round(mouthScore), status: safeLandmarks.mouth?.status || "분석 완료", feedback: safeLandmarks.mouth?.feedback || "분석 완료" },
+          jawline: { score: Math.round(jawScore), status: safeLandmarks.jawline?.status || "분석 완료", feedback: safeLandmarks.jawline?.feedback || "분석 완료" },
         },
-        landmarkPoints: [
-          // 1. 전체 얼굴 외곽 윤곽선 (Full Face Contour - 36 points)
-          ...[10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
-          // 2. 눈 부위 (Eyes)
-          ...[33, 160, 158, 133, 153, 144, 33, 263, 387, 385, 362, 380, 373, 263].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
-          // 3. 눈썹 (Eyebrows)
-          ...[70, 63, 105, 66, 107, 336, 296, 334, 293, 300].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
-          // 4. 코 (Nose)
-          ...[168, 6, 197, 195, 5, 4, 1, 19, 94, 2, 164, 98, 97, 327, 326].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
-          // 5. 입술 (Lips)
-          ...[61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146, 61].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
-          // 6. 광대 및 볼 (Cheeks/Midface)
-          ...[205, 203, 92, 425, 423, 322, 116, 117, 118, 345, 346, 347].map(i => ({ x: landmarks[i].x * 100, y: landmarks[i].y * 100, label: "" })),
-          
-          // 주요 지표 라벨
-          { x: landmarks[10].x * 100, y: landmarks[10].y * 100, label: "TRICHION" },
-          { x: landmarks[152].x * 100, y: landmarks[152].y * 100, label: "GNATHION" },
-          { x: landmarks[33].x * 100, y: landmarks[33].y * 100, label: "L-EXOC" },
-          { x: landmarks[263].x * 100, y: landmarks[263].y * 100, label: "R-EXOC" }
-        ],
-        symmetryLines: [
-          // 수평 기준선 (Horizontal Analysis)
-          { x1: landmarks[33].x * 100, y1: landmarks[33].y * 100, x2: landmarks[263].x * 100, y2: landmarks[263].y * 100, label: "BIPUPIL LINE" },
-          { x1: landmarks[61].x * 100, y1: landmarks[61].y * 100, x2: landmarks[291].x * 100, y2: landmarks[291].y * 100, label: "COMMISSURE LINE" },
-          { x1: landmarks[234].x * 100, y1: landmarks[234].y * 100, x2: landmarks[454].x * 100, y2: landmarks[454].y * 100, label: "ZYGOMATIC LINE" },
-          
-          // 메쉬 연결선 (Digital Mesh Connections - 성형외과 분석 느낌)
-          // 눈-코-입 연결
-          { x1: landmarks[33].y * 0 + landmarks[33].x * 100, y1: landmarks[33].y * 100, x2: landmarks[168].x * 100, y2: landmarks[168].y * 100, label: "" },
-          { x1: landmarks[263].x * 100, y1: landmarks[263].y * 100, x2: landmarks[168].x * 100, y2: landmarks[168].y * 100, label: "" },
-          { x1: landmarks[168].x * 100, y1: landmarks[168].y * 100, x2: landmarks[1].x * 100, y2: landmarks[1].y * 100, label: "" },
-          { x1: landmarks[1].x * 100, y1: landmarks[1].y * 100, x2: landmarks[61].x * 100, y2: landmarks[61].y * 100, label: "" },
-          { x1: landmarks[1].x * 100, y1: landmarks[1].y * 100, x2: landmarks[291].x * 100, y2: landmarks[291].y * 100, label: "" },
-          
-          // 턱선 메쉬
-          { x1: landmarks[234].x * 100, y1: landmarks[234].y * 100, x2: landmarks[152].x * 100, y2: landmarks[152].y * 100, label: "" },
-          { x1: landmarks[454].x * 100, y1: landmarks[454].y * 100, x2: landmarks[152].x * 100, y2: landmarks[152].y * 100, label: "" },
-          
-          // 수직 중앙선
-          { x1: midline * 100, y1: 0, x2: midline * 100, y2: 100, label: "CENTRAL AXIS" }
-        ],
         asymmetryZones: [
-          { x: landmarks[33].x * 100, y: landmarks[33].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - eyeScore) / 20)), label: "EYE ASYMMETRY" },
-          { x: landmarks[61].x * 100, y: landmarks[61].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - mouthScore) / 20)), label: "ORAL ASYMMETRY" },
-          { x: landmarks[234].x * 100, y: landmarks[234].y * 100, radius: 8, intensity: Math.min(1, Math.max(0.6, (96 - jawScore) / 30)), label: "JAW ASYMMETRY" }
+          { x: rawLandmarks[33].x * 100, y: rawLandmarks[33].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - eyeScore) / 20)), label: "EYE ASYMMETRY" },
+          { x: rawLandmarks[70].x * 100, y: rawLandmarks[70].y * 100, radius: 5, intensity: Math.min(1, Math.max(0.7, (96 - browsScore) / 20)), label: "BROW ASYMMETRY" },
+          { x: rawLandmarks[61].x * 100, y: rawLandmarks[61].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - mouthScore) / 20)), label: "ORAL ASYMMETRY" },
+          { x: rawLandmarks[234].x * 100, y: rawLandmarks[234].y * 100, radius: 8, intensity: Math.min(1, Math.max(0.6, (96 - jawScore) / 30)), label: "JAW ASYMMETRY" }
         ],
-        metrics
+        rawLandmarks,
+        metrics: {
+          ...metrics,
+          midline: (metrics.midline - eyeCenterMid.x) / faceWidth // Approximate for visualizer
+        }
       });
 
-      setCenterOffset((landmarks[1].x - midline) * 100);
-      setRotationAngle((landmarks[263].y - landmarks[33].y) * 100);
+      setCenterOffset((alignedLandmarks[1].x - midlineX) * 100);
+      setRotationAngle((alignedLandmarks[263].y - alignedLandmarks[33].y) * 100);
 
     } catch (err: any) {
       setError(err.message || "분석 중 오류가 발생했습니다. 다시 시도해주세요.");
@@ -673,36 +739,6 @@ export default function App() {
           
           {!result && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 animate-in fade-in slide-in-from-top-2 duration-500">
-              <div className="flex flex-col gap-2">
-                <span className="text-[10px] tracking-[0.2em] font-bold text-white/40 px-1 uppercase">
-                  Select Gender
-                </span>
-                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 w-full sm:w-auto">
-                  <button
-                    onClick={() => setGender('male')}
-                    className={cn(
-                      "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
-                      gender === 'male' 
-                        ? "bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]" 
-                        : "text-white/40 hover:text-white/60"
-                    )}
-                  >
-                    Male
-                  </button>
-                  <button
-                    onClick={() => setGender('female')}
-                    className={cn(
-                      "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
-                      gender === 'female' 
-                        ? "bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.3)]" 
-                        : "text-white/40 hover:text-white/60"
-                    )}
-                  >
-                    Female
-                  </button>
-                </div>
-              </div>
-
               <div className="flex flex-col gap-2">
                 <span className="text-[10px] tracking-[0.2em] font-bold text-white/40 px-1 uppercase">
                   Select Analyst
@@ -921,6 +957,26 @@ export default function App() {
                     </div>
                   )}
 
+                  {/* Mesh during Scanning */}
+                  {scanningLandmarks && (
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                      <div 
+                        className="relative"
+                        style={{ 
+                          width: imageAspectRatio > 1 ? '100%' : `${imageAspectRatio * 100}%`,
+                          aspectRatio: imageAspectRatio,
+                          transform: `rotate(${rotationAngle}deg) scale(1.1)`
+                        }}
+                      >
+                        <FaceMeshCanvas 
+                          landmarks={scanningLandmarks} 
+                          width={imageDimensions.width} 
+                          height={imageDimensions.height} 
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="absolute top-4 right-4 flex gap-2">
                     <button 
                       onClick={() => setShowOverlay(!showOverlay)}
@@ -935,7 +991,15 @@ export default function App() {
                   </div>
 
                   {isAnalyzing && (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center text-white space-y-6 z-50">
+                    <div className={cn(
+                      "absolute inset-0 flex flex-col items-center justify-center text-white space-y-6 z-50 overflow-hidden transition-all duration-500",
+                      isFakeScanning ? "bg-black/20 backdrop-blur-[2px]" : "bg-black/60 backdrop-blur-md"
+                    )}>
+                      {/* Scan Line Animation */}
+                      <div className="absolute inset-0 pointer-events-none">
+                        <div className="absolute w-full h-[2px] bg-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.8)] animate-scan" />
+                      </div>
+
                       <div className="relative">
                         <RefreshCw size={48} className="animate-spin text-emerald-400" />
                         <div className="absolute inset-0 animate-ping bg-emerald-500/20 rounded-full" />
@@ -1060,7 +1124,7 @@ export default function App() {
                 >
                   {/* Progress Indicator */}
                   <div className="flex items-center gap-1.5 px-2 shrink-0">
-                    {[0, 1, 2].map((step) => (
+                    {[0, 1, 2, 3].map((step) => (
                       <div 
                         key={step} 
                         className={cn(
@@ -1076,7 +1140,12 @@ export default function App() {
                       <div className="flex flex-col gap-2 h-full min-h-0">
                         <div className="grid grid-cols-2 gap-2 shrink-0">
                           {/* Score Card */}
-                          <div className="bg-white/5 rounded-2xl border border-white/10 p-3 shadow-xl backdrop-blur-sm flex flex-col justify-center items-center">
+                          <motion.div 
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ duration: 0.5, delay: 0 }}
+                            className="bg-white/5 rounded-2xl border border-white/10 p-3 shadow-xl backdrop-blur-sm flex flex-col justify-center items-center"
+                          >
                             <div className="relative mb-1 shrink-0">
                               <div className="absolute -inset-2 bg-emerald-500/10 blur-xl rounded-full animate-pulse" />
                               <div className="relative">
@@ -1085,60 +1154,82 @@ export default function App() {
                                   <circle
                                     cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent"
                                     strokeDasharray={176}
-                                    strokeDashoffset={176 - (176 * result.overallScore) / 100}
+                                    strokeDashoffset={176 - (176 * (result.overallScore || 0)) / 100}
                                     strokeLinecap="round"
                                     className="text-emerald-500 transition-all duration-1000 ease-out drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]"
                                   />
                                 </svg>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                  <span className="text-xl font-bold tracking-tighter font-mono leading-none">{result.overallScore}</span>
-                                  <span className="text-[5px] font-bold text-white/30 uppercase tracking-widest mt-0.5">Index</span>
+                                  <span className="text-xl font-bold tracking-tighter font-mono leading-none">{result.overallScore || 0}</span>
+                                  <span className="text-[5px] font-bold text-white/30 uppercase tracking-widest mt-0.5">Balance Index</span>
                                 </div>
                               </div>
                             </div>
                             
-                            <div className="text-center space-y-0.5 shrink-0">
-                              <h3 className="text-xs font-bold uppercase italic tracking-tight">
-                                {result.overallScore >= 90 ? "Optimal" : 
-                                 result.overallScore >= 82 ? "High" : 
-                                 result.overallScore >= 70 ? "Standard" : "Deviation"}
-                              </h3>
-                              <div className="flex items-center justify-center gap-1">
+                            <div className="text-center space-y-1 shrink-0">
+                              <h3 className="text-[7px] font-bold uppercase text-white/40 font-mono tracking-widest">Analysis Summary</h3>
+                              <p className="text-[9px] font-bold text-white tracking-tight leading-tight px-1">{result.summary}</p>
+                              
+                              <div className="flex items-center justify-center gap-3 mt-1.5">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[5px] text-white/30 uppercase font-mono">Symmetry</span>
+                                  <span className="text-[9px] font-bold text-emerald-400">{result.symmetryScore || 0}</span>
+                                </div>
+                                <div className="w-px h-4 bg-white/10" />
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[5px] text-white/30 uppercase font-mono">Proportion</span>
+                                  <span className="text-[9px] font-bold text-emerald-400">{result.proportionScore || 0}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-center gap-1 mt-1.5">
                                 <div className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
                                   <span className="text-[7px] text-emerald-400/60 font-bold uppercase mr-1">상위</span>
-                                  <span className="text-[10px] font-bold text-emerald-400">{100 - result.percentile}%</span>
+                                  <span className="text-[10px] font-bold text-emerald-400">{100 - (result.percentile || 0)}%</span>
                                 </div>
                               </div>
                             </div>
+                          </motion.div>
+
+                          {/* Face Shape & Strongest Features Card */}
+                          <div className="bg-white/5 rounded-2xl border border-white/10 p-3 shadow-xl backdrop-blur-sm flex flex-col justify-center gap-2">
+                            <motion.div 
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.5, delay: 0.4 }}
+                              className="space-y-1"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Maximize2 size={12} className="text-emerald-400" />
+                                <h3 className="text-[9px] font-bold uppercase tracking-widest text-white/40">Face Shape</h3>
+                              </div>
+                              <p className="text-[11px] font-bold text-white tracking-tight leading-tight">{result.faceShape || "분석 중..."}</p>
+                            </motion.div>
+                            
+                            <div className="h-px bg-white/5 w-full" />
+
+                            <motion.div 
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ duration: 0.5, delay: 0.8 }}
+                              className="space-y-1.5"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Trophy size={12} className="text-emerald-400" />
+                                <h3 className="text-[9px] font-bold uppercase tracking-widest text-white/40">Strongest Features</h3>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                {result.strongestFeatures?.map((feature, i) => (
+                                  <div key={i} className="flex items-center gap-1.5">
+                                    <CheckCircle2 size={8} className="text-emerald-500 shrink-0" />
+                                    <span className="text-[9px] text-white/80 font-medium leading-tight">
+                                      {feature}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
                           </div>
-
-                          {/* Celebrity Match Section */}
-                          {result.celebrityMatches && (
-                            <div className="bg-gradient-to-br from-indigo-900/40 to-purple-900/40 rounded-2xl border border-indigo-500/30 p-3 shadow-xl backdrop-blur-md flex flex-col justify-center relative overflow-hidden">
-                              <div className="relative z-10 space-y-1.5">
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <Sparkles size={12} className="text-indigo-400" />
-                                  <h3 className="text-[9px] font-black italic tracking-tighter uppercase">AI Match</h3>
-                                </div>
-
-                                <div className="space-y-1">
-                                  {result.celebrityMatches.slice(0, 2).map((match, i) => (
-                                    <div key={i} className="flex items-center justify-between p-1.5 bg-white/5 rounded-lg border border-white/5">
-                                      <div className="flex items-center gap-1.5">
-                                        <div className="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-[8px] overflow-hidden border border-indigo-500/30">
-                                          {celebrityImages[match.name] ? (
-                                            <img src={celebrityImages[match.name]} alt={match.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                                          ) : (i + 1)}
-                                        </div>
-                                        <span className="font-bold text-[10px] tracking-tight truncate max-w-[50px]">{match.name}</span>
-                                      </div>
-                                      <span className="font-mono font-bold text-indigo-400 text-[8px]">{match.confidence}%</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                          )}
                         </div>
 
                         {/* Symmetry Visualizer (Moved from Step 1 to Step 0 for better flow) */}
@@ -1165,48 +1256,36 @@ export default function App() {
                               }}
                             >
                               <img src={image || ''} alt="Analysis" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                              <AnimatePresence>
-                                {showOverlay && (
-                                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 pointer-events-none">
-                                    {/* Landmark Points (White Dots) */}
-                                    {result.landmarkPoints?.map((pt, i) => (
-                                      <div 
-                                        key={`pt-${i}`} 
-                                        className="absolute w-0.5 h-0.5 bg-white rounded-full opacity-30" 
-                                        style={{ left: `${pt.x}%`, top: `${pt.y}%` }} 
-                                      >
-                                        {pt.label && (
-                                          <span className="absolute left-1 top-0 text-[4px] text-white/30 font-mono whitespace-nowrap uppercase tracking-tighter">
-                                            {pt.label}
-                                          </span>
-                                        )}
-                                      </div>
-                                    ))}
-
-                                    {result.asymmetryZones?.map((zone, i) => (
-                                      <div key={`zone-${i}`} className="absolute" style={{ left: `${zone.x}%`, top: `${zone.y}%`, width: `${zone.radius * 2}%`, height: `${zone.radius * 2}%`, marginLeft: `-${zone.radius}%`, marginTop: `-${zone.radius}%` }}>
-                                        <motion.div 
-                                          className="w-full h-full rounded-full" 
-                                          style={{ background: `radial-gradient(circle, rgba(239, 68, 68, ${zone.intensity}) 0%, rgba(239, 68, 68, 0) 80%)` }} 
-                                          animate={{ scale: [1, 1.1, 1], opacity: [zone.intensity, zone.intensity * 0.6, zone.intensity] }} 
-                                          transition={{ duration: 2, repeat: Infinity }} 
-                                        />
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                                          <span className="text-[5px] font-bold text-red-500 whitespace-nowrap tracking-tighter bg-black/20 px-0.5 rounded">
-                                            {zone.label}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    ))}
-
-                                    <svg className="absolute inset-0 w-full h-full">
-                                      {result.symmetryLines?.map((line, i) => (
-                                        <line key={`line-${i}`} x1={`${line.x1}%`} y1={`${line.y1}%`} x2={`${line.x2}%`} y2={`${line.y2}%`} stroke="white" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.5" />
-                                      ))}
-                                    </svg>
-                                  </motion.div>
+                              
+                              {/* Mesh Overlay with Fade-in Transition */}
+                              <div className={cn(
+                                "absolute inset-0 pointer-events-none transition-opacity duration-300 ease-in-out",
+                                showOverlay ? "opacity-100" : "opacity-0"
+                              )}>
+                                {result.rawLandmarks && (
+                                  <FaceMeshCanvas 
+                                    landmarks={result.rawLandmarks} 
+                                    width={imageDimensions.width} 
+                                    height={imageDimensions.height} 
+                                  />
                                 )}
-                              </AnimatePresence>
+
+                                {result.asymmetryZones?.map((zone, i) => (
+                                  <div key={`zone-${i}`} className="absolute" style={{ left: `${zone.x}%`, top: `${zone.y}%`, width: `${zone.radius * 2}%`, height: `${zone.radius * 2}%`, marginLeft: `-${zone.radius}%`, marginTop: `-${zone.radius}%` }}>
+                                    <motion.div 
+                                      className="w-full h-full rounded-full" 
+                                      style={{ background: `radial-gradient(circle, rgba(239, 68, 68, ${zone.intensity}) 0%, rgba(239, 68, 68, 0) 80%)` }} 
+                                      animate={{ scale: [1, 1.1, 1], opacity: [zone.intensity, zone.intensity * 0.6, zone.intensity] }} 
+                                      transition={{ duration: 2, repeat: Infinity }} 
+                                    />
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                                      <span className="text-[5px] font-bold text-red-500 whitespace-nowrap tracking-tighter bg-black/20 px-0.5 rounded">
+                                        {zone.label}
+                                      </span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                             {result.metrics?.midline !== undefined && (
                               <div className="absolute inset-y-0 w-px bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-10" style={{ left: `${result.metrics.midline * 100}%` }} />
@@ -1226,7 +1305,7 @@ export default function App() {
                               <ResponsiveContainer width="100%" height="100%">
                                 <RadarChart cx="50%" cy="50%" outerRadius="65%" data={[
                                   { subject: '눈', A: result.landmarks.eyes.score },
-                                  { subject: '코', A: result.landmarks.nose.score },
+                                  { subject: '눈썹', A: result.landmarks.brows.score },
                                   { subject: '입', A: result.landmarks.mouth.score },
                                   { subject: '턱', A: result.landmarks.jawline.score },
                                 ]}>
@@ -1240,14 +1319,17 @@ export default function App() {
 
                           <div className="grid grid-cols-2 gap-2 shrink-0">
                             {[
-                              { label: 'Eyes', score: result.landmarks.eyes.score, feedback: result.landmarks.eyes.feedback },
-                              { label: 'Nose', score: result.landmarks.nose.score, feedback: result.landmarks.nose.feedback },
-                              { label: 'Mouth', score: result.landmarks.mouth.score, feedback: result.landmarks.mouth.feedback },
-                              { label: 'Jaw', score: result.landmarks.jawline.score, feedback: result.landmarks.jawline.feedback }
+                              { label: 'Eyes', score: result.landmarks.eyes.score, status: result.landmarks.eyes.status, feedback: result.landmarks.eyes.feedback },
+                              { label: 'Brows', score: result.landmarks.brows.score, status: result.landmarks.brows.status, feedback: result.landmarks.brows.feedback },
+                              { label: 'Mouth', score: result.landmarks.mouth.score, status: result.landmarks.mouth.status, feedback: result.landmarks.mouth.feedback },
+                              { label: 'Jaw', score: result.landmarks.jawline.score, status: result.landmarks.jawline.status, feedback: result.landmarks.jawline.feedback }
                             ].map((m, idx) => (
                               <div key={idx} className="bg-white/5 p-2 rounded-xl border border-white/10 flex flex-col gap-1">
                                 <div className="flex justify-between items-center">
-                                  <span className="text-[7px] text-white/40 uppercase font-mono">{m.label}</span>
+                                  <div className="flex flex-col">
+                                    <span className="text-[7px] text-white/40 uppercase font-mono">{m.label}</span>
+                                    <span className="text-[8px] font-bold text-emerald-400/80">{m.status}</span>
+                                  </div>
                                   <span className="text-[10px] font-bold text-emerald-400">{m.score}</span>
                                 </div>
                                 <p className="text-[8px] text-white/60 leading-tight break-words whitespace-normal">
@@ -1261,6 +1343,87 @@ export default function App() {
                     )}
 
                     {reportStep === 2 && (
+                      <div className="flex flex-col gap-2 h-full min-h-0">
+                        <div className="bg-white/5 rounded-2xl border border-white/10 p-3 shadow-xl backdrop-blur-sm flex-1 flex flex-col gap-3 min-h-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Zap size={12} className="text-amber-400" />
+                            <h3 className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono">Advanced Facial Metrics</h3>
+                          </div>
+
+                          <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar">
+                            {/* Eye Spacing */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-end">
+                                <span className="text-[9px] font-bold text-white/80">Eye Spacing Ratio</span>
+                                <span className="text-[11px] font-mono font-bold text-emerald-400">{result.advancedMetrics?.eyeSpacing.value.toFixed(2)}</span>
+                              </div>
+                              <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+                                <p className="text-[8px] font-bold text-emerald-400/80 mb-0.5">{result.advancedMetrics?.eyeSpacing.status}</p>
+                                <p className="text-[8px] text-white/60 leading-tight">{result.advancedMetrics?.eyeSpacing.feedback}</p>
+                              </div>
+                            </div>
+
+                            {/* Facial Proportion */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-end">
+                                <span className="text-[9px] font-bold text-white/80">Facial Proportion (V)</span>
+                                <span className="text-[11px] font-mono font-bold text-emerald-400">
+                                  {result.advancedMetrics?.facialProportion.value.upper}:{result.advancedMetrics?.facialProportion.value.mid}:{result.advancedMetrics?.facialProportion.value.lower}
+                                </span>
+                              </div>
+                              <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+                                <p className="text-[8px] font-bold text-emerald-400/80 mb-0.5">{result.advancedMetrics?.facialProportion.status}</p>
+                                <p className="text-[8px] text-white/60 leading-tight">{result.advancedMetrics?.facialProportion.feedback}</p>
+                              </div>
+                            </div>
+
+                            {/* Face Ratio */}
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-end">
+                                <span className="text-[9px] font-bold text-white/80">Face Shape Ratio</span>
+                                <span className="text-[11px] font-mono font-bold text-emerald-400">{result.advancedMetrics?.faceRatio.value.toFixed(2)}</span>
+                              </div>
+                              <div className="bg-white/5 p-2 rounded-lg border border-white/5">
+                                <p className="text-[8px] font-bold text-emerald-400/80 mb-0.5">{result.advancedMetrics?.faceRatio.status}</p>
+                                <p className="text-[8px] text-white/60 leading-tight">{result.advancedMetrics?.faceRatio.feedback}</p>
+                              </div>
+                            </div>
+
+                            {/* Balanced Face Visualization */}
+                            <div className="mt-2 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5">
+                                  <Sparkles size={10} className="text-emerald-400" />
+                                  <h4 className="text-[8px] font-bold text-white/40 uppercase tracking-widest font-mono">Balanced Face (AI-Adjusted)</h4>
+                                </div>
+                                <span className="text-[7px] text-emerald-400/60 font-mono">30% Symmetry Influence</span>
+                              </div>
+                              <div className="relative aspect-[4/5] w-full rounded-2xl overflow-hidden border border-white/10 bg-black/20 group">
+                                {result.balancedImage ? (
+                                  <img 
+                                    src={result.balancedImage} 
+                                    alt="Balanced Face" 
+                                    className="w-full h-full object-cover"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-white/20 text-[8px]">
+                                    Generating balanced view...
+                                  </div>
+                                )}
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
+                                  <p className="text-[7px] text-white/60 leading-tight">
+                                    AI가 분석한 이상적인 균형 상태를 시뮬레이션한 결과입니다. 자연스러운 개성을 유지하면서 대칭성을 미세하게 조정하였습니다.
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {reportStep === 3 && (
                       <div className="flex flex-col gap-3 h-full min-h-0 w-full overflow-x-hidden min-w-0">
                         {/* Diagnostic Summary */}
                         <div className="bg-white/5 rounded-3xl border border-white/10 p-3 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0">
@@ -1329,12 +1492,13 @@ export default function App() {
                         이전 단계
                       </button>
                     )}
-                    {reportStep < 2 ? (
+                    {reportStep < 3 ? (
                       <button 
                         onClick={() => setReportStep(prev => prev + 1)}
                         className="flex-[2] bg-emerald-500 text-white py-2.5 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 transition-all"
                       >
-                        {reportStep === 0 ? "정밀 분석 리포트 보기" : "맞춤형 솔루션 확인"}
+                        {reportStep === 0 ? "정밀 분석 리포트 보기" : 
+                         reportStep === 1 ? "심화 비율 분석 보기" : "맞춤형 솔루션 확인"}
                       </button>
                     ) : (
                       <button 
@@ -1421,35 +1585,6 @@ export default function App() {
                   <p className="text-8xl font-black italic text-emerald-400">{result.overallScore}</p>
                 </div>
               </div>
-
-              {/* Celebrity Match for Share Card */}
-              {result.celebrityMatches && (
-                <div className="w-full grid grid-cols-3 gap-6">
-                  {result.celebrityMatches.map((match, i) => (
-                    <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-[40px] flex flex-col items-center gap-4">
-                      <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-indigo-500/30">
-                        {celebrityImages[match.name] ? (
-                          <img 
-                            src={celebrityImages[match.name]} 
-                            alt={match.name} 
-                            className="w-full h-full object-cover"
-                            referrerPolicy="no-referrer"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-indigo-500/20 flex items-center justify-center text-indigo-400 font-bold text-2xl">
-                            {i + 1}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-center">
-                        <p className="text-sm font-mono text-white/40 uppercase tracking-widest">Match #{i+1}</p>
-                        <p className="text-3xl font-black italic uppercase tracking-tighter">{match.name}</p>
-                        <p className="text-4xl font-black text-indigo-400">{match.confidence}%</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
 
               {/* Summary */}
               <div className="w-full bg-white/5 border border-white/10 p-12 rounded-[50px] backdrop-blur-sm space-y-6">
