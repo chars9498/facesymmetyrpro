@@ -40,7 +40,10 @@ export interface AnalysisResult {
   faceShape?: string;
   strongestFeatures?: string[];
   detailedFeedback: string;
-  muscleAnalysis: string;
+  primaryImbalance: string;
+  analysisSummary: string;
+  homeCareGuide: string;
+  professionalCareOptions: string;
   landmarks: {
     eyes: { score?: number; status: string; feedback: string };
     brows: { score?: number; status: string; feedback: string };
@@ -53,8 +56,6 @@ export interface AnalysisResult {
     faceRatio: { value: number; status: string; feedback: string };
   };
   balancedImage?: string;
-  laymanProtocol: string;
-  professionalProtocol: string;
   landmarkPoints?: { x: number; y: number; label: string }[];
   symmetryLines?: { x1: number; y1: number; x2: number; y2: number; label: string }[];
   asymmetryZones?: { x: number; y: number; radius: number; intensity: number; label: string }[];
@@ -242,30 +243,70 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
   const jawRes = getFeedback(metrics.jawScore, 'jaw');
   const browsRes = getFeedback(metrics.browsScore, 'brows');
 
-  // 4. Dynamic Muscle Analysis
-  const primaryCause = metrics.jawDiff > metrics.eyeDiff ? '턱 주변 근육' : '눈 주변 근육';
-  const secondaryCause = metrics.mouthSlant > 0.03 ? '입가 근육' : '얼굴 측면 근육';
-  
-  const muscleAnalysis = metrics.overallScore > 92
-    ? "전반적인 안면 근육의 균형이 매우 우수합니다. 현재의 건강한 생활 습관을 유지하며 미세한 긴장만 관리해주시면 충분합니다."
-    : `현재 비대칭의 주요 원인은 **${primaryCause}**과 **목 주변 근육**의 비대칭적 긴장에 기인한 것으로 보입니다. 특히 ${secondaryCause}의 사용 패턴 차이가 안면 하부의 정렬에 영향을 미치고 있는 것으로 분석됩니다.`;
+  // 4. Analysis Summary & Influencing Factors (Dynamic)
+  const getDynamicAnalysis = () => {
+    const scores = [
+      { name: "눈 주변", score: metrics.eyeScore, key: 'eyes' },
+      { name: "눈썹 라인", score: metrics.browsScore, key: 'brows' },
+      { name: "입 주변", score: metrics.mouthScore, key: 'mouth' },
+      { name: "얼굴 하부", score: metrics.jawScore, key: 'jaw' }
+    ];
 
-  // 4. Protocols
-  const laymanProtocol = `
-    ### 🏠 데일리 홈케어 가이드
-    1. **${metrics.jawDiff > 0.05 ? '저작 습관 개선' : '수면 자세 교정'}**: 한쪽으로만 음식을 씹는 습관을 피하고 양쪽을 골고루 사용해 보세요.
-    2. **온열 찜질**: 긴장도가 느껴지는 턱 근육 부위에 하루 15분간 온찜질을 하면 근육 이완에 도움이 됩니다.
-    3. **거울 피드백**: 거울을 보며 입꼬리 높이를 맞추는 미소 연습을 통해 표정 근육의 균형을 잡아보세요.
-  `;
+    // Sort by score to find lowest
+    const sortedScores = [...scores].sort((a, b) => a.score - b.score);
+    const lowest = sortedScores[0];
+    const secondLowest = sortedScores[1];
 
-  const professionalProtocol = `
-    ### 🩺 전문가용 관리 프로토콜
-    1. **근막 이완 관리**: 긴장이 집중된 **턱 및 측두 부위**의 심부 연부조직을 부드럽게 이완하여 근막의 유착을 해소하는 것이 좋습니다.
-    2. **정렬 개선 스트레칭**: 목과 어깨 주변 근육의 균형을 맞추는 스트레칭을 통해 전신 정렬을 바로잡는 것이 안면 대칭에 긍정적인 영향을 줍니다.
-    3. **표정 재교육**: 특정 근육의 과도한 사용을 줄이고 약화된 부위를 활성화하는 안면 근육 운동 프로그램을 권장합니다.
-  `;
+    const imbalancedAreas = scores.filter(s => s.score < 88).map(s => s.name);
+    
+    let primaryImbalance = "";
+    if (lowest.score < 90) {
+      primaryImbalance = `${lowest.name}에서 좌우 균형 차이가 가장 크게 나타났습니다.`;
+    } else {
+      primaryImbalance = "전반적인 안면 대칭이 매우 우수한 편입니다.";
+    }
 
-  // 5. Detailed Feedback Generation
+    let summaryText = "";
+    if (imbalancedAreas.length === 0) {
+      summaryText = "모든 측정 부위에서 매우 높은 수준의 대칭성이 관찰됩니다. 현재의 균형 잡힌 상태를 유지하는 것이 좋습니다.";
+    } else {
+      const areasStr = imbalancedAreas.slice(0, 2).join("과 ");
+      summaryText = `가장 큰 좌우 차이는 **${areasStr}** 영역에서 관찰됩니다. 특히 ${lowest.name}의 좌우 균형 점수가 다른 부위보다 낮게 나타났습니다. 이러한 차이는 표정 습관, 근육 사용 패턴, 또는 자세 요인의 영향을 받을 수 있습니다.`;
+    }
+
+    // Dynamic Home Care Guide
+    const tips = {
+      eyes: "1. **눈가 긴장 완화**: 스마트 기기 사용 시 눈 주변 근육을 가볍게 이완하고, 먼 곳을 바라보며 휴식을 취하는 것이 도움이 될 수 있습니다.",
+      brows: "1. **미간 및 이마 이완**: 무의식적으로 미간을 찌푸리는 습관이 있는지 확인하고, 이마 근육을 부드럽게 마사지하는 것이 좋습니다.",
+      mouth: "1. **표정 균형 훈련**: 거울을 보며 입꼬리 높이를 맞추는 가벼운 미소 연습을 통해 표정 근육의 균형을 잡는 데 도움을 줄 수 있습니다.",
+      jaw: "1. **좌우 균형 씹기**: 한쪽으로만 음식을 씹는 습관을 줄이고 양쪽을 균형 있게 사용하는 것이 좋습니다. 턱 주변 근육에 따뜻한 찜질을 하면 긴장 완화에 도움이 될 수 있습니다."
+    };
+
+    const generalTips = [
+      "2. **수면 자세 관리**: 얼굴이 한쪽으로 눌리는 자세는 장기적으로 좌우 균형에 영향을 줄 수 있으므로 주의가 필요합니다.",
+      "3. **바른 자세 유지**: 목과 어깨의 정렬이 안면 대칭에 영향을 줄 수 있으므로 평소 바른 자세를 유지하는 것이 좋습니다."
+    ];
+
+    let guide = "";
+    if (lowest.score < 90) {
+      guide += (tips as any)[lowest.key] + "\n\n";
+    }
+    if (secondLowest.score < 92) {
+      guide += (tips as any)[secondLowest.key] + "\n\n";
+    }
+    guide += generalTips.join("\n\n");
+
+    return { primaryImbalance, summaryText, guide };
+  };
+
+  const { primaryImbalance, summaryText: analysisSummary, guide: homeCareGuide } = getDynamicAnalysis();
+
+  // 6. Professional Care Options (Suggestive Tone)
+  const professionalCareOptions = `
+전문가의 근막 이완 관리나 자세 정렬 스트레칭이 얼굴 균형 개선에 도움이 될 수 있습니다. 특정 근육의 과도한 사용을 줄이고 균형을 맞추는 전문가용 프로그램을 고려해 보는 것이 좋습니다.
+  `.trim();
+
+  // 7. Detailed Feedback Generation Logic (Observational Style)
   const angelFeedbacks = [
     "당신의 얼굴은 왼쪽과 오른쪽이 서로 다른 매력을 품고 있네요. 미세한 차이가 오히려 당신만의 독특한 분위기를 만들어내고 있습니다.",
     "완벽한 대칭보다 더 아름다운 것은 당신만의 개성입니다. 좌우의 미세한 차이가 인상을 더욱 입체적이고 생동감 있게 만들어주네요.",
@@ -307,7 +348,10 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
     faceShape,
     strongestFeatures: strongestFeatures.slice(0, 3),
     detailedFeedback: getExpertAdvice(),
-    muscleAnalysis: muscleAnalysis.trim(),
+    primaryImbalance,
+    analysisSummary,
+    homeCareGuide,
+    professionalCareOptions,
     landmarks: {
       eyes: eyeRes,
       brows: browsRes,
@@ -318,8 +362,6 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
       eyeSpacing: { value: eyeSpacingVal, status: eyeSpacingStatus, feedback: eyeSpacingFeedback },
       facialProportion: { value: { upper: upperP, mid: midP, lower: lowerP }, status: propStatus, feedback: propFeedback },
       faceRatio: { value: widthHeightRatio, status: ratioStatus, feedback: ratioFeedback }
-    },
-    laymanProtocol: laymanProtocol.trim(),
-    professionalProtocol: professionalProtocol.trim()
+    }
   };
 };

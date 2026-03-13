@@ -1425,20 +1425,33 @@ export default function App() {
 
                     {reportStep === 3 && (
                       <div className="flex flex-col gap-3 h-full min-h-0 w-full overflow-x-hidden min-w-0">
-                        {/* Diagnostic Summary */}
-                        <div className="bg-white/5 rounded-3xl border border-white/10 p-3 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0">
+                        {/* Primary Imbalance */}
+                        <div className="bg-emerald-500/10 rounded-3xl border border-emerald-500/20 p-3 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0">
                           <div className="flex items-center gap-2 mb-1 w-full min-w-0">
-                            <AlertCircle size={12} className="text-amber-500 shrink-0" />
-                            <h4 className="text-[8px] font-bold text-white/40 uppercase tracking-[0.2em] font-mono truncate">Muscle Analysis</h4>
+                            <Zap size={12} className="text-emerald-400 shrink-0" />
+                            <h4 className="text-[8px] font-bold text-emerald-400/60 uppercase tracking-[0.2em] font-mono truncate">주요 균형 포인트</h4>
                           </div>
                           <div className="grid grid-cols-1 min-w-0">
-                            <p className="text-[10px] text-white/70 leading-relaxed break-words whitespace-normal block box-border">
-                              {result.muscleAnalysis}
+                            <p className="text-[11px] font-bold text-white leading-relaxed break-words whitespace-normal block box-border">
+                              {result.primaryImbalance}
                             </p>
                           </div>
                         </div>
 
-                        {/* Correction Protocols */}
+                        {/* Analysis Summary */}
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-3 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0">
+                          <div className="flex items-center gap-2 mb-1 w-full min-w-0">
+                            <BarChart3 size={12} className="text-emerald-500 shrink-0" />
+                            <h4 className="text-[8px] font-bold text-white/40 uppercase tracking-[0.2em] font-mono truncate">Analysis Summary</h4>
+                          </div>
+                          <div className="grid grid-cols-1 min-w-0">
+                            <p className="text-[10px] text-white/70 leading-relaxed break-words whitespace-normal block box-border">
+                              {result.analysisSummary}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Care Guides */}
                         <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden shadow-2xl backdrop-blur-sm flex-1 flex flex-col min-h-0 w-full min-w-0">
                           <div className="flex border-b border-white/10 shrink-0 w-full min-w-0">
                             <div className="flex-1 py-1.5 text-center text-[8px] font-bold uppercase tracking-widest bg-white/5 text-emerald-400 truncate">
@@ -1447,19 +1460,25 @@ export default function App() {
                           </div>
                           <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar space-y-4 w-full min-w-0">
                             <div className="space-y-2 min-w-0 w-full box-border">
-                              <h4 className="text-[8px] font-bold text-emerald-500 uppercase tracking-wider px-1">홈 케어 가이드</h4>
+                              <div className="flex items-center gap-1.5 px-1">
+                                <ShieldCheck size={10} className="text-emerald-500" />
+                                <h4 className="text-[8px] font-bold text-emerald-500 uppercase tracking-wider">Home Care Guide</h4>
+                              </div>
                               <div className="block w-full min-w-0 box-border">
                                 <div className="text-[10px] text-white/60 leading-relaxed prose-compact px-1 w-full break-words box-border">
-                                  <Markdown components={laymanMarkdownComponents}>{result.laymanProtocol}</Markdown>
+                                  <Markdown components={laymanMarkdownComponents}>{result.homeCareGuide}</Markdown>
                                 </div>
                               </div>
                             </div>
                             <div className="h-px bg-white/5 w-full" />
                             <div className="space-y-2 min-w-0 w-full box-border">
-                              <h4 className="text-[8px] font-bold text-blue-400 uppercase tracking-wider px-1">임상 프로토콜</h4>
+                              <div className="flex items-center gap-1.5 px-1">
+                                <Info size={10} className="text-blue-400" />
+                                <h4 className="text-[8px] font-bold text-blue-400 uppercase tracking-wider">Professional Care Options</h4>
+                              </div>
                               <div className="block w-full min-w-0 box-border">
                                 <div className="text-[10px] text-white/60 leading-relaxed prose-compact px-1 w-full break-words box-border">
-                                  <Markdown components={professionalMarkdownComponents}>{result.professionalProtocol}</Markdown>
+                                  <Markdown components={professionalMarkdownComponents}>{result.professionalCareOptions}</Markdown>
                                 </div>
                               </div>
                             </div>
