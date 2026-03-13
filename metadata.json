@@ -1,5 +1,5 @@
 {
   "name": "Face Symmetry Pro",
-  "description": "AI-powered facial asymmetry analysis tool. Upload or take a photo to get detailed feedback on your facial balance.",
+  "description": "AI facial symmetry & balance analysis",
   "requestFramePermissions": ["camera", "microphone"]
 }

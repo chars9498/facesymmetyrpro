@@ -30,6 +30,10 @@ export interface AnalysisMetrics {
   eyeWidthRatio: number;
   noseWidthRatio: number;
   lowerFaceRatio: number;
+  rotationAngle?: number;
+  landmarkConfidence?: number;
+  faceSize?: number;
+  lightingStatus?: 'Good' | 'Low Light' | 'Overexposed' | 'Uneven';
 }
 
 export interface AnalysisResult {
@@ -62,11 +66,34 @@ export interface AnalysisResult {
   autoCenterOffset?: number;
   rotationAngle?: number;
   percentile?: number;
+  tier?: {
+    label: string;
+    color: string;
+    icon: string;
+  };
+  partScores?: {
+    eyes: number;
+    brows: number;
+    mouth: number;
+    jaw: number;
+  };
   metrics?: {
     midline: number;
     [key: string]: any;
   };
   rawLandmarks?: any[];
+  scanQuality?: {
+    alignment: 'Good' | 'Fair' | 'Poor';
+    lighting: 'Good' | 'Low Light' | 'Overexposed' | 'Uneven';
+    stability: 'High' | 'Medium' | 'Low';
+  };
+  resultStability?: 'High' | 'Medium' | 'Low';
+  improvementPotential?: {
+    score?: number;
+    range: string;
+    targetRange: [number, number];
+    feedback: string;
+  };
 }
 
 const getRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
@@ -246,10 +273,10 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
   // 4. Analysis Summary & Influencing Factors (Dynamic)
   const getDynamicAnalysis = () => {
     const scores = [
-      { name: "눈 주변", score: metrics.eyeScore, key: 'eyes' },
-      { name: "눈썹 라인", score: metrics.browsScore, key: 'brows' },
-      { name: "입 주변", score: metrics.mouthScore, key: 'mouth' },
-      { name: "얼굴 하부", score: metrics.jawScore, key: 'jaw' }
+      { name: "눈 주변", score: metrics.eyeScore, key: 'eyes', detail: "좌우 눈 높이" },
+      { name: "눈썹 라인", score: metrics.browsScore, key: 'brows', detail: "눈썹의 기울기" },
+      { name: "입 주변", score: metrics.mouthScore, key: 'mouth', detail: "입꼬리 위치" },
+      { name: "얼굴 하부", score: metrics.jawScore, key: 'jaw', detail: "턱선의 대칭성" }
     ];
 
     // Sort by score to find lowest
@@ -261,47 +288,107 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
     
     let primaryImbalance = "";
     if (lowest.score < 90) {
-      primaryImbalance = `${lowest.name}에서 좌우 균형 차이가 가장 크게 나타났습니다.`;
+      const secondaryDetail = secondLowest.score < 92 ? `와 ${secondLowest.detail}` : "";
+      primaryImbalance = `가장 큰 좌우 균형 차이는 ${lowest.name} 영역에서 관찰됩니다.\n${lowest.detail}${secondaryDetail} 영역에서 다른 부위보다 상대적으로 높은 편차가 나타났습니다.\n이러한 차이는 표정 습관이나 근육 사용 패턴의 영향일 수 있습니다.`;
     } else {
-      primaryImbalance = "전반적인 안면 대칭이 매우 우수한 편입니다.";
+      primaryImbalance = "전반적인 안면 대칭이 매우 우수한 편입니다.\n모든 부위가 조화로운 균형을 유지하고 있습니다.";
     }
 
     let summaryText = "";
     if (imbalancedAreas.length === 0) {
       summaryText = "모든 측정 부위에서 매우 높은 수준의 대칭성이 관찰됩니다. 현재의 균형 잡힌 상태를 유지하는 것이 좋습니다.";
     } else {
-      const areasStr = imbalancedAreas.slice(0, 2).join("과 ");
-      summaryText = `가장 큰 좌우 차이는 **${areasStr}** 영역에서 관찰됩니다. 특히 ${lowest.name}의 좌우 균형 점수가 다른 부위보다 낮게 나타났습니다. 이러한 차이는 표정 습관, 근육 사용 패턴, 또는 자세 요인의 영향을 받을 수 있습니다.`;
+      const evidenceStr = sortedScores.slice(0, 2).map((s) => {
+        let desc = "";
+        if (s.score >= 88) desc = "미세한 차이";
+        else if (s.score >= 78) desc = "약간 큰 편차";
+        else if (s.score >= 65) desc = "상대적으로 높은 편차";
+        else desc = "뚜렷한 차이";
+        
+        return `${s.detail}에서 ${desc}가 관찰되었습니다.`;
+      }).join(" ");
+      summaryText = `${evidenceStr} 이러한 차이는 표정 습관, 근육 사용 패턴, 또는 자세 요인의 영향을 받을 수 있습니다.`;
     }
 
-    // Dynamic Home Care Guide
+    // Dynamic Home Care Guide (Structured)
     const tips = {
-      eyes: "1. **눈가 긴장 완화**: 스마트 기기 사용 시 눈 주변 근육을 가볍게 이완하고, 먼 곳을 바라보며 휴식을 취하는 것이 도움이 될 수 있습니다.",
-      brows: "1. **미간 및 이마 이완**: 무의식적으로 미간을 찌푸리는 습관이 있는지 확인하고, 이마 근육을 부드럽게 마사지하는 것이 좋습니다.",
-      mouth: "1. **표정 균형 훈련**: 거울을 보며 입꼬리 높이를 맞추는 가벼운 미소 연습을 통해 표정 근육의 균형을 잡는 데 도움을 줄 수 있습니다.",
-      jaw: "1. **좌우 균형 씹기**: 한쪽으로만 음식을 씹는 습관을 줄이고 양쪽을 균형 있게 사용하는 것이 좋습니다. 턱 주변 근육에 따뜻한 찜질을 하면 긴장 완화에 도움이 될 수 있습니다."
+      eyes: "**눈가 긴장 완화**: 스마트 기기 사용 시 눈 주변 근육을 가볍게 이완하고, 먼 곳을 바라보며 휴식을 취하는 것이 도움이 될 수 있습니다.",
+      brows: "**미간 및 이마 이완**: 무의식적으로 미간을 찌푸리는 습관이 있는지 확인하고, 이마 근육을 부드럽게 마사지하는 것이 좋습니다.",
+      mouth: "**표정 균형 훈련**: 거울을 보며 입꼬리 높이를 맞추는 가벼운 미소 연습을 통해 표정 근육의 균형을 잡는 데 도움을 줄 수 있습니다.",
+      jaw: "**좌우 균형 씹기**: 한쪽으로만 음식을 씹는 습관을 줄이고 양쪽을 균형 있게 사용하는 것이 좋습니다. 턱 주변 근육에 따뜻한 찜질을 하면 긴장 완화에 도움이 될 수 있습니다."
     };
 
     const generalTips = [
-      "2. **수면 자세 관리**: 얼굴이 한쪽으로 눌리는 자세는 장기적으로 좌우 균형에 영향을 줄 수 있으므로 주의가 필요합니다.",
-      "3. **바른 자세 유지**: 목과 어깨의 정렬이 안면 대칭에 영향을 줄 수 있으므로 평소 바른 자세를 유지하는 것이 좋습니다."
+      "**수면 자세 관리**: 얼굴이 한쪽으로 눌리는 자세는 장기적으로 좌우 균형에 영향을 줄 수 있으므로 주의가 필요합니다.",
+      "**바른 자세 유지**: 목과 어깨의 정렬이 안면 대칭에 영향을 줄 수 있으므로 평소 바른 자세를 유지하는 것이 좋습니다."
     ];
 
     let guide = "";
+    
+    // Primary Care
+    guide += "#### 🎯 우선 권장 관리\n";
     if (lowest.score < 90) {
-      guide += (tips as any)[lowest.key] + "\n\n";
+      guide += `- ${(tips as any)[lowest.key]}\n`;
     }
     if (secondLowest.score < 92) {
-      guide += (tips as any)[secondLowest.key] + "\n\n";
+      guide += `- ${(tips as any)[secondLowest.key]}\n`;
     }
-    guide += generalTips.join("\n\n");
+    if (lowest.score >= 90 && secondLowest.score >= 92) {
+      guide += "- 현재의 우수한 균형 상태를 유지하기 위한 가벼운 스트레칭을 권장합니다.\n";
+    }
+
+    guide += "\n#### 🧘 보조 습관 관리\n";
+    guide += `- ${generalTips[0]}\n`;
+    guide += `- ${generalTips[1]}\n`;
 
     return { primaryImbalance, summaryText, guide };
   };
 
   const { primaryImbalance, summaryText: analysisSummary, guide: homeCareGuide } = getDynamicAnalysis();
 
-  // 6. Professional Care Options (Suggestive Tone)
+  // 5. Result Stability & Scan Quality
+  const rotation = Math.abs(metrics.rotationAngle || 0);
+  const confidence = metrics.landmarkConfidence || 0.95;
+  const faceSize = metrics.faceSize || 0.5;
+  
+  let resultStability: 'High' | 'Medium' | 'Low' = 'High';
+  
+  // Trigger 'Low' only if 2 or more conditions are met
+  let lowConditions = 0;
+  if (rotation > 0.21) lowConditions++; // > 12 degrees
+  if (faceSize < 0.25) lowConditions++; // Too far
+  if (confidence < 0.8) lowConditions++; // Poor detection
+  
+  if (lowConditions >= 2) resultStability = 'Low';
+  else if (rotation > 0.1 || confidence < 0.88 || faceSize < 0.35) resultStability = 'Medium';
+
+  const scanQuality: AnalysisResult['scanQuality'] = {
+    alignment: rotation < 0.05 ? 'Good' : rotation < 0.15 ? 'Fair' : 'Poor',
+    lighting: metrics.lightingStatus || (confidence > 0.9 ? 'Good' : 'Low Light'),
+    stability: resultStability
+  };
+
+  // 6. Improvement Potential
+  const currentScore = metrics.overallScore;
+  let potentialRange = "";
+  let potentialFeedback = "";
+  let targetRange: [number, number] = [currentScore, currentScore];
+
+  if (currentScore > 92) {
+    potentialRange = "+1 ~ +3";
+    targetRange = [currentScore + 1, Math.min(100, currentScore + 3)];
+    potentialFeedback = "이미 매우 높은 수준의 대칭성을 유지하고 있습니다. 미세한 근육 긴장 완화로 완벽에 가까운 균형을 유지할 수 있습니다.";
+  } else if (currentScore > 80) {
+    potentialRange = "+4 ~ +7";
+    targetRange = [currentScore + 4, Math.min(100, currentScore + 7)];
+    potentialFeedback = "꾸준한 관리 습관을 유지하면 얼굴 균형 점수가 소폭 개선될 가능성이 있습니다.";
+  } else {
+    potentialRange = "+8 ~ +15";
+    targetRange = [currentScore + 8, Math.min(100, currentScore + 15)];
+    potentialFeedback = "근육 사용 불균형을 바로잡고 집중적인 관리를 병행한다면 대칭성이 크게 개선될 가능성이 높습니다.";
+  }
+
+  // 7. Professional Care Options (Suggestive Tone)
   const professionalCareOptions = `
 전문가의 근막 이완 관리나 자세 정렬 스트레칭이 얼굴 균형 개선에 도움이 될 수 있습니다. 특정 근육의 과도한 사용을 줄이고 균형을 맞추는 전문가용 프로그램을 고려해 보는 것이 좋습니다.
   `.trim();
@@ -340,6 +427,21 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
   else if (metrics.overallScore >= 55) balanceSummary = "전반적인 얼굴 균형에 약간의 차이가 관찰됩니다.";
   else balanceSummary = "전반적인 얼굴 균형이 다소 비대칭적으로 보일 수 있습니다.";
 
+  // Tier Calculation
+  const p = metrics.percentile || 50;
+  let tier = { label: "Average", color: "text-yellow-400", icon: "🟡" };
+  if (p >= 90) tier = { label: "Elite", color: "text-purple-400", icon: "🟣" };
+  else if (p >= 75) tier = { label: "Excellent", color: "text-blue-400", icon: "🔵" };
+  else if (p >= 60) tier = { label: "Balanced", color: "text-emerald-400", icon: "🟢" };
+
+  // Part Scores Calculation (Using actual scores from metrics)
+  const partScores = {
+    eyes: metrics.eyeScore,
+    brows: metrics.browsScore,
+    mouth: metrics.mouthScore,
+    jaw: metrics.jawScore,
+  };
+
   return {
     overallScore: metrics.overallScore,
     symmetryScore: metrics.overallScore,
@@ -352,6 +454,16 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
     analysisSummary,
     homeCareGuide,
     professionalCareOptions,
+    scanQuality,
+    resultStability,
+    percentile: metrics.percentile,
+    tier,
+    partScores,
+    improvementPotential: {
+      range: potentialRange,
+      targetRange: targetRange,
+      feedback: potentialFeedback
+    },
     landmarks: {
       eyes: eyeRes,
       brows: browsRes,

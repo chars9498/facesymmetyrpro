@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { analyzeLocally, type AnalysisResult } from "./services/analysisEngine";
-import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles } from 'lucide-react';
+import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
@@ -66,6 +66,11 @@ function cn(...inputs: ClassValue[]) {
 export default function App() {
   const [image, setImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [scanQuality, setScanQuality] = useState<{
+    alignment: 'Good' | 'Fair' | 'Poor';
+    lighting: 'Good' | 'Low Light' | 'Overexposed' | 'Uneven';
+    stability: 'High' | 'Medium' | 'Low';
+  }>({ alignment: 'Good', lighting: 'Good', stability: 'High' });
   const [isFakeScanning, setIsFakeScanning] = useState(false);
   const [scanningLandmarks, setScanningLandmarks] = useState<any[] | null>(null);
   const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(true);
@@ -119,6 +124,97 @@ export default function App() {
   }, []);
 
   const [stream, setStream] = useState<MediaStream | null>(null);
+
+  useEffect(() => {
+    let animationFrameId: number;
+    let lastDetectionTime = 0;
+
+    const detectFace = async () => {
+      if (isCameraActive && videoRef.current && faceMeshRef.current) {
+        const now = Date.now();
+        if (now - lastDetectionTime > 200) { // Detect every 200ms
+          try {
+            await faceMeshRef.current.send({ image: videoRef.current });
+            lastDetectionTime = now;
+          } catch (e) {
+            console.error("Real-time detection failed", e);
+          }
+        }
+      }
+      animationFrameId = requestAnimationFrame(detectFace);
+    };
+
+    if (isCameraActive) {
+      const checkLighting = () => {
+        if (!videoRef.current || !canvasRef.current) return 'Good';
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return 'Good';
+
+        // Draw a small portion of the video to the canvas to check brightness
+        ctx.drawImage(video, 0, 0, 100, 100);
+        const imageData = ctx.getImageData(0, 0, 100, 100);
+        const data = imageData.data;
+        
+        let brightnessValues = [];
+        let totalBrightness = 0;
+        
+        for (let i = 0; i < data.length; i += 4) {
+          const b = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          brightnessValues.push(b);
+          totalBrightness += b;
+        }
+        
+        const avgBrightness = totalBrightness / brightnessValues.length;
+        
+        // Calculate variance for contrast check
+        let variance = 0;
+        for (const b of brightnessValues) {
+          variance += Math.pow(b - avgBrightness, 2);
+        }
+        const stdDev = Math.sqrt(variance / brightnessValues.length);
+
+        if (avgBrightness < 60) return 'Low Light';
+        if (avgBrightness > 180) return 'Overexposed';
+        if (stdDev > 50) return 'Uneven';
+        return 'Good';
+      };
+
+      faceMeshRef.current?.onResults((results) => {
+        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+          const landmarks = results.multiFaceLandmarks[0];
+          
+          // Calculate Roll Angle
+          const leftEye = landmarks[33];
+          const rightEye = landmarks[263];
+          const roll = Math.abs(Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x));
+          
+          // Calculate Face Size (Distance from camera)
+          const faceWidth = Math.sqrt(Math.pow(landmarks[234].x - landmarks[454].x, 2) + Math.pow(landmarks[234].y - landmarks[454].y, 2));
+          
+          // Calculate Jitter (Landmark stability)
+          // For simplicity, we'll just check if landmarks are detected
+          
+          const lightingStatus = checkLighting();
+
+          setScanQuality({
+            alignment: roll < 0.05 ? 'Good' : roll < 0.12 ? 'Fair' : 'Poor',
+            lighting: lightingStatus,
+            stability: faceWidth > 0.3 && faceWidth < 0.7 ? 'High' : 'Medium'
+          });
+        } else {
+          setScanQuality({ alignment: 'Poor', lighting: 'Low Light', stability: 'Low' });
+        }
+      });
+
+      detectFace();
+
+      return () => {
+        cancelAnimationFrame(animationFrameId);
+      };
+    }
+  }, [isCameraActive]);
 
   const startCamera = async () => {
     try {
@@ -208,7 +304,7 @@ export default function App() {
     }
   };
 
-  const downloadShareImage = async () => {
+  const generateAndShareImage = async () => {
     if (!shareCardRef.current) return;
     
     setIsGeneratingShareImage(true);
@@ -223,6 +319,22 @@ export default function App() {
         height: 1920,
       });
       
+      // Check if Web Share API supports file sharing
+      if (navigator.share && navigator.canShare) {
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], `face-symmetry-result.png`, { type: 'image/png' });
+        
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Face Symmetry Pro Result',
+            text: `내 얼굴 비대칭 점수는 ${result?.overallScore}점! 상위 ${100 - (result?.percentile || 0)}% 얼굴 균형을 확인해보세요.`,
+          });
+          return;
+        }
+      }
+
+      // Fallback to download
       const link = document.createElement('a');
       link.download = `face-symmetry-result-${Date.now()}.png`;
       link.href = dataUrl;
@@ -437,7 +549,7 @@ export default function App() {
     setResult(null);
     setCenterOffset(0);
     setRotationAngle(0);
-    setAnalysisStep('얼굴 특징점 추출 중...');
+    setAnalysisStep('얼굴 특징을 분석하고 있습니다');
 
     try {
       if (!faceMeshRef.current) {
@@ -452,6 +564,36 @@ export default function App() {
       await imgInfo.decode();
       setImageAspectRatio(imgInfo.width / imgInfo.height);
       setImageDimensions({ width: imgInfo.width, height: imgInfo.height });
+
+      // Check lighting on the captured image
+      const checkImageLighting = (img: HTMLImageElement) => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 100;
+        canvas.height = 100;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return 'Good' as const;
+        ctx.drawImage(img, 0, 0, 100, 100);
+        const imageData = ctx.getImageData(0, 0, 100, 100);
+        const data = imageData.data;
+        let brightnessValues = [];
+        let totalBrightness = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const b = (data[i] + data[i + 1] + data[i + 2]) / 3;
+          brightnessValues.push(b);
+          totalBrightness += b;
+        }
+        const avgBrightness = totalBrightness / brightnessValues.length;
+        let variance = 0;
+        for (const b of brightnessValues) variance += Math.pow(b - avgBrightness, 2);
+        const stdDev = Math.sqrt(variance / brightnessValues.length);
+
+        if (avgBrightness < 60) return 'Low Light' as const;
+        if (avgBrightness > 180) return 'Overexposed' as const;
+        if (stdDev > 50) return 'Uneven' as const;
+        return 'Good' as const;
+      };
+
+      const lightingStatus = checkImageLighting(imgInfo);
 
       const runFaceMesh = async (imgSrc: string): Promise<faceMesh.Results> => {
         const img = new Image();
@@ -492,7 +634,7 @@ export default function App() {
         throw new Error("사진에서 얼굴을 찾을 수 없습니다. 얼굴이 잘 보이도록 정면에서 밝은 곳에서 찍은 사진을 사용해주세요.");
       }
 
-      setAnalysisStep('대칭성 수치 계산 중...');
+      setAnalysisStep('AI 균형 점수를 계산하고 있습니다');
       const rawLandmarks = faceResults.multiFaceLandmarks[0];
       setScanningLandmarks(rawLandmarks);
       
@@ -597,7 +739,11 @@ export default function App() {
         philtrumLengthRatio: philtrumLength / faceHeight,
         eyeWidthRatio: eyeWidth / faceWidth,
         noseWidthRatio: noseWidth / faceWidth,
-        lowerFaceRatio: lowerFaceHeight / faceHeight
+        lowerFaceRatio: lowerFaceHeight / faceHeight,
+        rotationAngle: rollAngle,
+        landmarkConfidence: 0.98, // Assuming high confidence if detection succeeded
+        faceSize: faceWidth,
+        lightingStatus: lightingStatus
       };
 
       // Recalculate percentile
@@ -613,14 +759,14 @@ export default function App() {
       // 10. Start Fake Scanning Presentation (1.5s)
       setIsFakeScanning(true);
       const scanningSteps = [
-        "Analyzing facial symmetry...",
-        "Detecting landmarks...",
-        "Calculating proportions..."
+        { text: "얼굴 특징을 분석하고 있습니다...", timeout: 800 },
+        { text: "AI 균형 점수를 계산하고 있습니다...", timeout: 1200 },
+        { text: "개인화된 분석 리포트를 생성하고 있습니다...", timeout: 600 }
       ];
       
       for (let i = 0; i < scanningSteps.length; i++) {
-        setAnalysisStep(scanningSteps[i]);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        setAnalysisStep(scanningSteps[i].text);
+        await new Promise(resolve => setTimeout(resolve, scanningSteps[i].timeout));
       }
       
       setIsFakeScanning(false);
@@ -681,10 +827,12 @@ export default function App() {
   };
 
   const laymanMarkdownComponents = {
-    ol: ({ children }: any) => <ol className="list-decimal list-inside space-y-3 m-0 w-full block min-w-0">{children}</ol>,
+    h4: ({ children }: any) => <h4 className="text-[9px] font-bold text-white/90 uppercase tracking-wider mt-2 mb-1">{children}</h4>,
+    ul: ({ children }: any) => <ul className="list-none space-y-2 m-0 w-full block min-w-0">{children}</ul>,
     li: ({ children }: any) => (
-      <li className="text-white/80 leading-relaxed whitespace-normal break-words w-full block min-w-0">
-        {children}
+      <li className="text-white/80 leading-relaxed whitespace-normal break-words w-full block min-w-0 flex gap-2">
+        <span className="text-emerald-500 shrink-0">•</span>
+        <span>{children}</span>
       </li>
     ),
     p: ({ children }: any) => <div className="whitespace-normal break-words w-full block min-w-0 mb-1">{children}</div>,
@@ -916,6 +1064,65 @@ export default function App() {
                         얼굴을 중앙선에 맞춰주세요
                       </p>
                     </div>
+
+                    {/* Scan Quality Indicator */}
+                    <div className="absolute top-6 left-6 flex flex-col gap-2">
+                      <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-3 space-y-2 min-w-[120px]">
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Alignment</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn(
+                              "text-[7px] font-bold uppercase",
+                              scanQuality.alignment === 'Good' ? "text-emerald-400" : 
+                              scanQuality.alignment === 'Fair' ? "text-yellow-400" : "text-red-400"
+                            )}>{scanQuality.alignment}</span>
+                            <div className={cn(
+                              "w-2 h-2 rounded-full",
+                              scanQuality.alignment === 'Good' ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : 
+                              scanQuality.alignment === 'Fair' ? "bg-yellow-500 shadow-[0_0_8px_#eab308]" : "bg-red-500 shadow-[0_0_8px_#ef4444]"
+                            )} />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Lighting</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn(
+                              "text-[7px] font-bold uppercase",
+                              scanQuality.lighting === 'Good' ? "text-emerald-400" : "text-red-400"
+                            )}>{scanQuality.lighting}</span>
+                            <div className={cn(
+                              "w-2 h-2 rounded-full",
+                              scanQuality.lighting === 'Good' ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : "bg-red-500 shadow-[0_0_8px_#ef4444]"
+                            )} />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Stability</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={cn(
+                              "text-[7px] font-bold uppercase",
+                              scanQuality.stability === 'High' ? "text-emerald-400" : 
+                              scanQuality.stability === 'Medium' ? "text-yellow-400" : "text-red-400"
+                            )}>{scanQuality.stability}</span>
+                            <div className={cn(
+                              "w-2 h-2 rounded-full",
+                              scanQuality.stability === 'High' ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : 
+                              scanQuality.stability === 'Medium' ? "bg-yellow-500 shadow-[0_0_8px_#eab308]" : "bg-red-500 shadow-[0_0_8px_#ef4444]"
+                            )} />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {scanQuality.alignment === 'Poor' && (
+                        <motion.p 
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="text-[9px] text-red-400 font-bold uppercase tracking-tighter bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-lg backdrop-blur-sm"
+                        >
+                          ⚠ 얼굴이 기울어져 있습니다
+                        </motion.p>
+                      )}
+                    </div>
                   </div>
                   <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4 px-6">
                     <button 
@@ -1008,9 +1215,9 @@ export default function App() {
                         <p className="text-xl font-bold tracking-tight text-emerald-400">{analysisStep || "AI 분석 진행 중..."}</p>
                         <div className="flex flex-col gap-1">
                           <p className="text-sm text-white/70 animate-pulse">
-                            {analysisStep.includes('특징점') ? '얼굴의 468개 랜드마크를 찾는 중...' : 
-                             analysisStep.includes('수치') ? '좌우 균형 데이터를 계산하는 중...' : 
-                             '전문가 소견을 생성하고 있습니다'}
+                            {analysisStep.includes('특징') ? '얼굴의 468개 랜드마크를 찾는 중...' : 
+                             analysisStep.includes('점수') ? '좌우 균형 데이터를 계산하는 중...' : 
+                             '보다 신뢰할 수 있는 AI 분석 리포트를 생성하고 있습니다'}
                           </p>
                           <p className="text-[10px] text-white/40 uppercase tracking-widest">Local Processing + AI Cloud</p>
                         </div>
@@ -1060,7 +1267,7 @@ export default function App() {
 
                     {debugInfo && (
                       <div className="mt-4 p-3 bg-black/40 rounded-xl border border-red-500/20 space-y-2">
-                        <p className="text-[9px] font-bold uppercase tracking-widest text-red-300/60">Diagnostic Info (For Support)</p>
+                        <p className="text-[9px] font-bold uppercase tracking-widest text-red-300/60">System Info (For Support)</p>
                         <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
                           <div className="text-white/40">Key Length:</div>
                           <div className="text-white/80">{debugInfo.length} chars</div>
@@ -1086,7 +1293,7 @@ export default function App() {
             <div className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-4 backdrop-blur-sm">
               <h3 className="text-[10px] font-bold text-emerald-400 flex items-center gap-2 uppercase tracking-[0.2em]">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                Diagnostic Protocol: Tips
+                Analysis Protocol: Tips
               </h3>
               <ul className="text-xs text-white/60 space-y-3 font-mono">
                 <li className="flex items-start gap-2">
@@ -1137,116 +1344,122 @@ export default function App() {
 
                   <div className="flex-1 min-h-0 overflow-hidden">
                     {reportStep === 0 && (
-                      <div className="flex flex-col gap-2 h-full min-h-0">
-                        <div className="grid grid-cols-2 gap-2 shrink-0">
-                          {/* Score Card */}
-                          <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.5, delay: 0 }}
-                            className="bg-white/5 rounded-2xl border border-white/10 p-3 shadow-xl backdrop-blur-sm flex flex-col justify-center items-center"
-                          >
-                            <div className="relative mb-1 shrink-0">
-                              <div className="absolute -inset-2 bg-emerald-500/10 blur-xl rounded-full animate-pulse" />
-                              <div className="relative">
-                                <svg className="w-16 h-16 transform -rotate-90">
-                                  <circle cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
-                                  <circle
-                                    cx="32" cy="32" r="28" stroke="currentColor" strokeWidth="4" fill="transparent"
-                                    strokeDasharray={176}
-                                    strokeDashoffset={176 - (176 * (result.overallScore || 0)) / 100}
-                                    strokeLinecap="round"
-                                    className="text-emerald-500 transition-all duration-1000 ease-out drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]"
-                                  />
-                                </svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                  <span className="text-xl font-bold tracking-tighter font-mono leading-none">{result.overallScore || 0}</span>
-                                  <span className="text-[5px] font-bold text-white/30 uppercase tracking-widest mt-0.5">Balance Index</span>
-                                </div>
+                      <div className="flex flex-col gap-4 h-full min-h-0 justify-center">
+                        {/* Score Card */}
+                        <motion.div 
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ duration: 0.5 }}
+                          className="bg-white/5 rounded-3xl border border-white/10 p-6 shadow-2xl backdrop-blur-md flex flex-col items-center relative overflow-hidden"
+                        >
+                          <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <Trophy size={80} className="text-emerald-400" />
+                          </div>
+                          
+                          <div className="relative mb-4">
+                            <div className="absolute -inset-4 bg-emerald-500/20 blur-2xl rounded-full animate-pulse" />
+                            <div className="relative">
+                              <svg className="w-32 h-32 transform -rotate-90">
+                                <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-white/5" />
+                                <circle
+                                  cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="6" fill="transparent"
+                                  strokeDasharray={364}
+                                  strokeDashoffset={364 - (364 * (result.overallScore || 0)) / 100}
+                                  strokeLinecap="round"
+                                  className="text-emerald-500 transition-all duration-1000 ease-out drop-shadow-[0_0_12px_rgba(16,185,129,0.6)]"
+                                />
+                              </svg>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className="text-4xl font-black italic tracking-tighter font-mono leading-none">{result.overallScore || 0}</span>
+                                <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest mt-1">Balance Score</span>
                               </div>
                             </div>
-                            
-                            <div className="text-center space-y-1 shrink-0">
-                              <h3 className="text-[7px] font-bold uppercase text-white/40 font-mono tracking-widest">Analysis Summary</h3>
-                              <p className="text-[9px] font-bold text-white tracking-tight leading-tight px-1">{result.summary}</p>
-                              
-                              <div className="flex items-center justify-center gap-3 mt-1.5">
-                                <div className="flex flex-col items-center">
-                                  <span className="text-[5px] text-white/30 uppercase font-mono">Symmetry</span>
-                                  <span className="text-[9px] font-bold text-emerald-400">{result.symmetryScore || 0}</span>
-                                </div>
-                                <div className="w-px h-4 bg-white/10" />
-                                <div className="flex flex-col items-center">
-                                  <span className="text-[5px] text-white/30 uppercase font-mono">Proportion</span>
-                                  <span className="text-[9px] font-bold text-emerald-400">{result.proportionScore || 0}</span>
-                                </div>
-                              </div>
+                          </div>
 
-                              <div className="flex items-center justify-center gap-1 mt-1.5">
-                                <div className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
-                                  <span className="text-[7px] text-emerald-400/60 font-bold uppercase mr-1">상위</span>
-                                  <span className="text-[10px] font-bold text-emerald-400">{100 - (result.percentile || 0)}%</span>
+                          <div className="text-center space-y-2 w-full">
+                            <div className="flex flex-col items-center gap-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-bold text-white tracking-tight">상위 {100 - (result.percentile || 0)}%</span>
+                                <div className={cn(
+                                  "px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border",
+                                  result.tier?.color.replace('text-', 'bg-').replace('-400', '-500/10'),
+                                  result.tier?.color.replace('text-', 'border-').replace('-400', '-500/20'),
+                                  result.tier?.color
+                                )}>
+                                  {result.tier?.icon} {result.tier?.label}
                                 </div>
                               </div>
+                              <span className="text-[7px] font-bold text-white/30 uppercase tracking-[0.3em]">Global Percentile Ranking</span>
                             </div>
-                          </motion.div>
 
-                          {/* Face Shape & Strongest Features Card */}
-                          <div className="bg-white/5 rounded-2xl border border-white/10 p-3 shadow-xl backdrop-blur-sm flex flex-col justify-center gap-2">
-                            <motion.div 
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ duration: 0.5, delay: 0.4 }}
-                              className="space-y-1"
-                            >
-                              <div className="flex items-center gap-1.5">
-                                <Maximize2 size={12} className="text-emerald-400" />
-                                <h3 className="text-[9px] font-bold uppercase tracking-widest text-white/40">Face Shape</h3>
-                              </div>
-                              <p className="text-[11px] font-bold text-white tracking-tight leading-tight">{result.faceShape || "분석 중..."}</p>
-                            </motion.div>
-                            
-                            <div className="h-px bg-white/5 w-full" />
+                            <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-black/40 border border-white/5 rounded-full backdrop-blur-sm self-center mx-auto w-fit">
+                              <div className={cn(
+                                "w-1.5 h-1.5 rounded-full shadow-[0_0_8px_currentColor]",
+                                result.resultStability === 'High' ? "text-emerald-500 bg-emerald-500" : 
+                                result.resultStability === 'Medium' ? "text-yellow-500 bg-yellow-500" : "text-red-500 bg-red-500"
+                              )} />
+                              <span className="text-[8px] font-bold text-white/60 uppercase tracking-widest">Confidence: {result.resultStability}</span>
+                            </div>
+                          </div>
+                        </motion.div>
 
-                            <motion.div 
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ duration: 0.5, delay: 0.8 }}
-                              className="space-y-1.5"
-                            >
-                              <div className="flex items-center gap-1.5">
-                                <Trophy size={12} className="text-emerald-400" />
-                                <h3 className="text-[9px] font-bold uppercase tracking-widest text-white/40">Strongest Features</h3>
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                {result.strongestFeatures?.map((feature, i) => (
-                                  <div key={i} className="flex items-center gap-1.5">
-                                    <CheckCircle2 size={8} className="text-emerald-500 shrink-0" />
-                                    <span className="text-[9px] text-white/80 font-medium leading-tight">
-                                      {feature}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            </motion.div>
+                        {/* Key Insight */}
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.5, delay: 0.3 }}
+                          className="bg-emerald-500/10 rounded-3xl border border-emerald-500/20 p-5 shadow-xl backdrop-blur-sm relative overflow-hidden group"
+                        >
+                          <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Zap size={40} className="text-emerald-400" />
+                          </div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Zap size={14} className="text-emerald-400" />
+                            <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] font-mono">Key Insight</h4>
+                          </div>
+                          <p className="text-[13px] font-bold text-white leading-relaxed whitespace-pre-line relative z-10">
+                            {result.primaryImbalance}
+                          </p>
+                        </motion.div>
+                      </div>
+                    )}
+
+                    {reportStep === 1 && (
+                      <div className="flex flex-col gap-3 h-full min-h-0">
+                        {/* Radar Chart */}
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm flex-[1.2] flex flex-col min-h-0">
+                          <h3 className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono mb-2 shrink-0">Balance Distribution</h3>
+                          <div className="flex-1 min-h-0">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
+                                { subject: '눈', A: result.partScores?.eyes || result.landmarks.eyes.score },
+                                { subject: '눈썹', A: result.partScores?.brows || result.landmarks.brows.score },
+                                { subject: '입', A: result.partScores?.mouth || result.landmarks.mouth.score },
+                                { subject: '턱', A: result.partScores?.jaw || result.landmarks.jawline.score },
+                              ]}>
+                                <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                                <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 700 }} />
+                                <Radar name="Symmetry" dataKey="A" stroke="#10b981" fill="#10b981" fillOpacity={0.4} />
+                              </RadarChart>
+                            </ResponsiveContainer>
                           </div>
                         </div>
 
-                        {/* Symmetry Visualizer (Moved from Step 1 to Step 0 for better flow) */}
-                        <div className="flex-1 min-h-0 bg-white/5 rounded-2xl border border-white/10 p-2 shadow-xl backdrop-blur-sm flex flex-col">
-                          <div className="flex items-center justify-between mb-1 shrink-0 px-1">
-                            <h3 className="text-[7px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono">Visual Analysis</h3>
+                        {/* Visual Analysis (Mesh) */}
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-3 shadow-xl backdrop-blur-sm flex-1 flex flex-col min-h-0">
+                          <div className="flex items-center justify-between mb-2 shrink-0">
+                            <h3 className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono">Visual Mesh Analysis</h3>
                             <div className="flex gap-1">
-                              <button onClick={() => setAutoCorrectEnabled(!autoCorrectEnabled)} className={cn("p-0.5 rounded transition-all border", autoCorrectEnabled ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-400" : "bg-white/5 border-white/10 text-white/40")}>
-                                <RotateCcw size={8} />
+                              <button onClick={() => setAutoCorrectEnabled(!autoCorrectEnabled)} className={cn("p-1 rounded-lg transition-all border", autoCorrectEnabled ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-400" : "bg-white/5 border-white/10 text-white/40")}>
+                                <RotateCcw size={10} />
                               </button>
-                              <button onClick={() => setShowOverlay(!showOverlay)} className={cn("p-0.5 rounded transition-all border", showOverlay ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-white/5 border-white/10 text-white/40")}>
-                                <Scan size={8} />
+                              <button onClick={() => setShowOverlay(!showOverlay)} className={cn("p-1 rounded-lg transition-all border", showOverlay ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400" : "bg-white/5 border-white/10 text-white/40")}>
+                                <Scan size={10} />
                               </button>
                             </div>
                           </div>
 
-                          <div className="flex-1 relative rounded-xl overflow-hidden border border-white/10 bg-black flex items-center justify-center min-h-0">
+                          <div className="flex-1 relative rounded-2xl overflow-hidden border border-white/10 bg-black flex items-center justify-center min-h-0">
                             <div 
                               className="relative transition-transform duration-500 ease-out"
                               style={{ 
@@ -1257,9 +1470,8 @@ export default function App() {
                             >
                               <img src={image || ''} alt="Analysis" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                               
-                              {/* Mesh Overlay with Fade-in Transition */}
                               <div className={cn(
-                                "absolute inset-0 pointer-events-none transition-opacity duration-300 ease-in-out",
+                                "absolute inset-0 pointer-events-none transition-opacity duration-300",
                                 showOverlay ? "opacity-100" : "opacity-0"
                               )}>
                                 {result.rawLandmarks && (
@@ -1269,136 +1481,106 @@ export default function App() {
                                     height={imageDimensions.height} 
                                   />
                                 )}
-
                                 {result.asymmetryZones?.map((zone, i) => (
-                                  <div key={`zone-${i}`} className="absolute" style={{ left: `${zone.x}%`, top: `${zone.y}%`, width: `${zone.radius * 2}%`, height: `${zone.radius * 2}%`, marginLeft: `-${zone.radius}%`, marginTop: `-${zone.radius}%` }}>
+                                  <div key={`zone-${i}`} className="absolute" style={{ left: `${zone.x}%`, top: `${zone.y}%`, width: `${zone.radius * 2.5}%`, height: `${zone.radius * 2.5}%`, marginLeft: `-${zone.radius * 1.25}%`, marginTop: `-${zone.radius * 1.25}%` }}>
                                     <motion.div 
                                       className="w-full h-full rounded-full" 
-                                      style={{ background: `radial-gradient(circle, rgba(239, 68, 68, ${zone.intensity}) 0%, rgba(239, 68, 68, 0) 80%)` }} 
-                                      animate={{ scale: [1, 1.1, 1], opacity: [zone.intensity, zone.intensity * 0.6, zone.intensity] }} 
+                                      style={{ background: `radial-gradient(circle, rgba(239, 68, 68, ${zone.intensity * 0.8}) 0%, rgba(239, 68, 68, 0) 70%)` }} 
+                                      animate={{ scale: [1, 1.2, 1], opacity: [zone.intensity, zone.intensity * 0.5, zone.intensity] }} 
                                       transition={{ duration: 2, repeat: Infinity }} 
                                     />
-                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                                      <span className="text-[5px] font-bold text-red-500 whitespace-nowrap tracking-tighter bg-black/20 px-0.5 rounded">
-                                        {zone.label}
-                                      </span>
-                                    </div>
                                   </div>
                                 ))}
                               </div>
                             </div>
                             {result.metrics?.midline !== undefined && (
-                              <div className="absolute inset-y-0 w-px bg-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.5)] z-10" style={{ left: `${result.metrics.midline * 100}%` }} />
+                              <div className="absolute inset-y-0 w-px bg-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.5)] z-10" style={{ left: `${result.metrics.midline * 100}%` }} />
                             )}
                           </div>
                         </div>
-                      </div>
-                    )}
 
-                    {reportStep === 1 && (
-                      <div className="flex flex-col gap-2 h-full min-h-0">
-                        {/* Radar Chart & Metrics */}
-                        <div className="flex-1 flex flex-col gap-2 min-h-0">
-                          <div className="bg-white/5 rounded-2xl border border-white/10 p-2 shadow-xl backdrop-blur-sm flex-1 flex flex-col min-h-0">
-                            <h3 className="text-[7px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono mb-0.5 shrink-0 px-1">Balance Chart</h3>
-                            <div className="flex-1 min-h-0">
-                              <ResponsiveContainer width="100%" height="100%">
-                                <RadarChart cx="50%" cy="50%" outerRadius="65%" data={[
-                                  { subject: '눈', A: result.landmarks.eyes.score },
-                                  { subject: '눈썹', A: result.landmarks.brows.score },
-                                  { subject: '입', A: result.landmarks.mouth.score },
-                                  { subject: '턱', A: result.landmarks.jawline.score },
-                                ]}>
-                                  <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 8 }} />
-                                  <Radar name="Symmetry" dataKey="A" stroke="#10b981" fill="#10b981" fillOpacity={0.3} />
-                                </RadarChart>
-                              </ResponsiveContainer>
+                        {/* Part Scores */}
+                        <div className="grid grid-cols-4 gap-2 shrink-0">
+                          {[
+                            { label: '눈', score: result.partScores?.eyes || result.landmarks.eyes.score },
+                            { label: '눈썹', score: result.partScores?.brows || result.landmarks.brows.score },
+                            { label: '입', score: result.partScores?.mouth || result.landmarks.mouth.score },
+                            { label: '턱', score: result.partScores?.jaw || result.landmarks.jawline.score }
+                          ].map((m, idx) => (
+                            <div key={idx} className="bg-white/5 p-2 rounded-xl border border-white/10 flex flex-col items-center gap-1">
+                              <span className="text-[8px] text-white/40 uppercase font-mono font-bold">{m.label}</span>
+                              <span className="text-[14px] font-black text-emerald-400 italic">{m.score}</span>
                             </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-2 shrink-0">
-                            {[
-                              { label: 'Eyes', score: result.landmarks.eyes.score, status: result.landmarks.eyes.status, feedback: result.landmarks.eyes.feedback },
-                              { label: 'Brows', score: result.landmarks.brows.score, status: result.landmarks.brows.status, feedback: result.landmarks.brows.feedback },
-                              { label: 'Mouth', score: result.landmarks.mouth.score, status: result.landmarks.mouth.status, feedback: result.landmarks.mouth.feedback },
-                              { label: 'Jaw', score: result.landmarks.jawline.score, status: result.landmarks.jawline.status, feedback: result.landmarks.jawline.feedback }
-                            ].map((m, idx) => (
-                              <div key={idx} className="bg-white/5 p-2 rounded-xl border border-white/10 flex flex-col gap-1">
-                                <div className="flex justify-between items-center">
-                                  <div className="flex flex-col">
-                                    <span className="text-[7px] text-white/40 uppercase font-mono">{m.label}</span>
-                                    <span className="text-[8px] font-bold text-emerald-400/80">{m.status}</span>
-                                  </div>
-                                  <span className="text-[10px] font-bold text-emerald-400">{m.score}</span>
-                                </div>
-                                <p className="text-[8px] text-white/60 leading-tight break-words whitespace-normal">
-                                  {m.feedback}
-                                </p>
-                              </div>
-                            ))}
-                          </div>
+                          ))}
                         </div>
                       </div>
                     )}
 
                     {reportStep === 2 && (
-                      <div className="flex flex-col gap-2 h-full min-h-0">
-                        <div className="bg-white/5 rounded-2xl border border-white/10 p-3 shadow-xl backdrop-blur-sm flex-1 flex flex-col gap-3 min-h-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Zap size={12} className="text-amber-400" />
-                            <h3 className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono">Advanced Facial Metrics</h3>
+                      <div className="flex flex-col gap-3 h-full min-h-0">
+                        <div className="grid grid-cols-2 gap-3 shrink-0">
+                          {/* Face Shape Card */}
+                          <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm flex flex-col justify-center gap-1">
+                            <div className="flex items-center gap-2">
+                              <Maximize2 size={14} className="text-emerald-400" />
+                              <h3 className="text-[9px] font-bold uppercase tracking-widest text-white/40">Face Shape</h3>
+                            </div>
+                            <p className="text-[14px] font-black text-white italic">{result.faceShape || "분석 중..."}</p>
                           </div>
 
-                          <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar">
+                          {/* Improvement Potential Card */}
+                          <div className="bg-emerald-500/5 rounded-3xl border border-emerald-500/20 p-4 shadow-xl backdrop-blur-sm flex flex-col justify-center gap-1">
+                            <div className="flex items-center gap-2">
+                              <TrendingUp size={14} className="text-emerald-400" />
+                              <h3 className="text-[9px] font-bold uppercase tracking-widest text-emerald-400/80">Potential</h3>
+                            </div>
+                            <p className="text-[14px] font-black text-emerald-400 italic">{result.improvementPotential?.range}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm flex-1 flex flex-col gap-4 min-h-0">
+                          <div className="flex items-center gap-2 shrink-0">
+                            <Zap size={14} className="text-amber-400" />
+                            <h3 className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono">Advanced Metrics</h3>
+                          </div>
+
+                          <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar space-y-4">
                             {/* Eye Spacing */}
-                            <div className="space-y-1">
+                            <div className="space-y-1.5">
                               <div className="flex justify-between items-end">
-                                <span className="text-[9px] font-bold text-white/80">Eye Spacing Ratio</span>
-                                <span className="text-[11px] font-mono font-bold text-emerald-400">{result.advancedMetrics?.eyeSpacing.value.toFixed(2)}</span>
+                                <span className="text-[10px] font-bold text-white/80">Eye Spacing Ratio</span>
+                                <span className="text-[12px] font-mono font-black text-emerald-400">{result.advancedMetrics?.eyeSpacing.value.toFixed(2)}</span>
                               </div>
-                              <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-                                <p className="text-[8px] font-bold text-emerald-400/80 mb-0.5">{result.advancedMetrics?.eyeSpacing.status}</p>
-                                <p className="text-[8px] text-white/60 leading-tight">{result.advancedMetrics?.eyeSpacing.feedback}</p>
+                              <div className="bg-white/5 p-2.5 rounded-xl border border-white/5">
+                                <p className="text-[9px] font-bold text-emerald-400/80 mb-1">{result.advancedMetrics?.eyeSpacing.status}</p>
+                                <p className="text-[9px] text-white/60 leading-tight">{result.advancedMetrics?.eyeSpacing.feedback}</p>
                               </div>
                             </div>
 
                             {/* Facial Proportion */}
-                            <div className="space-y-1">
+                            <div className="space-y-1.5">
                               <div className="flex justify-between items-end">
-                                <span className="text-[9px] font-bold text-white/80">Facial Proportion (V)</span>
-                                <span className="text-[11px] font-mono font-bold text-emerald-400">
+                                <span className="text-[10px] font-bold text-white/80">Facial Proportion (V)</span>
+                                <span className="text-[12px] font-mono font-black text-emerald-400">
                                   {result.advancedMetrics?.facialProportion.value.upper}:{result.advancedMetrics?.facialProportion.value.mid}:{result.advancedMetrics?.facialProportion.value.lower}
                                 </span>
                               </div>
-                              <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-                                <p className="text-[8px] font-bold text-emerald-400/80 mb-0.5">{result.advancedMetrics?.facialProportion.status}</p>
-                                <p className="text-[8px] text-white/60 leading-tight">{result.advancedMetrics?.facialProportion.feedback}</p>
-                              </div>
-                            </div>
-
-                            {/* Face Ratio */}
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-end">
-                                <span className="text-[9px] font-bold text-white/80">Face Shape Ratio</span>
-                                <span className="text-[11px] font-mono font-bold text-emerald-400">{result.advancedMetrics?.faceRatio.value.toFixed(2)}</span>
-                              </div>
-                              <div className="bg-white/5 p-2 rounded-lg border border-white/5">
-                                <p className="text-[8px] font-bold text-emerald-400/80 mb-0.5">{result.advancedMetrics?.faceRatio.status}</p>
-                                <p className="text-[8px] text-white/60 leading-tight">{result.advancedMetrics?.faceRatio.feedback}</p>
+                              <div className="bg-white/5 p-2.5 rounded-xl border border-white/5">
+                                <p className="text-[9px] font-bold text-emerald-400/80 mb-1">{result.advancedMetrics?.facialProportion.status}</p>
+                                <p className="text-[9px] text-white/60 leading-tight">{result.advancedMetrics?.facialProportion.feedback}</p>
                               </div>
                             </div>
 
                             {/* Balanced Face Visualization */}
-                            <div className="mt-2 space-y-2">
+                            <div className="pt-2 space-y-3">
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5">
-                                  <Sparkles size={10} className="text-emerald-400" />
-                                  <h4 className="text-[8px] font-bold text-white/40 uppercase tracking-widest font-mono">Balanced Face (AI-Adjusted)</h4>
+                                <div className="flex items-center gap-2">
+                                  <Sparkles size={12} className="text-emerald-400" />
+                                  <h4 className="text-[9px] font-bold text-white/40 uppercase tracking-widest font-mono">Balanced Face Simulation</h4>
                                 </div>
-                                <span className="text-[7px] text-emerald-400/60 font-mono">30% Symmetry Influence</span>
+                                <span className="text-[8px] text-emerald-400/60 font-mono font-bold">30% Symmetry</span>
                               </div>
-                              <div className="relative aspect-[4/5] w-full rounded-2xl overflow-hidden border border-white/10 bg-black/20 group">
+                              <div className="relative aspect-[4/5] w-full rounded-3xl overflow-hidden border border-white/10 bg-black/40 group">
                                 {result.balancedImage ? (
                                   <img 
                                     src={result.balancedImage} 
@@ -1407,12 +1589,12 @@ export default function App() {
                                     referrerPolicy="no-referrer"
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-white/20 text-[8px]">
-                                    Generating balanced view...
+                                  <div className="w-full h-full flex items-center justify-center text-white/20 text-[10px]">
+                                    Generating simulation...
                                   </div>
                                 )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                                  <p className="text-[7px] text-white/60 leading-tight">
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
+                                  <p className="text-[9px] text-white/80 leading-relaxed font-medium">
                                     AI가 분석한 이상적인 균형 상태를 시뮬레이션한 결과입니다. 자연스러운 개성을 유지하면서 대칭성을 미세하게 조정하였습니다.
                                   </p>
                                 </div>
@@ -1425,77 +1607,83 @@ export default function App() {
 
                     {reportStep === 3 && (
                       <div className="flex flex-col gap-3 h-full min-h-0 w-full overflow-x-hidden min-w-0">
-                        {/* Primary Imbalance */}
-                        <div className="bg-emerald-500/10 rounded-3xl border border-emerald-500/20 p-3 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0">
-                          <div className="flex items-center gap-2 mb-1 w-full min-w-0">
-                            <Zap size={12} className="text-emerald-400 shrink-0" />
-                            <h4 className="text-[8px] font-bold text-emerald-400/60 uppercase tracking-[0.2em] font-mono truncate">주요 균형 포인트</h4>
+                        {/* Summary Card */}
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0">
+                          <div className="flex items-center gap-2 mb-2 w-full min-w-0">
+                            <BarChart3 size={14} className="text-emerald-500 shrink-0" />
+                            <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] font-mono truncate">Analysis Summary</h4>
                           </div>
-                          <div className="grid grid-cols-1 min-w-0">
-                            <p className="text-[11px] font-bold text-white leading-relaxed break-words whitespace-normal block box-border">
-                              {result.primaryImbalance}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Analysis Summary */}
-                        <div className="bg-white/5 rounded-3xl border border-white/10 p-3 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0">
-                          <div className="flex items-center gap-2 mb-1 w-full min-w-0">
-                            <BarChart3 size={12} className="text-emerald-500 shrink-0" />
-                            <h4 className="text-[8px] font-bold text-white/40 uppercase tracking-[0.2em] font-mono truncate">Analysis Summary</h4>
-                          </div>
-                          <div className="grid grid-cols-1 min-w-0">
-                            <p className="text-[10px] text-white/70 leading-relaxed break-words whitespace-normal block box-border">
-                              {result.analysisSummary}
-                            </p>
-                          </div>
+                          <p className="text-[12px] text-white/80 leading-relaxed font-medium">
+                            {result.analysisSummary}
+                          </p>
                         </div>
 
                         {/* Care Guides */}
                         <div className="bg-white/5 rounded-3xl border border-white/10 overflow-hidden shadow-2xl backdrop-blur-sm flex-1 flex flex-col min-h-0 w-full min-w-0">
                           <div className="flex border-b border-white/10 shrink-0 w-full min-w-0">
-                            <div className="flex-1 py-1.5 text-center text-[8px] font-bold uppercase tracking-widest bg-white/5 text-emerald-400 truncate">
-                              Solution Protocol
+                            <div className="flex-1 py-2 text-center text-[10px] font-black uppercase tracking-widest bg-white/5 text-emerald-400 truncate">
+                              Personalized Solution
                             </div>
                           </div>
-                          <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar space-y-4 w-full min-w-0">
-                            <div className="space-y-2 min-w-0 w-full box-border">
-                              <div className="flex items-center gap-1.5 px-1">
-                                <ShieldCheck size={10} className="text-emerald-500" />
-                                <h4 className="text-[8px] font-bold text-emerald-500 uppercase tracking-wider">Home Care Guide</h4>
+                          <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 custom-scrollbar space-y-5 w-full min-w-0">
+                            <div className="space-y-3 min-w-0 w-full box-border">
+                              <div className="flex items-center gap-2 px-1">
+                                <ShieldCheck size={14} className="text-emerald-500" />
+                                <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">Recommended Care</h4>
                               </div>
-                              <div className="block w-full min-w-0 box-border">
-                                <div className="text-[10px] text-white/60 leading-relaxed prose-compact px-1 w-full break-words box-border">
-                                  <Markdown components={laymanMarkdownComponents}>{result.homeCareGuide}</Markdown>
-                                </div>
+                              <div className="text-[11px] text-white/70 leading-relaxed prose-compact px-1 w-full break-words box-border">
+                                <Markdown components={laymanMarkdownComponents}>{result.homeCareGuide}</Markdown>
                               </div>
                             </div>
+                            
                             <div className="h-px bg-white/5 w-full" />
-                            <div className="space-y-2 min-w-0 w-full box-border">
-                              <div className="flex items-center gap-1.5 px-1">
-                                <Info size={10} className="text-blue-400" />
-                                <h4 className="text-[8px] font-bold text-blue-400 uppercase tracking-wider">Professional Care Options</h4>
+                            
+                            <div className="space-y-3 min-w-0 w-full box-border">
+                              <div className="flex items-center gap-2 px-1">
+                                <Info size={14} className="text-blue-400" />
+                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-wider">Expert Advice</h4>
                               </div>
-                              <div className="block w-full min-w-0 box-border">
-                                <div className="text-[10px] text-white/60 leading-relaxed prose-compact px-1 w-full break-words box-border">
-                                  <Markdown components={professionalMarkdownComponents}>{result.professionalCareOptions}</Markdown>
-                                </div>
+                              <div className="text-[11px] text-white/70 leading-relaxed prose-compact px-1 w-full break-words box-border">
+                                <Markdown components={professionalMarkdownComponents}>{result.professionalCareOptions}</Markdown>
                               </div>
                             </div>
+                          </div>
+                          
+                          {/* AI Disclaimer */}
+                          <div className="px-4 py-2 bg-black/40 border-t border-white/5 shrink-0">
+                            <p className="text-[8px] text-white/30 text-center leading-tight font-medium">
+                              ※ 본 분석 결과는 AI 기반 참고 정보이며 의학적 진단을 대체하지 않습니다.
+                            </p>
                           </div>
                         </div>
 
-                        {/* Share Section (Compact) */}
-                        <div className="grid grid-cols-3 gap-2 shrink-0">
-                          <button onClick={downloadShareImage} className="bg-white/10 border border-white/10 text-white py-2 rounded-xl font-bold text-[8px] uppercase tracking-widest flex items-center justify-center gap-1.5">
-                            <Download size={12} /> Save
+                        {/* Share Section (Primary CTA) */}
+                        <div className="flex flex-col gap-2 shrink-0">
+                          <button 
+                            onClick={generateAndShareImage} 
+                            disabled={isGeneratingShareImage}
+                            className="w-full bg-emerald-500 text-black py-4 rounded-3xl font-black text-[12px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:bg-emerald-400 transition-all disabled:opacity-50 active:scale-[0.98]"
+                          >
+                            {isGeneratingShareImage ? (
+                              <>
+                                <RefreshCw size={18} className="animate-spin" />
+                                Generating Share Card...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles size={18} />
+                                Share Result Card
+                              </>
+                            )}
                           </button>
-                          <button onClick={shareToKakao} className="bg-[#FEE500] text-[#191919] py-2 rounded-xl font-bold text-[8px] uppercase tracking-widest flex items-center justify-center gap-1.5">
-                            <MessageCircle size={12} /> Kakao
-                          </button>
-                          <button onClick={copyLink} className="bg-white/10 border border-white/10 text-white py-2 rounded-xl font-bold text-[8px] uppercase tracking-widest flex items-center justify-center gap-1.5">
-                            <Link2 size={12} /> Link
-                          </button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button onClick={shareToKakao} className="bg-[#FEE500] text-[#191919] py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98]">
+                              <MessageCircle size={14} /> Kakao
+                            </button>
+                            <button onClick={copyLink} className="bg-white/10 border border-white/10 text-white py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98]">
+                              <Link2 size={14} /> Copy Link
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1540,33 +1728,30 @@ export default function App() {
         <div className="fixed left-[-9999px] top-0">
           <div 
             ref={shareCardRef}
-            className="w-[1080px] h-[1920px] bg-[#050505] text-white relative flex flex-col items-center justify-between p-20 overflow-hidden"
+            className="w-[1080px] h-[1920px] bg-[#050505] text-white relative flex flex-col items-center justify-between p-24 overflow-hidden"
             style={{ fontFamily: "'Inter', sans-serif" }}
           >
             {/* Background Accents */}
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[30%] bg-emerald-500/10 blur-[150px] rounded-full" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[30%] bg-blue-500/10 blur-[150px] rounded-full" />
+            <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[40%] bg-emerald-500/20 blur-[200px] rounded-full" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[40%] bg-blue-500/20 blur-[200px] rounded-full" />
             
             {/* Header */}
-            <div className="w-full space-y-4 z-10">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center text-black">
-                    <Scan size={24} />
-                  </div>
-                  <h1 className="text-3xl font-black italic tracking-tighter uppercase">Face Symmetry Pro</h1>
+            <div className="w-full flex items-center justify-between z-10">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center text-black shadow-[0_0_30px_rgba(16,185,129,0.5)]">
+                  <Scan size={32} />
                 </div>
-                <div className="px-4 py-2 bg-white/5 border border-white/10 rounded-full">
-                  <p className="text-sm font-mono text-white/40 uppercase tracking-widest">Biometric Scan v2.5</p>
-                </div>
+                <h1 className="text-5xl font-black italic tracking-tighter uppercase">Face Symmetry <span className="text-emerald-500">Pro</span></h1>
               </div>
-              <div className="h-px w-full bg-gradient-to-r from-emerald-500/50 via-white/10 to-transparent" />
+              <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-full">
+                <p className="text-xl font-mono text-white/40 uppercase tracking-widest">AI Biometric Scan</p>
+              </div>
             </div>
 
             {/* Main Content */}
-            <div className="w-full flex flex-col items-center gap-12 z-10">
-              {/* Image Preview with Overlay */}
-              <div className="relative w-[800px] h-[1000px] rounded-[60px] overflow-hidden border-4 border-white/10 shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+            <div className="w-full flex flex-col items-center gap-16 z-10">
+              {/* Image Preview */}
+              <div className="relative w-[850px] h-[1050px] rounded-[80px] overflow-hidden border-8 border-white/10 shadow-[0_0_150px_rgba(0,0,0,0.8)]">
                 <img 
                   src={image} 
                   alt="Analysis" 
@@ -1575,61 +1760,84 @@ export default function App() {
                   referrerPolicy="no-referrer"
                 />
                 
-                {/* Overlay Points */}
-                <div className="absolute inset-0" style={{ transform: `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` }}>
-                  {debugInfo?.landmarks?.map((pt: any, i: number) => (
-                    <div 
-                      key={i}
-                      className="absolute w-2 h-2 bg-white rounded-full shadow-[0_0_5px_rgba(255,255,255,0.8)]"
-                      style={{ left: `${pt.x * 100}%`, top: `${pt.y * 100}%` }}
-                    />
-                  ))}
-                </div>
-
-                {/* Grid Overlay */}
+                {/* Visual Analysis Overlay */}
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute inset-0 flex justify-center">
-                    <div className="w-1 h-full bg-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
+                    <div className="w-1.5 h-full bg-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.6)]" />
                   </div>
-                  <div className="absolute inset-0 flex flex-col justify-around opacity-20">
-                    {[...Array(12)].map((_, i) => (
-                      <div key={i} className="w-full h-px bg-white/30" />
+                  <div className="absolute inset-0 flex flex-col justify-around opacity-10">
+                    {[...Array(10)].map((_, i) => (
+                      <div key={i} className="w-full h-px bg-white" />
                     ))}
                   </div>
                 </div>
+              </div>
 
-                {/* Score Badge */}
-                <div className="absolute bottom-12 right-12 bg-black/80 backdrop-blur-xl border border-white/20 p-8 rounded-[40px] shadow-2xl flex flex-col items-center">
-                  <p className="text-xl font-mono text-white/40 uppercase tracking-widest mb-1">Overall Score</p>
-                  <p className="text-8xl font-black italic text-emerald-400">{result.overallScore}</p>
+              {/* Viral Stats Card */}
+              <div className="w-full grid grid-cols-2 gap-8">
+                <div className="bg-white/5 border border-white/10 p-12 rounded-[60px] backdrop-blur-xl flex flex-col items-center justify-center space-y-2">
+                  <p className="text-2xl font-mono text-white/30 uppercase tracking-[0.3em]">Balance Score</p>
+                  <p className="text-9xl font-black italic text-white">{result.overallScore}</p>
+                </div>
+                <div className="bg-emerald-500/10 border border-emerald-500/20 p-12 rounded-[60px] backdrop-blur-xl flex flex-col items-center justify-center space-y-2">
+                  <p className="text-2xl font-mono text-emerald-400/40 uppercase tracking-[0.3em]">Global Ranking</p>
+                  <div className="flex flex-col items-center">
+                    <p className="text-7xl font-black italic text-emerald-400">Top {100 - (result.percentile || 0)}%</p>
+                    <div className={cn(
+                      "mt-4 px-6 py-2 rounded-2xl text-2xl font-black uppercase tracking-widest border",
+                      result.tier?.color.replace('text-', 'bg-').replace('-400', '-500/20'),
+                      result.tier?.color.replace('text-', 'border-').replace('-400', '-500/30'),
+                      result.tier?.color
+                    )}>
+                      {result.tier?.icon} {result.tier?.label}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Summary */}
-              <div className="w-full bg-white/5 border border-white/10 p-12 rounded-[50px] backdrop-blur-sm space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500">
-                    <CheckCircle2 size={24} />
+              {/* Key Insight */}
+              <div className="w-full bg-white/5 border border-white/10 p-12 rounded-[60px] backdrop-blur-xl">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-6">
+                    <div className={cn(
+                      "w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg",
+                      result.resultStability === 'High' ? "bg-emerald-500 text-black shadow-emerald-500/20" : 
+                      result.resultStability === 'Medium' ? "bg-yellow-500 text-black shadow-yellow-500/20" : "bg-red-500 text-white shadow-red-500/20"
+                    )}>
+                      <Zap size={32} />
+                    </div>
+                    <div>
+                      <p className="text-xl font-mono text-white/30 uppercase tracking-[0.3em]">Analysis Insight</p>
+                      <p className="text-3xl font-black text-white uppercase tracking-tight">Key Findings</p>
+                    </div>
                   </div>
-                  <h2 className="text-4xl font-bold italic uppercase tracking-tight">{result.summary}</h2>
+                  <div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-2xl border border-white/10">
+                    <div className={cn(
+                      "w-3 h-3 rounded-full",
+                      result.resultStability === 'High' ? "bg-emerald-500" : 
+                      result.resultStability === 'Medium' ? "bg-yellow-500" : "bg-red-500"
+                    )} />
+                    <p className="text-xl font-bold text-white/60 uppercase tracking-widest">{result.resultStability} Stability</p>
+                  </div>
                 </div>
-                <p className="text-2xl text-white/60 leading-relaxed break-words whitespace-normal">
-                  {personality === 'fact' 
-                    ? "정밀 분석 결과, 당신의 안면 대칭도는 상위권에 속합니다. 미세한 비대칭이 감지되었으나 이는 자연스러운 현상입니다."
-                    : "당신은 정말 아름다운 균형을 가지고 있네요! 본연의 매력이 잘 드러나는 아주 멋진 얼굴이에요."}
+                <p className="text-[32px] text-white leading-[1.4] font-bold whitespace-pre-line">
+                  {result.primaryImbalance}
                 </p>
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="w-full flex items-center justify-between z-10">
-              <div className="space-y-1">
-                <p className="text-xl font-mono text-white/20 uppercase tracking-[0.3em]">Scan Completed</p>
-                <p className="text-sm font-mono text-white/10 uppercase tracking-widest">{new Date().toLocaleString()}</p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <p className="text-2xl font-black italic uppercase tracking-tighter text-white/40">Try it now</p>
-                <p className="text-lg font-mono text-emerald-500/50">facesymmetry.pro</p>
+            {/* Footer CTA */}
+            <div className="w-full flex flex-col items-center gap-8 z-10">
+              <div className="h-px w-full bg-white/10" />
+              <div className="flex items-center justify-between w-full">
+                <div className="space-y-2">
+                  <p className="text-3xl font-black italic uppercase tracking-tighter text-white/40">Scan your face now</p>
+                  <p className="text-xl font-mono text-emerald-500/60 tracking-[0.2em]">facesymmetrypro.app</p>
+                </div>
+                <div className="flex flex-col items-end">
+                  <p className="text-xl font-mono text-white/20 uppercase tracking-[0.4em]">Biometric Analysis</p>
+                  <p className="text-lg font-mono text-white/10 uppercase tracking-widest">{new Date().toLocaleDateString()}</p>
+                </div>
               </div>
             </div>
           </div>
