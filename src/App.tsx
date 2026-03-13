@@ -615,31 +615,29 @@ export default function App() {
   };
 
   const laymanMarkdownComponents = {
-    ol: ({ children }: any) => <ol className="protocol-list w-full list-none p-0 m-0 flex flex-col gap-4">{children}</ol>,
+    ol: ({ children }: any) => <ol className="list-decimal list-inside space-y-3 m-0 w-full block min-w-0">{children}</ol>,
     li: ({ children }: any) => (
-      <li className="protocol-item w-full block min-w-0">
-        <div className="protocol-step-label text-emerald-500/60" />
-        <div className="text-white/80 leading-relaxed mt-1">
-          {children}
-        </div>
+      <li className="text-white/80 leading-relaxed whitespace-normal break-words w-full block min-w-0">
+        {children}
       </li>
     ),
-    p: ({ children }: any) => <p className="m-0">{children}</p>,
-    strong: ({ children }: any) => <strong className="font-bold text-emerald-400">{children}</strong>
+    p: ({ children }: any) => <div className="whitespace-normal break-words w-full block min-w-0 mb-1">{children}</div>,
+    strong: ({ children }: any) => <strong className="font-bold text-emerald-400 inline break-words min-w-0">{children}</strong>,
+    pre: ({ children }: any) => <pre className="whitespace-pre-wrap break-words w-full block min-w-0 bg-transparent p-0 m-0">{children}</pre>,
+    code: ({ children }: any) => <code className="whitespace-pre-wrap break-words inline-block min-w-0 bg-transparent p-0 m-0">{children}</code>
   };
 
   const professionalMarkdownComponents = {
-    ol: ({ children }: any) => <ol className="protocol-list w-full list-none p-0 m-0 flex flex-col gap-4">{children}</ol>,
+    ol: ({ children }: any) => <ol className="list-decimal list-inside space-y-3 m-0 w-full block min-w-0">{children}</ol>,
     li: ({ children }: any) => (
-      <li className="protocol-item w-full block min-w-0">
-        <div className="protocol-step-label text-blue-400/60" />
-        <div className="text-blue-100/80 leading-relaxed font-mono mt-1">
-          {children}
-        </div>
+      <li className="text-blue-100/80 leading-relaxed font-mono whitespace-normal break-words w-full block min-w-0">
+        {children}
       </li>
     ),
-    p: ({ children }: any) => <p className="m-0 font-mono">{children}</p>,
-    strong: ({ children }: any) => <strong className="font-bold text-blue-300">{children}</strong>
+    p: ({ children }: any) => <div className="font-mono whitespace-normal break-words w-full block min-w-0 mb-1">{children}</div>,
+    strong: ({ children }: any) => <strong className="font-bold text-blue-300 inline break-words min-w-0">{children}</strong>,
+    pre: ({ children }: any) => <pre className="whitespace-pre-wrap break-words w-full block min-w-0 bg-transparent p-0 m-0">{children}</pre>,
+    code: ({ children }: any) => <code className="whitespace-pre-wrap break-words inline-block min-w-0 bg-transparent p-0 m-0">{children}</code>
   };
 
   return (
@@ -1270,8 +1268,8 @@ export default function App() {
                             <AlertCircle size={12} className="text-amber-500 shrink-0" />
                             <h4 className="text-[8px] font-bold text-white/40 uppercase tracking-[0.2em] font-mono truncate">Muscle Analysis</h4>
                           </div>
-                          <div className="grid grid-cols-1 min-w-0 w-full">
-                            <p className="text-[10px] text-white/70 leading-relaxed break-all whitespace-normal w-full block overflow-hidden">
+                          <div className="grid grid-cols-1 min-w-0">
+                            <p className="text-[10px] text-white/70 leading-relaxed break-words whitespace-normal block box-border">
                               {result.muscleAnalysis}
                             </p>
                           </div>
@@ -1285,17 +1283,21 @@ export default function App() {
                             </div>
                           </div>
                           <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar space-y-4 w-full min-w-0">
-                            <div className="space-y-2 w-full min-w-0">
+                            <div className="space-y-2 min-w-0 w-full box-border">
                               <h4 className="text-[8px] font-bold text-emerald-500 uppercase tracking-wider px-1">홈 케어 가이드</h4>
-                              <div className="text-[10px] text-white/60 leading-relaxed prose-compact w-full px-1">
-                                <Markdown components={laymanMarkdownComponents}>{result.laymanProtocol}</Markdown>
+                              <div className="block w-full min-w-0 box-border">
+                                <div className="text-[10px] text-white/60 leading-relaxed prose-compact px-1 w-full break-words box-border">
+                                  <Markdown components={laymanMarkdownComponents}>{result.laymanProtocol}</Markdown>
+                                </div>
                               </div>
                             </div>
                             <div className="h-px bg-white/5 w-full" />
-                            <div className="space-y-2 w-full min-w-0">
+                            <div className="space-y-2 min-w-0 w-full box-border">
                               <h4 className="text-[8px] font-bold text-blue-400 uppercase tracking-wider px-1">임상 프로토콜</h4>
-                              <div className="text-[10px] text-white/60 leading-relaxed prose-compact w-full px-1">
-                                <Markdown components={professionalMarkdownComponents}>{result.professionalProtocol}</Markdown>
+                              <div className="block w-full min-w-0 box-border">
+                                <div className="text-[10px] text-white/60 leading-relaxed prose-compact px-1 w-full break-words box-border">
+                                  <Markdown components={professionalMarkdownComponents}>{result.professionalProtocol}</Markdown>
+                                </div>
                               </div>
                             </div>
                           </div>
