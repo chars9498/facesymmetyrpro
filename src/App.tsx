@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { analyzeLocally, type AnalysisResult } from "./services/analysisEngine";
-import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles, TrendingUp } from 'lucide-react';
+import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles, TrendingUp, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
@@ -87,6 +87,7 @@ export default function App() {
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(1);
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const [reportStep, setReportStep] = useState(0);
+  const [showExportModal, setShowExportModal] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -303,7 +304,7 @@ export default function App() {
     }
   };
 
-  const generateAndShareImage = async () => {
+  const generateAndShareImage = async (action: 'save' | 'share' = 'share') => {
     if (!shareCardRef.current) return;
     
     setIsGeneratingShareImage(true);
@@ -318,22 +319,24 @@ export default function App() {
         height: 1920,
       });
       
-      // Check if Web Share API supports file sharing
-      if (navigator.share && navigator.canShare) {
-        const blob = await (await fetch(dataUrl)).blob();
-        const file = new File([blob], `face-symmetry-result.png`, { type: 'image/png' });
-        
-        if (navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Face Symmetry Pro Result',
-            text: `내 얼굴 비대칭 점수는 ${result?.overallScore}점! 상위 ${100 - (result?.percentile || 0)}% 얼굴 균형을 확인해보세요.`,
-          });
-          return;
+      if (action === 'share') {
+        // Check if Web Share API supports file sharing
+        if (navigator.share && navigator.canShare) {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], `face-symmetry-result.png`, { type: 'image/png' });
+          
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Face Symmetry Pro Result',
+              text: `내 얼굴 비대칭 점수는 ${result?.overallScore}점! 상위 ${100 - (result?.percentile || 0)}% 얼굴 균형을 확인해보세요.`,
+            });
+            return;
+          }
         }
       }
 
-      // Fallback to download
+      // Fallback or explicit save
       const link = document.createElement('a');
       link.download = `face-symmetry-result-${Date.now()}.png`;
       link.href = dataUrl;
@@ -348,58 +351,13 @@ export default function App() {
       setError("공유 이미지 생성 중 오류가 발생했습니다.");
     } finally {
       setIsGeneratingShareImage(false);
+      setShowExportModal(false);
     }
   };
 
   const copyLink = () => {
     navigator.clipboard.writeText(window.location.href);
-    alert("링크가 클립보드에 복사되었습니다!");
-  };
-
-  const shareToKakao = () => {
-    // @ts-ignore
-    if (window.Kakao) {
-      // @ts-ignore
-      const Kakao = window.Kakao;
-      if (!Kakao.isInitialized()) {
-        // This would normally be an environment variable
-        // For now, we'll try to use the Web Share API if Kakao isn't set up
-        if (navigator.share) {
-          navigator.share({
-            title: 'Face Symmetry Pro',
-            text: `내 얼굴 비대칭 점수는 ${result?.overallScore}점! 당신의 점수는?`,
-            url: window.location.href,
-          });
-          return;
-        }
-        alert("카카오톡 공유를 사용하려면 Kakao JavaScript Key 설정이 필요합니다.");
-        return;
-      }
-      
-      Kakao.Share.sendDefault({
-        objectType: 'feed',
-        content: {
-          title: 'Face Symmetry Pro',
-          description: `내 얼굴 비대칭 점수는 ${result?.overallScore}점! 당신의 점수는?`,
-          imageUrl: 'https://images.unsplash.com/photo-1554151228-14d9def656e4?q=80&w=1200&h=630&auto=format&fit=crop',
-          link: {
-            mobileWebUrl: window.location.href,
-            webUrl: window.location.href,
-          },
-        },
-        buttons: [
-          {
-            title: '나도 분석하기',
-            link: {
-              mobileWebUrl: window.location.href,
-              webUrl: window.location.href,
-            },
-          },
-        ],
-      });
-    } else {
-      copyLink();
-    }
+    setShowExportModal(false);
   };
 
   const resizeImage = (base64Str: string, maxDimension: number = 1024): Promise<string> => {
@@ -1608,30 +1566,12 @@ export default function App() {
                         {/* Share Section (Primary CTA) */}
                         <div className="flex flex-col gap-2 shrink-0">
                           <button 
-                            onClick={generateAndShareImage} 
-                            disabled={isGeneratingShareImage}
-                            className="w-full bg-emerald-500 text-black py-4 rounded-3xl font-black text-[12px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:bg-emerald-400 transition-all disabled:opacity-50 active:scale-[0.98]"
+                            onClick={() => setShowExportModal(true)} 
+                            className="w-full bg-emerald-500 text-black py-4 rounded-3xl font-black text-[12px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:bg-emerald-400 transition-all active:scale-[0.98]"
                           >
-                            {isGeneratingShareImage ? (
-                              <>
-                                <RefreshCw size={18} className="animate-spin" />
-                                Generating Share Card...
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles size={18} />
-                                Share Result Card
-                              </>
-                            )}
+                            <Sparkles size={18} />
+                            결과 카드 내보내기
                           </button>
-                          <div className="grid grid-cols-2 gap-2">
-                            <button onClick={shareToKakao} className="bg-[#FEE500] text-[#191919] py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98]">
-                              <MessageCircle size={14} /> Kakao
-                            </button>
-                            <button onClick={copyLink} className="bg-white/10 border border-white/10 text-white py-3 rounded-2xl font-black text-[9px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-[0.98]">
-                              <Link2 size={14} /> Copy Link
-                            </button>
-                          </div>
                         </div>
                       </div>
                     )}
@@ -1676,117 +1616,66 @@ export default function App() {
         <div className="fixed left-[-9999px] top-0">
           <div 
             ref={shareCardRef}
-            className="w-[1080px] h-[1920px] bg-[#050505] text-white relative flex flex-col items-center justify-between p-24 overflow-hidden"
+            className="w-[1080px] h-[1920px] bg-[#050505] text-white relative flex flex-col items-center justify-between py-32 px-24 overflow-hidden"
             style={{ fontFamily: "'Inter', sans-serif" }}
           >
             {/* Background Accents */}
-            <div className="absolute top-[-10%] left-[-10%] w-[80%] h-[40%] bg-emerald-500/20 blur-[200px] rounded-full" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[80%] h-[40%] bg-blue-500/20 blur-[200px] rounded-full" />
+            <div className="absolute top-[-10%] left-[-10%] w-[120%] h-[50%] bg-emerald-500/10 blur-[250px] rounded-full" />
+            <div className="absolute bottom-[-10%] right-[-10%] w-[120%] h-[50%] bg-blue-500/10 blur-[250px] rounded-full" />
             
             {/* Header */}
-            <div className="w-full flex items-center justify-between z-10">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-emerald-500 rounded-2xl flex items-center justify-center text-black shadow-[0_0_30px_rgba(16,185,129,0.5)]">
-                  <Scan size={32} />
-                </div>
-                <h1 className="text-5xl font-black italic tracking-tighter uppercase">Face Symmetry <span className="text-emerald-500">Pro</span></h1>
-              </div>
-              <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-full">
-                <p className="text-xl font-mono text-white/40 uppercase tracking-widest">AI Biometric Scan</p>
+            <div className="w-full flex flex-col items-center z-10">
+              <h1 className="text-[80px] font-black italic tracking-tighter uppercase leading-none">
+                Face Symmetry <span className="text-emerald-500">Pro</span>
+              </h1>
+              <div className="mt-6 px-10 py-3 bg-white/5 border border-white/10 rounded-full">
+                <p className="text-2xl font-mono text-white/40 uppercase tracking-[0.5em]">AI Biometric Analysis</p>
               </div>
             </div>
 
-            {/* Main Content */}
-            <div className="w-full flex flex-col items-center gap-16 z-10">
-              {/* Image Preview */}
-              <div className="relative w-[850px] h-[1050px] rounded-[80px] overflow-hidden border-8 border-white/10 shadow-[0_0_150px_rgba(0,0,0,0.8)]">
+            {/* Main Content: User Image */}
+            <div className="relative z-10">
+              <div className="w-[880px] h-[880px] rounded-full overflow-hidden border-[12px] border-white/10 shadow-[0_0_150px_rgba(0,0,0,0.8)]">
                 <img 
                   src={image} 
                   alt="Analysis" 
                   className="w-full h-full object-cover"
-                  style={{ transform: `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.1)` }}
+                  style={{ transform: `translateX(${-centerOffset}%) rotate(${rotationAngle}deg) scale(1.2)` }}
                   referrerPolicy="no-referrer"
                 />
-                
-                {/* Visual Analysis Overlay */}
-                <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute inset-0 flex justify-center">
-                    <div className="w-1.5 h-full bg-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.6)]" />
-                  </div>
-                  <div className="absolute inset-0 flex flex-col justify-around opacity-10">
-                    {[...Array(10)].map((_, i) => (
-                      <div key={i} className="w-full h-px bg-white" />
-                    ))}
-                  </div>
-                </div>
+              </div>
+              {/* Scan Line Animation (Static for screenshot) */}
+              <div className="absolute top-1/2 left-0 w-full h-2 bg-emerald-500/40 shadow-[0_0_40px_rgba(16,185,129,0.8)] z-20" />
+            </div>
+
+            {/* Stats Section */}
+            <div className="w-full flex flex-col items-center gap-12 z-10">
+              <div className="flex flex-col items-center">
+                <p className="text-[120px] font-black italic text-emerald-400 leading-none">
+                  TOP {100 - (result.percentile || 0)}%
+                </p>
+                <p className={cn(
+                  "mt-4 text-[60px] font-black uppercase tracking-[0.2em]",
+                  result.tier?.color
+                )}>
+                  {result.tier?.label}
+                </p>
               </div>
 
-              {/* Viral Stats Card */}
-              <div className="w-full grid grid-cols-2 gap-8">
-                <div className="bg-white/5 border border-white/10 p-12 rounded-[60px] backdrop-blur-xl flex flex-col items-center justify-center space-y-2">
-                  <p className="text-2xl font-mono text-white/30 uppercase tracking-[0.3em]">Balance Score</p>
-                  <p className="text-9xl font-black italic text-white">{result.overallScore}</p>
-                </div>
-                <div className="bg-emerald-500/10 border border-emerald-500/20 p-12 rounded-[60px] backdrop-blur-xl flex flex-col items-center justify-center space-y-2">
-                  <p className="text-2xl font-mono text-emerald-400/40 uppercase tracking-[0.3em]">Global Ranking</p>
-                  <div className="flex flex-col items-center">
-                    <p className="text-7xl font-black italic text-emerald-400">Top {100 - (result.percentile || 0)}%</p>
-                    <div className={cn(
-                      "mt-4 px-6 py-2 rounded-2xl text-2xl font-black uppercase tracking-widest border",
-                      result.tier?.color.replace('text-', 'bg-').replace('-400', '-500/20'),
-                      result.tier?.color.replace('text-', 'border-').replace('-400', '-500/30'),
-                      result.tier?.color
-                    )}>
-                      {result.tier?.icon} {result.tier?.label}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <div className="h-px w-64 bg-white/10" />
 
-              {/* Key Insight */}
-              <div className="w-full bg-white/5 border border-white/10 p-12 rounded-[60px] backdrop-blur-xl">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-6">
-                    <div className={cn(
-                      "w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg",
-                      result.resultStability === 'High' ? "bg-emerald-500 text-black shadow-emerald-500/20" : 
-                      result.resultStability === 'Medium' ? "bg-yellow-500 text-black shadow-yellow-500/20" : "bg-red-500 text-white shadow-red-500/20"
-                    )}>
-                      <Zap size={32} />
-                    </div>
-                    <div>
-                      <p className="text-xl font-mono text-white/30 uppercase tracking-[0.3em]">Analysis Insight</p>
-                      <p className="text-3xl font-black text-white uppercase tracking-tight">Key Findings</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 px-6 py-3 bg-white/5 rounded-2xl border border-white/10">
-                    <div className={cn(
-                      "w-3 h-3 rounded-full",
-                      result.resultStability === 'High' ? "bg-emerald-500" : 
-                      result.resultStability === 'Medium' ? "bg-yellow-500" : "bg-red-500"
-                    )} />
-                    <p className="text-xl font-bold text-white/60 uppercase tracking-widest">{result.resultStability} Stability</p>
-                  </div>
-                </div>
-                <p className="text-[32px] text-white leading-[1.4] font-bold whitespace-pre-line">
-                  {result.primaryImbalance}
+              <div className="flex flex-col items-center">
+                <p className="text-3xl font-mono text-white/30 uppercase tracking-[0.4em] mb-4">Balance Score</p>
+                <p className="text-[180px] font-black italic text-white leading-none">
+                  {result.overallScore}
                 </p>
               </div>
             </div>
 
-            {/* Footer CTA */}
-            <div className="w-full flex flex-col items-center gap-8 z-10">
-              <div className="h-px w-full bg-white/10" />
-              <div className="flex items-center justify-between w-full">
-                <div className="space-y-2">
-                  <p className="text-3xl font-black italic uppercase tracking-tighter text-white/40">Scan your face now</p>
-                  <p className="text-xl font-mono text-emerald-500/60 tracking-[0.2em]">facesymmetrypro.app</p>
-                </div>
-                <div className="flex flex-col items-end">
-                  <p className="text-xl font-mono text-white/20 uppercase tracking-[0.4em]">Biometric Analysis</p>
-                  <p className="text-lg font-mono text-white/10 uppercase tracking-widest">{new Date().toLocaleDateString()}</p>
-                </div>
-              </div>
+            {/* Footer */}
+            <div className="w-full flex flex-col items-center z-10 opacity-40">
+              <p className="text-2xl font-medium tracking-widest uppercase">AI Facial Balance Analysis</p>
+              <p className="text-xl font-mono mt-2">facesymmetrypro.app</p>
             </div>
           </div>
         </div>
@@ -1797,6 +1686,94 @@ export default function App() {
           &copy; 2026 Face Symmetry Pro. [DISCLAIMER] BIOMETRIC DATA IS FOR REFERENCE ONLY.
         </p>
       </footer>
+
+      {/* Export Modal (Bottom Sheet style) */}
+      <AnimatePresence>
+        {showExportModal && (
+          <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowExportModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-md bg-[#121212] rounded-t-[32px] sm:rounded-[32px] overflow-hidden border-t sm:border border-white/10 shadow-2xl"
+            >
+              <div className="p-6 space-y-4">
+                <div className="flex flex-col items-center gap-1 mb-2">
+                  <div className="w-12 h-1 bg-white/10 rounded-full mb-4 sm:hidden" />
+                  <h3 className="text-lg font-black text-white uppercase tracking-widest">결과 내보내기</h3>
+                  <p className="text-[10px] text-white/40 font-medium">원하시는 방식을 선택해주세요</p>
+                </div>
+
+                <div className="grid gap-2">
+                  <button 
+                    onClick={() => generateAndShareImage('save')}
+                    disabled={isGeneratingShareImage}
+                    className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-500">
+                        <Download size={20} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-white">이미지 저장</p>
+                        <p className="text-[10px] text-white/40">갤러리에 결과 카드를 저장합니다</p>
+                      </div>
+                    </div>
+                    {isGeneratingShareImage && <RefreshCw size={16} className="animate-spin text-white/20" />}
+                  </button>
+
+                  <button 
+                    onClick={() => generateAndShareImage('share')}
+                    disabled={isGeneratingShareImage}
+                    className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-500">
+                        <Share2 size={20} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-white">다른 앱으로 공유</p>
+                        <p className="text-[10px] text-white/40">인스타그램, 카카오톡 등으로 공유</p>
+                      </div>
+                    </div>
+                    {isGeneratingShareImage && <RefreshCw size={16} className="animate-spin text-white/20" />}
+                  </button>
+
+                  <button 
+                    onClick={copyLink}
+                    className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-500">
+                        <Link2 size={20} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-white">링크 복사</p>
+                        <p className="text-[10px] text-white/40">앱 주소를 클립보드에 복사합니다</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                <button 
+                  onClick={() => setShowExportModal(false)}
+                  className="w-full py-4 text-sm font-bold text-white/40 hover:text-white transition-colors"
+                >
+                  취소
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
