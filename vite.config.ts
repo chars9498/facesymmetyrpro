@@ -21,10 +21,12 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        filename: 'sw.js',
+        manifestFilename: 'manifest.json',
         devOptions: {
           enabled: true
         },
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'icon-192.svg', 'icon-512.svg'],
         manifest: {
           name: 'Face Symmetry Pro',
           short_name: 'FaceSym',
@@ -35,22 +37,6 @@ export default defineConfig(({ mode }) => {
           start_url: '/',
           icons: [
             {
-              src: 'icon-192.png',
-              sizes: '192x192',
-              type: 'image/png',
-            },
-            {
-              src: 'icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-            },
-            {
-              src: 'icon-512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable',
-            },
-            {
               src: 'icon-192.svg',
               sizes: '192x192',
               type: 'image/svg+xml',
@@ -59,6 +45,12 @@ export default defineConfig(({ mode }) => {
               src: 'icon-512.svg',
               sizes: '512x512',
               type: 'image/svg+xml',
+            },
+            {
+              src: 'icon-512.svg',
+              sizes: '512x512',
+              type: 'image/svg+xml',
+              purpose: 'any maskable',
             },
           ],
         },
