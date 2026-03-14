@@ -28,6 +28,11 @@ export default defineConfig(({ mode }) => {
           enabled: true
         },
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'icon-192.png', 'icon-512.png', 'icon-192.svg', 'icon-512.svg', 'manifest.webmanifest'],
+        workbox: {
+          cacheId: 'facesymmetrypro-v1.0.0',
+          cleanupOutdatedCaches: true,
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        }
       }),
     ],
     resolve: {
