@@ -1554,7 +1554,7 @@ export default function App() {
                             <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
                               <Sparkles size={14} className="text-blue-400" />
                             </div>
-                            <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] font-mono truncate">Angel Comment</h4>
+                            <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] font-mono truncate">Balance Insight</h4>
                           </div>
                           <p className="text-[13px] text-white leading-relaxed font-bold italic relative z-10">
                             "{result.angelFeedback}"
@@ -1598,9 +1598,9 @@ export default function App() {
                           </div>
                           
                           {/* AI Disclaimer */}
-                          <div className="px-4 py-2 bg-black/40 border-t border-white/5 shrink-0">
-                            <p className="text-[8px] text-white/30 text-center leading-tight font-medium">
-                              ※ 본 분석 결과는 AI 기반 참고 정보이며 의학적 진단을 대체하지 않습니다.
+                          <div className="px-4 py-3 bg-black/40 border-t border-white/5 shrink-0">
+                            <p className="text-[8px] text-white/30 text-center leading-normal font-medium">
+                              ※ 본 분석 결과는 AI 기반 얼굴 균형 분석 참고 정보이며 의학적 진단이나 치료를 대체하지 않습니다. 개인의 상태에 따라 결과는 달라질 수 있습니다.
                             </p>
                           </div>
                         </div>

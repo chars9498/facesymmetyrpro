@@ -285,65 +285,69 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
 
     const imbalancedAreas = scores.filter(s => s.score < 88).map(s => s.name);
     
+    // 1. Overall Summary based on overallScore
+    let overallSummary = "";
+    if (metrics.overallScore >= 90) overallSummary = "전반적인 얼굴 균형이 매우 안정적이며 조화로운 구조를 보입니다.";
+    else if (metrics.overallScore >= 80) overallSummary = "전반적인 얼굴 균형은 안정적인 범위에 있습니다.";
+    else if (metrics.overallScore >= 70) overallSummary = "전반적인 얼굴 균형은 비교적 안정적인 편이지만 일부 영역에서 차이가 관찰될 수 있습니다.";
+    else if (metrics.overallScore >= 60) overallSummary = "얼굴 일부 영역에서 좌우 균형 차이가 비교적 뚜렷하게 나타날 수 있습니다.";
+    else overallSummary = "여러 영역에서 좌우 균형 차이가 관찰됩니다.";
+
+    // 2. Area deviations based on area scores
+    const deviations = sortedScores.slice(0, 2).map((s) => {
+      let desc = "";
+      if (s.score >= 85) desc = "미세한 차이";
+      else if (s.score >= 75) desc = "약간의 편차";
+      else if (s.score >= 65) desc = "비교적 큰 편차";
+      else desc = "뚜렷한 편차";
+      
+      return `${s.name}(${s.detail})에서 ${desc}가 관찰되었습니다.`;
+    }).join("\n");
+
+    const influenceExplanation = "이러한 차이는 표정 습관, 근육 사용 패턴, 또는 자세 요인의 영향을 받을 수 있습니다.";
+    const analysisSummary = `${overallSummary}\n\n${deviations}\n\n${influenceExplanation}`;
+
+    // 3. Key Insight (Exactly 3 lines)
     let primaryImbalance = "";
     if (lowest.score < 90) {
       const secondaryDetail = secondLowest.score < 92 ? `와 ${secondLowest.detail}` : "";
       primaryImbalance = `가장 큰 좌우 균형 차이는 ${lowest.name} 영역에서 관찰됩니다.\n${lowest.detail}${secondaryDetail} 영역에서 다른 부위보다 상대적으로 높은 편차가 나타났습니다.\n이러한 차이는 표정 습관이나 근육 사용 패턴의 영향일 수 있습니다.`;
     } else {
-      primaryImbalance = "전반적인 안면 대칭이 매우 우수한 편입니다.\n모든 부위가 조화로운 균형을 유지하고 있습니다.\n현재의 생활 습관을 유지하며 정기적으로 체크해보세요.";
+      primaryImbalance = "전반적인 안면 대칭이 매우 안정적인 상태로 관찰됩니다.\n모든 측정 부위가 조화로운 균형을 유지하고 있습니다.\n현재의 생활 습관을 유지하며 정기적으로 체크해보세요.";
     }
 
-    let summaryText = "";
-    if (imbalancedAreas.length === 0) {
-      summaryText = "모든 측정 부위에서 매우 높은 수준의 대칭성이 관찰됩니다. 현재의 균형 잡힌 상태를 유지하는 것이 좋습니다.";
-    } else {
-      const evidenceStr = sortedScores.slice(0, 2).map((s) => {
-        let desc = "";
-        if (s.score >= 88) desc = "미세한 차이";
-        else if (s.score >= 78) desc = "약간 큰 편차";
-        else if (s.score >= 65) desc = "상대적으로 높은 편차";
-        else desc = "뚜렷한 차이";
-        
-        return `${s.detail}에서 ${desc}가 관찰되었습니다.`;
-      }).join(" ");
-      summaryText = `${evidenceStr} 이러한 차이는 표정 습관, 근육 사용 패턴, 또는 자세 요인의 영향을 받을 수 있습니다.`;
-    }
-
-    // Dynamic Home Care Guide (Structured)
+    // 4. Dynamic Home Care Guide (Structured)
     const tips = {
-      eyes: "**눈가 긴장 완화**: 스마트 기기 사용 시 눈 주변 근육을 가볍게 이완하고, 먼 곳을 바라보며 휴식을 취하는 것이 도움이 될 수 있습니다.",
-      brows: "**미간 및 이마 이완**: 무의식적으로 미간을 찌푸리는 습관이 있는지 확인하고, 이마 근육을 부드럽게 마사지하는 것이 좋습니다.",
-      mouth: "**표정 균형 훈련**: 거울을 보며 입꼬리 높이를 맞추는 가벼운 미소 연습을 통해 표정 근육의 균형을 잡는 데 도움을 줄 수 있습니다.",
-      jaw: "**좌우 균형 씹기**: 한쪽으로만 음식을 씹는 습관을 줄이고 양쪽을 균형 있게 사용하는 것이 좋습니다. 턱 주변 근육에 따뜻한 찜질을 하면 긴장 완화에 도움이 될 수 있습니다."
+      eyes: "**안륜근(Orbicularis Oculi)**은 눈 주변을 감싸며 눈의 움직임과 표정을 담당하는 근육입니다. 눈꼬리 주변을 손가락 끝으로 가볍게 지압하며 원을 그리듯 부드럽게 마사지하면 눈가 긴장 완화와 정렬 개선에 도움이 될 수 있습니다.",
+      brows: "**전두근(Frontalis)**은 이마 전체를 덮고 있으며 눈썹의 높낮이를 조절하는 근육입니다. 이마 중앙에서 관자놀이 방향으로 부드럽게 밀어내듯 마사지하면 눈썹 라인의 균형을 잡는 데 도움이 될 수 있습니다.",
+      mouth: "**구각거근(Levator Anguli Oris)** 및 **광대근(Zygomaticus Major)**은 입꼬리를 올리고 미소를 만드는 데 관여하는 근육입니다. 거울을 보며 양쪽 입꼬리를 대칭으로 올리는 미소 연습을 반복하면 입매의 균형을 개선하는 데 도움이 될 수 있습니다.",
+      jaw: "**교근(Masseter)**은 턱의 움직임을 주도하며 얼굴 하부 윤곽을 형성하는 근육입니다. 귀 아래 턱 근육 부위를 손가락 마디로 지그시 누르며 이완해주면 턱선의 대칭성을 높이는 데 도움이 될 수 있습니다."
     };
 
     const generalTips = [
-      "**수면 자세 관리**: 얼굴이 한쪽으로 눌리는 자세는 장기적으로 좌우 균형에 영향을 줄 수 있으므로 주의가 필요합니다.",
-      "**바른 자세 유지**: 목과 어깨의 정렬이 안면 대칭에 영향을 줄 수 있으므로 평소 바른 자세를 유지하는 것이 좋습니다."
+      "**흉쇄유돌근(Sternocleidomastoid)**은 목의 정렬을 담당하며 안면 대칭에 직접적인 영향을 주는 근육입니다. 목을 좌우로 천천히 스트레칭하여 긴장을 풀어주면 얼굴의 전체적인 밸런스 유지에 도움이 될 수 있습니다.",
+      "**바른 생활 습관**: 한쪽으로만 음식을 씹거나 턱을 괴는 습관을 지양하고, 바른 자세를 유지하는 것이 장기적인 안면 대칭 유지에 도움이 될 수 있습니다."
     ];
 
-    let guide = "";
-    
-    // Primary Care
-    guide += "#### 🎯 우선 권장 관리\n";
+    let homeCareGuide = "#### 🎯 우선 권장 관리\n";
     if (lowest.score < 90) {
-      guide += `- ${(tips as any)[lowest.key]}\n`;
+      homeCareGuide += `- ${(tips as any)[lowest.key]}\n`;
     }
     if (secondLowest.score < 92) {
-      guide += `- ${(tips as any)[secondLowest.key]}\n`;
+      homeCareGuide += `- ${(tips as any)[secondLowest.key]}\n`;
     }
     if (lowest.score >= 90 && secondLowest.score >= 92) {
-      guide += "- 현재의 우수한 균형 상태를 유지하기 위한 가벼운 스트레칭을 권장합니다.\n";
+      homeCareGuide += "- 현재의 우수한 균형 상태를 유지하기 위한 전반적인 안면 스트레칭을 권장합니다.\n";
     }
 
-    guide += "\n#### 🧘 보조 습관 관리\n";
-    guide += `- ${generalTips[0]}\n`;
-    guide += `- ${generalTips[1]}\n`;
+    homeCareGuide += "\n#### 🧘 보조 습관 관리\n";
+    homeCareGuide += `- ${generalTips[0]}\n`;
+    homeCareGuide += `- ${generalTips[1]}\n`;
 
-    return { primaryImbalance, summaryText, guide };
+    return { primaryImbalance, analysisSummary, homeCareGuide };
   };
 
-  const { primaryImbalance, summaryText: analysisSummary, guide: homeCareGuide } = getDynamicAnalysis();
+  const { primaryImbalance, analysisSummary, homeCareGuide } = getDynamicAnalysis();
 
   // 5. Result Stability & Scan Quality
   const rotation = Math.abs(metrics.rotationAngle || 0);
@@ -389,15 +393,15 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
 
   // 7. Professional Care Options (Suggestive Tone)
   const professionalCareOptions = `
-전문가의 근막 이완 관리나 자세 정렬 스트레칭이 얼굴 균형 개선에 도움이 될 수 있습니다. 특정 근육의 과도한 사용을 줄이고 균형을 맞추는 전문가용 프로그램을 고려해 보는 것이 좋습니다.
+전문가에 의한 근막 이완 관리나 턱 주변 교근(Masseter), 측두근(Temporalis)의 긴장 조절 프로그램이 얼굴 균형 관리에 도움이 될 수 있습니다. 특정 근육의 과도한 긴장을 해소하고 얼굴 전체의 해부학적 밸런스를 맞추는 전문가용 케어를 통해 보다 체계적인 관리를 고려해 보시기 바랍니다.
   `.trim();
 
   // 7. Detailed Feedback Generation Logic (Observational Style)
   const angelFeedbacks = [
-    "당신의 얼굴은 왼쪽과 오른쪽이 서로 다른 매력을 품고 있네요. 미세한 차이가 오히려 당신만의 독특한 분위기를 만들어내고 있습니다.",
-    "완벽한 대칭보다 더 아름다운 것은 당신만의 개성입니다. 좌우의 미세한 차이가 인상을 더욱 입체적이고 생동감 있게 만들어주네요.",
-    "자연스러운 비대칭은 인간적인 매력의 원천입니다. 당신의 마스크는 정형화되지 않은 자연스러운 아름다움을 간직하고 있어요.",
-    "좌우의 균형이 조금씩 다른 점이 오히려 당신의 표정을 더욱 풍부하게 만들어줍니다. 지금 그대로도 충분히 매력적인 마스크예요."
+    "얼굴의 좌우에는 자연스러운 미세한 차이가 관찰됩니다. 이러한 차이는 대부분의 사람에게 나타나는 특징이며 얼굴 인상에 자연스러운 입체감을 줄 수 있습니다.",
+    "안면 분석 결과, 좌우 균형에서 자연스러운 미세 편차가 관찰됩니다. 이러한 차이는 개개인의 고유한 인상을 형성하며 자연스러운 조화를 이룹니다.",
+    "측정된 비대칭 수치는 일상적인 범위 내에 있으며 조화로운 인상을 유지하고 있습니다. 미세한 차이는 표정의 생동감을 더해주는 자연스러운 요소로 분석됩니다.",
+    "전반적인 안면 정렬은 안정적인 상태를 유지하고 있습니다. 관찰되는 미세한 좌우 차이는 안면 근육의 자연스러운 발달 과정에서 나타나는 특징입니다."
   ];
 
   // 6. Dynamic Expert Advice
@@ -418,12 +422,13 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
 
   const getAngelFeedback = () => getRandom(angelFeedbacks);
 
-  // 7. Overall Balance Summary
-  let balanceSummary = "전반적인 얼굴 균형이 비교적 안정적인 편입니다.";
-  if (metrics.overallScore >= 85) balanceSummary = "전반적인 얼굴 균형이 매우 우수하고 이상적입니다.";
-  else if (metrics.overallScore >= 70) balanceSummary = "전반적인 얼굴 균형이 비교적 안정적인 편입니다.";
-  else if (metrics.overallScore >= 55) balanceSummary = "전반적인 얼굴 균형에 약간의 차이가 관찰됩니다.";
-  else balanceSummary = "전반적인 얼굴 균형이 다소 비대칭적으로 보일 수 있습니다.";
+  // 7. Overall Balance Summary (Consistent with analysisSummary)
+  let balanceSummary = "";
+  if (metrics.overallScore >= 90) balanceSummary = "전반적인 얼굴 균형이 매우 안정적이며 조화로운 구조를 보입니다.";
+  else if (metrics.overallScore >= 80) balanceSummary = "전반적인 얼굴 균형은 안정적인 범위에 있습니다.";
+  else if (metrics.overallScore >= 70) balanceSummary = "전반적인 얼굴 균형은 비교적 안정적인 편입니다.";
+  else if (metrics.overallScore >= 60) balanceSummary = "얼굴 일부 영역에서 좌우 균형 차이가 관찰됩니다.";
+  else balanceSummary = "여러 영역에서 좌우 균형 차이가 관찰됩니다.";
 
   // Tier Calculation
   const p = metrics.percentile || 50;
