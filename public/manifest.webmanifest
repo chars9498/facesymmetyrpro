@@ -1,11 +1,11 @@
 {
   "name": "Face Symmetry Pro",
   "short_name": "FaceSym",
-  "description": "AI facial balance analysis & symmetry insights",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#05070b",
   "theme_color": "#05070b",
+  "description": "AI facial balance analysis & symmetry insights",
   "icons": [
     {
       "src": "/icon-192.png",
@@ -16,12 +16,6 @@
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
     }
   ]
 }
