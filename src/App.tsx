@@ -1533,7 +1533,7 @@ export default function App() {
                             />
                           </div>
                           
-                          <p className="mt-4 text-[9px] text-white/40 leading-relaxed text-center font-medium">
+                          <p className="mt-4 text-[9px] text-white/40 leading-normal text-center font-medium">
                             좌측 얼굴과 우측 얼굴을 각각 대칭으로 합성한 모습입니다.
                           </p>
 
@@ -1613,15 +1613,15 @@ export default function App() {
                             <User size={12} className="text-emerald-400" />
                             <h4 className="text-[9px] font-black text-emerald-400 uppercase tracking-widest font-mono">Expert Analysis</h4>
                           </div>
-                          <p className="text-[12px] font-bold text-white leading-relaxed italic">
+                          <p className="text-[12px] font-bold text-white leading-normal italic">
                             "{result.factFeedback}"
                           </p>
                         </motion.div>
 
                         {/* Radar Chart */}
-                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm flex-[1.2] flex flex-col min-h-[200px] shrink-0">
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm flex flex-col shrink-0">
                           <h3 className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono mb-2 shrink-0">Balance Distribution</h3>
-                          <div className="flex-1 min-h-0">
+                          <div className="h-[180px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
                               <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
                                 { subject: '눈', A: result.partScores?.eyes || result.landmarks.eyes.score },
@@ -1635,11 +1635,11 @@ export default function App() {
                               </RadarChart>
                             </ResponsiveContainer>
                           </div>
-                          <div className="mt-2 pt-3 border-t border-white/5 space-y-2">
-                            <p className="text-[12px] font-bold text-emerald-400 leading-relaxed text-center">
+                          <div className="mt-2 pt-3 border-t border-white/5 space-y-1">
+                            <p className="text-[12px] font-bold text-emerald-400 leading-normal text-center">
                               {result.summary}
                             </p>
-                            <p className="text-[10px] text-white/60 leading-relaxed text-center font-medium px-2">
+                            <p className="text-[10px] text-white/60 leading-normal text-center font-medium px-2">
                               {result.analysisSummary}
                             </p>
                           </div>
@@ -1725,7 +1725,7 @@ export default function App() {
                                   </div>
                                 )}
                                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                                  <p className="text-[9px] text-white/80 leading-relaxed font-medium">
+                                  <p className="text-[9px] text-white/80 leading-normal font-medium">
                                     AI가 분석한 이상적인 균형 상태를 시뮬레이션한 결과입니다. 자연스러운 개성을 유지하면서 대칭성을 미세하게 조정하였습니다.
                                   </p>
                                 </div>
@@ -1749,11 +1749,11 @@ export default function App() {
                             </div>
                             <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] font-mono truncate">Balance Insight</h4>
                           </div>
-                          <p className="text-[13px] text-white leading-relaxed font-bold italic relative z-10">
+                          <p className="text-[13px] text-white leading-normal font-bold italic relative z-10">
                             "{result.angelFeedback}"
                           </p>
                           <div className="mt-3 pt-3 border-t border-white/5">
-                            <p className="text-[11px] text-white/60 leading-relaxed font-medium italic">
+                            <p className="text-[11px] text-white/60 leading-normal font-medium italic">
                               분석 결과를 바탕으로 맞춤형 케어 가이드를 확인해보세요.
                             </p>
                           </div>
@@ -1772,7 +1772,7 @@ export default function App() {
                                 <ShieldCheck size={14} className="text-emerald-500" />
                                 <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-wider">Recommended Care</h4>
                               </div>
-                              <div className="text-[11px] text-white/70 leading-relaxed prose-compact px-1 w-full break-words box-border">
+                              <div className="text-[11px] text-white/70 leading-normal prose-compact px-1 w-full break-words box-border">
                                 <Markdown components={laymanMarkdownComponents}>{result.homeCareGuide}</Markdown>
                               </div>
                             </div>
@@ -1784,7 +1784,7 @@ export default function App() {
                                 <Info size={14} className="text-blue-400" />
                                 <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-wider">Expert Advice</h4>
                               </div>
-                              <div className="text-[11px] text-white/70 leading-relaxed prose-compact px-1 w-full break-words box-border">
+                              <div className="text-[11px] text-white/70 leading-normal prose-compact px-1 w-full break-words box-border">
                                 <Markdown components={professionalMarkdownComponents}>{result.professionalCareOptions}</Markdown>
                               </div>
                             </div>
