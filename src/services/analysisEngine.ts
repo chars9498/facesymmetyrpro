@@ -95,6 +95,10 @@ export interface AnalysisResult {
     targetRange: [number, number];
     feedback: string;
   };
+  symmetryTwins?: {
+    left: string;
+    right: string;
+  };
 }
 
 const getRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];

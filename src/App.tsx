@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { analyzeLocally, type AnalysisResult } from "./services/analysisEngine";
-import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles, TrendingUp, Share2 } from 'lucide-react';
+import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles, TrendingUp, Share2, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
@@ -88,11 +88,15 @@ export default function App() {
   const [imageDimensions, setImageDimensions] = useState({ width: 0, height: 0 });
   const [reportStep, setReportStep] = useState(0);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [exportType, setExportType] = useState<'result' | 'symmetry'>('result');
+  const [symmetryStrength, setSymmetryStrength] = useState(0.7);
+  const [isGeneratingSymmetryCard, setIsGeneratingSymmetryCard] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const shareCardRef = useRef<HTMLDivElement>(null);
+  const resultShareCardRef = useRef<HTMLDivElement>(null);
+  const symmetryShareCardRef = useRef<HTMLDivElement>(null);
   const faceMeshRef = useRef<faceMesh.FaceMesh | null>(null);
 
   // Initialize FaceMesh
@@ -304,15 +308,15 @@ export default function App() {
     }
   };
 
-  const generateAndShareImage = async (action: 'save' | 'share' = 'share') => {
-    if (!shareCardRef.current) return;
+  const exportResultCard = async (action: 'save' | 'share' = 'share') => {
+    if (!resultShareCardRef.current) return;
     
     setIsGeneratingShareImage(true);
     try {
       // Wait a bit for any images to load
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      const dataUrl = await toPng(shareCardRef.current, {
+      const dataUrl = await toPng(resultShareCardRef.current, {
         quality: 1.0,
         pixelRatio: 2,
         width: 1080,
@@ -351,6 +355,145 @@ export default function App() {
       setError("공유 이미지 생성 중 오류가 발생했습니다.");
     } finally {
       setIsGeneratingShareImage(false);
+      setShowExportModal(false);
+    }
+  };
+
+  const generateSymmetryTwins = async (
+    imgSrc: string,
+    landmarks: any[],
+    width: number,
+    height: number,
+    strength: number = 0.7
+  ): Promise<{ left: string; right: string }> => {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return { left: imgSrc, right: imgSrc };
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = imgSrc;
+      await img.decode();
+
+      // 1. Face Alignment (Same as generateSoftSymmetry)
+      const leftEye = landmarks[33];
+      const rightEye = landmarks[263];
+      const angle = Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x);
+
+      const midlinePoints = [landmarks[168], landmarks[1], landmarks[164], landmarks[152]];
+      const midlineX = (midlinePoints.reduce((sum, p) => sum + p.x, 0) / midlinePoints.length) * width;
+
+      // Draw original aligned
+      ctx.save();
+      ctx.translate(midlineX, height / 2);
+      ctx.rotate(-angle);
+      ctx.translate(-midlineX, -height / 2);
+      ctx.drawImage(img, 0, 0, width, height);
+      ctx.restore();
+      
+      const originalData = ctx.getImageData(0, 0, width, height);
+
+      const generateTwin = (side: 'left' | 'right') => {
+        const twinCanvas = document.createElement('canvas');
+        twinCanvas.width = width;
+        twinCanvas.height = height;
+        const tCtx = twinCanvas.getContext('2d');
+        if (!tCtx) return imgSrc;
+
+        // Create the "Full Symmetry" version first
+        const symCanvas = document.createElement('canvas');
+        symCanvas.width = width;
+        symCanvas.height = height;
+        const sCtx = symCanvas.getContext('2d');
+        if (!sCtx) return imgSrc;
+
+        // Draw the chosen side
+        sCtx.drawImage(canvas, 0, 0);
+        
+        // Mirror the chosen side to the other side
+        sCtx.save();
+        sCtx.translate(midlineX, 0);
+        sCtx.scale(-1, 1);
+        sCtx.translate(-midlineX, 0);
+        
+        // Clip to only draw the mirrored part onto the opposite side
+        sCtx.beginPath();
+        if (side === 'left') {
+          // Mirror left to right
+          sCtx.rect(midlineX, 0, width - midlineX, height);
+        } else {
+          // Mirror right to left
+          sCtx.rect(0, 0, midlineX, height);
+        }
+        sCtx.clip();
+        sCtx.drawImage(canvas, 0, 0);
+        sCtx.restore();
+
+        const symData = sCtx.getImageData(0, 0, width, height);
+        const resultData = tCtx.createImageData(width, height);
+
+        // Blend: strength * mirrored (symData) + (1 - strength) * original
+        for (let i = 0; i < symData.data.length; i += 4) {
+          resultData.data[i] = symData.data[i] * strength + originalData.data[i] * (1 - strength);
+          resultData.data[i+1] = symData.data[i+1] * strength + originalData.data[i+1] * (1 - strength);
+          resultData.data[i+2] = symData.data[i+2] * strength + originalData.data[i+2] * (1 - strength);
+          resultData.data[i+3] = 255;
+        }
+
+        tCtx.putImageData(resultData, 0, 0);
+        return twinCanvas.toDataURL('image/jpeg', 0.85);
+      };
+
+      return {
+        left: generateTwin('left'),
+        right: generateTwin('right')
+      };
+    } catch (err) {
+      console.error("Symmetry Twin Generation Error:", err);
+      return { left: imgSrc, right: imgSrc };
+    }
+  };
+
+  const updateSymmetryTwins = useCallback(async (strength: number) => {
+    if (!result || !image || !result.rawLandmarks) return;
+    const twins = await generateSymmetryTwins(image, result.rawLandmarks, imageDimensions.width, imageDimensions.height, strength);
+    setResult(prev => prev ? { ...prev, symmetryTwins: twins } : null);
+  }, [result, image, imageDimensions]);
+
+  const exportSymmetryCard = async (mode: 'save' | 'share' = 'save') => {
+    if (!symmetryShareCardRef.current) return;
+    
+    setIsGeneratingSymmetryCard(true);
+    try {
+      const dataUrl = await toPng(symmetryShareCardRef.current, {
+        pixelRatio: 2,
+        cacheBust: true,
+      });
+
+      if (mode === 'save') {
+        const link = document.createElement('a');
+        link.download = `symmetry-twin-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+      } else {
+        const blob = await (await fetch(dataUrl)).blob();
+        const file = new File([blob], 'symmetry-twin.png', { type: 'image/png' });
+        if (navigator.share) {
+          await navigator.share({
+            files: [file],
+            title: 'Face Symmetry Pro - Symmetry Twin',
+            text: '나의 좌우 대칭 얼굴을 확인해보세요!',
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Symmetry Card Generation Error:", err);
+      setError("이미지 생성 중 오류가 발생했습니다.");
+    } finally {
+      setIsGeneratingSymmetryCard(false);
       setShowExportModal(false);
     }
   };
@@ -736,6 +879,9 @@ export default function App() {
       // Generate Soft Symmetry Image
       const balancedImage = await generateSoftSymmetry(resizedImage, rawLandmarks, imgInfo.width, imgInfo.height);
 
+      // Generate Symmetry Twins
+      const symmetryTwins = await generateSymmetryTwins(resizedImage, rawLandmarks, imgInfo.width, imgInfo.height, symmetryStrength);
+
       // Merge browser-calculated metrics into the result with defensive checks
       const safeLandmarks: any = parsedResult.landmarks || {};
       
@@ -748,6 +894,7 @@ export default function App() {
         symmetryScore: overallScore,
         percentile,
         balancedImage,
+        symmetryTwins,
         landmarks: {
           eyes: { score: Math.round(eyeScore), status: safeLandmarks.eyes?.status || "분석 완료", feedback: safeLandmarks.eyes?.feedback || "분석 완료" },
           brows: { score: Math.round(browsScore), status: safeLandmarks.brows?.status || "분석 완료", feedback: safeLandmarks.brows?.feedback || "분석 완료" },
@@ -1298,46 +1445,108 @@ export default function App() {
 
                     {reportStep === 1 && (
                       <div className="flex flex-col gap-3 min-h-0 py-2">
-                        {/* Expert Insight Card - Moved from Step 0 */}
-                        <motion.div
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          className="bg-emerald-500/10 rounded-2xl border border-emerald-500/20 p-4 shadow-lg backdrop-blur-sm"
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <User size={12} className="text-emerald-400" />
-                            <h4 className="text-[9px] font-black text-emerald-400 uppercase tracking-widest font-mono">Expert Analysis</h4>
-                          </div>
-                          <p className="text-[12px] font-bold text-white leading-relaxed italic">
-                            "{result.factFeedback}"
-                          </p>
-                        </motion.div>
+                        {/* Part Scores (Moved to top) */}
+                        <div className="grid grid-cols-4 gap-2 shrink-0">
+                          {[
+                            { label: '눈', score: result.partScores?.eyes || result.landmarks.eyes.score, status: result.landmarks.eyes.status },
+                            { label: '눈썹', score: result.partScores?.brows || result.landmarks.brows.score, status: result.landmarks.brows.status },
+                            { label: '입', score: result.partScores?.mouth || result.landmarks.mouth.score, status: result.landmarks.mouth.status },
+                            { label: '턱', score: result.partScores?.jaw || result.landmarks.jawline.score, status: result.landmarks.jawline.status }
+                          ].map((m, idx) => (
+                            <div key={idx} className="bg-white/5 p-2 rounded-xl border border-white/10 flex flex-col items-center gap-0.5">
+                              <span className="text-[8px] text-white/40 uppercase font-mono font-bold">{m.label}</span>
+                              <span className="text-[14px] font-black text-emerald-400 italic">{m.score}</span>
+                              <span className="text-[7px] text-white/30 font-bold truncate w-full text-center">{m.status}</span>
+                            </div>
+                          ))}
+                        </div>
 
-                        {/* Radar Chart */}
-                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm flex-[1.2] flex flex-col min-h-0">
-                          <h3 className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono mb-2 shrink-0">Balance Distribution</h3>
-                          <div className="flex-1 min-h-0">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
-                                { subject: '눈', A: result.partScores?.eyes || result.landmarks.eyes.score },
-                                { subject: '눈썹', A: result.partScores?.brows || result.landmarks.brows.score },
-                                { subject: '입', A: result.partScores?.mouth || result.landmarks.mouth.score },
-                                { subject: '턱', A: result.partScores?.jaw || result.landmarks.jawline.score },
-                              ]}>
-                                <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                                <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 700 }} />
-                                <Radar name="Symmetry" dataKey="A" stroke="#10b981" fill="#10b981" fillOpacity={0.4} />
-                              </RadarChart>
-                            </ResponsiveContainer>
+                        {/* Symmetry Twin Section */}
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm shrink-0">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                              <Users size={14} className="text-indigo-400" />
+                              <h3 className="text-[9px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono">Symmetry Twin</h3>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[8px] text-indigo-400/60 font-mono font-bold">Strength: {Math.round(symmetryStrength * 100)}%</span>
+                            </div>
                           </div>
-                          <div className="mt-2 pt-3 border-t border-white/5 space-y-2">
-                            <p className="text-[12px] font-bold text-emerald-400 leading-relaxed text-center">
-                              {result.summary}
-                            </p>
-                            <p className="text-[10px] text-white/60 leading-relaxed text-center font-medium px-2">
-                              {result.analysisSummary}
-                            </p>
+                          
+                          <div className="space-y-3">
+                            {/* Original Image (Large) */}
+                            <div className="relative aspect-[4/5] w-2/3 mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black/20 shadow-lg">
+                              <img src={image || ''} alt="Original" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-emerald-500/80 backdrop-blur-sm rounded-full">
+                                <span className="text-[7px] font-black text-black uppercase tracking-widest">Original</span>
+                              </div>
+                            </div>
+
+                            {/* Twins (Side by Side) */}
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-2">
+                                <div className="aspect-[3/4] rounded-xl overflow-hidden border border-white/5 bg-black/20 relative">
+                                  {result.symmetryTwins?.left ? (
+                                    <img src={result.symmetryTwins.left} alt="Left Symmetry" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[8px] text-white/20">...</div>
+                                  )}
+                                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full border border-white/5">
+                                    <span className="text-[6px] font-bold text-white/60 uppercase tracking-tighter">Left Symmetry</span>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <div className="space-y-2">
+                                <div className="aspect-[3/4] rounded-xl overflow-hidden border border-white/5 bg-black/20 relative">
+                                  {result.symmetryTwins?.right ? (
+                                    <img src={result.symmetryTwins.right} alt="Right Symmetry" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[8px] text-white/20">...</div>
+                                  )}
+                                  <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full border border-white/5">
+                                    <span className="text-[6px] font-bold text-white/60 uppercase tracking-tighter">Right Symmetry</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
+
+                          {/* Symmetry Strength Slider */}
+                          <div className="mt-5 px-2 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Symmetry Strength</span>
+                              <span className="text-[10px] font-mono font-bold text-indigo-400">{Math.round(symmetryStrength * 100)}%</span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="0.5" 
+                              max="1.0" 
+                              step="0.01" 
+                              value={symmetryStrength} 
+                              onChange={(e) => {
+                                const val = parseFloat(e.target.value);
+                                setSymmetryStrength(val);
+                                updateSymmetryTwins(val);
+                              }}
+                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                            />
+                          </div>
+                          
+                          <p className="mt-4 text-[9px] text-white/40 leading-relaxed text-center font-medium">
+                            좌측 얼굴과 우측 얼굴을 각각 대칭으로 합성한 모습입니다.
+                          </p>
+
+                          <button 
+                            onClick={() => {
+                              setExportType('symmetry');
+                              setShowExportModal(true);
+                            }}
+                            className="mt-4 w-full py-3 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-2xl flex items-center justify-center gap-2 transition-all group active:scale-[0.98]"
+                          >
+                            <Download size={14} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+                            <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Export Symmetry Card</span>
+                          </button>
                         </div>
 
                         {/* Visual Analysis (Mesh) */}
@@ -1394,20 +1603,46 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Part Scores */}
-                        <div className="grid grid-cols-4 gap-2 shrink-0">
-                          {[
-                            { label: '눈', score: result.partScores?.eyes || result.landmarks.eyes.score, status: result.landmarks.eyes.status },
-                            { label: '눈썹', score: result.partScores?.brows || result.landmarks.brows.score, status: result.landmarks.brows.status },
-                            { label: '입', score: result.partScores?.mouth || result.landmarks.mouth.score, status: result.landmarks.mouth.status },
-                            { label: '턱', score: result.partScores?.jaw || result.landmarks.jawline.score, status: result.landmarks.jawline.status }
-                          ].map((m, idx) => (
-                            <div key={idx} className="bg-white/5 p-2 rounded-xl border border-white/10 flex flex-col items-center gap-0.5">
-                              <span className="text-[8px] text-white/40 uppercase font-mono font-bold">{m.label}</span>
-                              <span className="text-[14px] font-black text-emerald-400 italic">{m.score}</span>
-                              <span className="text-[7px] text-white/30 font-bold truncate w-full text-center">{m.status}</span>
-                            </div>
-                          ))}
+                        {/* Expert Insight Card */}
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="bg-emerald-500/10 rounded-2xl border border-emerald-500/20 p-4 shadow-lg backdrop-blur-sm shrink-0"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <User size={12} className="text-emerald-400" />
+                            <h4 className="text-[9px] font-black text-emerald-400 uppercase tracking-widest font-mono">Expert Analysis</h4>
+                          </div>
+                          <p className="text-[12px] font-bold text-white leading-relaxed italic">
+                            "{result.factFeedback}"
+                          </p>
+                        </motion.div>
+
+                        {/* Radar Chart */}
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm flex-[1.2] flex flex-col min-h-[200px] shrink-0">
+                          <h3 className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono mb-2 shrink-0">Balance Distribution</h3>
+                          <div className="flex-1 min-h-0">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RadarChart cx="50%" cy="50%" outerRadius="70%" data={[
+                                { subject: '눈', A: result.partScores?.eyes || result.landmarks.eyes.score },
+                                { subject: '눈썹', A: result.partScores?.brows || result.landmarks.brows.score },
+                                { subject: '입', A: result.partScores?.mouth || result.landmarks.mouth.score },
+                                { subject: '턱', A: result.partScores?.jaw || result.landmarks.jawline.score },
+                              ]}>
+                                <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                                <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 700 }} />
+                                <Radar name="Symmetry" dataKey="A" stroke="#10b981" fill="#10b981" fillOpacity={0.4} />
+                              </RadarChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="mt-2 pt-3 border-t border-white/5 space-y-2">
+                            <p className="text-[12px] font-bold text-emerald-400 leading-relaxed text-center">
+                              {result.summary}
+                            </p>
+                            <p className="text-[10px] text-white/60 leading-relaxed text-center font-medium px-2">
+                              {result.analysisSummary}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1566,7 +1801,10 @@ export default function App() {
                         {/* Share Section (Primary CTA) */}
                         <div className="flex flex-col gap-2 shrink-0">
                           <button 
-                            onClick={() => setShowExportModal(true)} 
+                            onClick={() => {
+                              setExportType('result');
+                              setShowExportModal(true);
+                            }} 
                             className="w-full bg-emerald-500 text-black py-4 rounded-3xl font-black text-[12px] uppercase tracking-[0.2em] flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:bg-emerald-400 transition-all active:scale-[0.98]"
                           >
                             <Sparkles size={18} />
@@ -1615,7 +1853,7 @@ export default function App() {
       {result && image && (
         <div className="fixed left-[-9999px] top-0">
           <div 
-            ref={shareCardRef}
+            ref={resultShareCardRef}
             className="w-[1080px] h-[1920px] bg-[#050505] text-white relative flex flex-col items-center justify-between py-32 px-24 overflow-hidden"
             style={{ fontFamily: "'Inter', sans-serif" }}
           >
@@ -1687,6 +1925,53 @@ export default function App() {
         </p>
       </footer>
 
+      {/* Hidden Symmetry Share Card for Export */}
+      {result && (
+        <div className="fixed -left-[9999px] top-0">
+          <div 
+            ref={symmetryShareCardRef}
+            className="w-[600px] bg-[#0A0A0A] p-10 flex flex-col items-center gap-8 border border-white/10"
+          >
+            <div className="flex flex-col items-center gap-2">
+              <h1 className="text-2xl font-black text-white uppercase tracking-[0.3em]">Face Symmetry Pro</h1>
+              <p className="text-xs text-white/40 uppercase tracking-widest">AI Facial Balance Analysis</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 w-full">
+              <div className="space-y-4">
+                <div className="aspect-[3/4] rounded-3xl overflow-hidden border border-white/10 bg-white/5">
+                  <img src={result.symmetryTwins?.left} alt="Left Symmetry" className="w-full h-full object-cover" />
+                </div>
+                <p className="text-center text-sm font-black text-white/60 uppercase tracking-widest">Left Face Symmetry</p>
+              </div>
+              <div className="space-y-4">
+                <div className="aspect-[3/4] rounded-3xl overflow-hidden border border-white/10 bg-white/5">
+                  <img src={result.symmetryTwins?.right} alt="Right Symmetry" className="w-full h-full object-cover" />
+                </div>
+                <p className="text-center text-sm font-black text-white/60 uppercase tracking-widest">Right Face Symmetry</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 w-full mt-4">
+              <div className="bg-white/5 rounded-3xl p-6 border border-white/10 flex flex-col items-center gap-1">
+                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Balance Score</span>
+                <span className="text-4xl font-black text-white italic">{result.overallScore}</span>
+              </div>
+              <div className="bg-white/5 rounded-3xl p-6 border border-white/10 flex flex-col items-center gap-1">
+                <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Global Ranking</span>
+                <span className="text-4xl font-black text-white italic">Top {100 - (result.percentile || 0)}%</span>
+              </div>
+            </div>
+
+            <div className="mt-4 text-center">
+              <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-mono">
+                Analyzed by Face Symmetry Pro AI
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Export Modal (Bottom Sheet style) */}
       <AnimatePresence>
         {showExportModal && (
@@ -1714,8 +1999,11 @@ export default function App() {
 
                 <div className="grid gap-2">
                   <button 
-                    onClick={() => generateAndShareImage('save')}
-                    disabled={isGeneratingShareImage}
+                    onClick={() => {
+                      if (exportType === 'symmetry') exportSymmetryCard('save');
+                      else exportResultCard('save');
+                    }}
+                    disabled={isGeneratingShareImage || isGeneratingSymmetryCard}
                     className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group"
                   >
                     <div className="flex items-center gap-4">
@@ -1727,12 +2015,15 @@ export default function App() {
                         <p className="text-[10px] text-white/40">갤러리에 결과 카드를 저장합니다</p>
                       </div>
                     </div>
-                    {isGeneratingShareImage && <RefreshCw size={16} className="animate-spin text-white/20" />}
+                    {(isGeneratingShareImage || isGeneratingSymmetryCard) && <RefreshCw size={16} className="animate-spin text-white/20" />}
                   </button>
 
                   <button 
-                    onClick={() => generateAndShareImage('share')}
-                    disabled={isGeneratingShareImage}
+                    onClick={() => {
+                      if (exportType === 'symmetry') exportSymmetryCard('share');
+                      else exportResultCard('share');
+                    }}
+                    disabled={isGeneratingShareImage || isGeneratingSymmetryCard}
                     className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group"
                   >
                     <div className="flex items-center gap-4">
@@ -1744,7 +2035,7 @@ export default function App() {
                         <p className="text-[10px] text-white/40">인스타그램, 카카오톡 등으로 공유</p>
                       </div>
                     </div>
-                    {isGeneratingShareImage && <RefreshCw size={16} className="animate-spin text-white/20" />}
+                    {(isGeneratingShareImage || isGeneratingSymmetryCard) && <RefreshCw size={16} className="animate-spin text-white/20" />}
                   </button>
 
                   <button 
