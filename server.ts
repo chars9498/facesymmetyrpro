@@ -157,9 +157,23 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     // 프로덕션 환경에서는 정적 파일 서빙
-    app.use(express.static(path.join(__dirname, "dist")));
+    const distPath = path.join(__dirname, "dist");
+    
+    // PWA 관련 파일들에 대해 명시적 라우팅 (Vercel 등에서 정적 파일 서빙 이슈 방지)
+    app.get("/manifest.webmanifest", (req, res) => {
+      res.setHeader("Content-Type", "application/manifest+json");
+      res.sendFile(path.join(distPath, "manifest.webmanifest"));
+    });
+    
+    app.get("/sw.js", (req, res) => {
+      res.setHeader("Service-Worker-Allowed", "/");
+      res.sendFile(path.join(distPath, "sw.js"));
+    });
+
+    app.use(express.static(distPath));
+    
     app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 

@@ -22,38 +22,12 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         filename: 'sw.js',
-        manifestFilename: 'manifest.json',
+        injectRegister: 'auto',
+        manifest: false,
         devOptions: {
           enabled: true
         },
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'icon-192.svg', 'icon-512.svg'],
-        manifest: {
-          name: 'Face Symmetry Pro',
-          short_name: 'FaceSym',
-          description: 'AI facial balance analysis & symmetry insights',
-          theme_color: '#05070b',
-          background_color: '#05070b',
-          display: 'standalone',
-          start_url: '/',
-          icons: [
-            {
-              src: 'icon-192.svg',
-              sizes: '192x192',
-              type: 'image/svg+xml',
-            },
-            {
-              src: 'icon-512.svg',
-              sizes: '512x512',
-              type: 'image/svg+xml',
-            },
-            {
-              src: 'icon-512.svg',
-              sizes: '512x512',
-              type: 'image/svg+xml',
-              purpose: 'any maskable',
-            },
-          ],
-        },
+        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'icon-192.png', 'icon-512.png', 'icon-192.svg', 'icon-512.svg', 'manifest.webmanifest'],
       }),
     ],
     resolve: {
