@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { analyzeLocally, type AnalysisResult } from "./services/analysisEngine";
-import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles, TrendingUp, Share2, Users } from 'lucide-react';
+import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles, TrendingUp, Share2, Users, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
@@ -8,6 +8,8 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import * as faceMesh from '@mediapipe/face_mesh';
 import { toPng } from 'html-to-image';
+import { PrivacyPolicy } from './components/PrivacyPolicy';
+import { PrivacyNote } from './components/PrivacyNote';
 
 const { FACEMESH_TESSELATION } = faceMesh;
 
@@ -91,6 +93,7 @@ export default function App() {
   const [exportType, setExportType] = useState<'result' | 'symmetry'>('result');
   const [symmetryStrength, setSymmetryStrength] = useState(0.7);
   const [isGeneratingSymmetryCard, setIsGeneratingSymmetryCard] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1040,12 +1043,7 @@ export default function App() {
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 px-4 py-2 bg-black/40 border border-white/5 rounded-full">
-                    <ShieldCheck size={14} className="text-emerald-500" />
-                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
-                      🔒 Images are processed locally and never stored.
-                    </p>
-                  </div>
+                  <PrivacyNote onOpenPolicy={() => setShowPrivacyPolicy(true)} />
                 </div>
               ) : isCameraActive ? (
                 <div className="relative aspect-[4/5] bg-black">
@@ -1250,7 +1248,7 @@ export default function App() {
                              analysisStep.includes('점수') ? '좌우 균형 데이터를 계산하는 중...' : 
                              '보다 신뢰할 수 있는 AI 분석 리포트를 생성하고 있습니다'}
                           </p>
-                          <p className="text-[10px] text-white/40 uppercase tracking-widest">Local Processing + AI Cloud</p>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest">100% On-Device AI Analysis</p>
                         </div>
                       </div>
                       <div className="w-48 h-1 bg-white/10 rounded-full overflow-hidden">
@@ -2063,6 +2061,12 @@ export default function App() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showPrivacyPolicy && (
+          <PrivacyPolicy onClose={() => setShowPrivacyPolicy(false)} />
         )}
       </AnimatePresence>
     </div>
