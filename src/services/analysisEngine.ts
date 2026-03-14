@@ -16,7 +16,6 @@ export interface AnalysisMetrics {
   symmetryScore: number;
   percentile: number;
   midline: number;
-  personality: 'fact' | 'angel';
   // Raw Ratios for Matching
   faceRatio: number;
   eyeDistanceRatio: number;
@@ -44,6 +43,8 @@ export interface AnalysisResult {
   faceShape?: string;
   strongestFeatures?: string[];
   detailedFeedback: string;
+  factFeedback: string;
+  angelFeedback: string;
   primaryImbalance: string;
   analysisSummary: string;
   homeCareGuide: string;
@@ -99,8 +100,6 @@ export interface AnalysisResult {
 const getRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 
 export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
-  const isFact = metrics.personality === 'fact';
-  
   // 1. Summary Generation
   const summaries = metrics.overallScore > 90 
     ? ["황금비율에 근접한 이상적인 대칭 구조", "안면 골격의 정렬이 매우 우수한 케이스", "균형미가 돋보이는 완성도 높은 마스크"]
@@ -291,7 +290,7 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
       const secondaryDetail = secondLowest.score < 92 ? `와 ${secondLowest.detail}` : "";
       primaryImbalance = `가장 큰 좌우 균형 차이는 ${lowest.name} 영역에서 관찰됩니다.\n${lowest.detail}${secondaryDetail} 영역에서 다른 부위보다 상대적으로 높은 편차가 나타났습니다.\n이러한 차이는 표정 습관이나 근육 사용 패턴의 영향일 수 있습니다.`;
     } else {
-      primaryImbalance = "전반적인 안면 대칭이 매우 우수한 편입니다.\n모든 부위가 조화로운 균형을 유지하고 있습니다.";
+      primaryImbalance = "전반적인 안면 대칭이 매우 우수한 편입니다.\n모든 부위가 조화로운 균형을 유지하고 있습니다.\n현재의 생활 습관을 유지하며 정기적으로 체크해보세요.";
     }
 
     let summaryText = "";
@@ -402,23 +401,22 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
   ];
 
   // 6. Dynamic Expert Advice
-  const getExpertAdvice = () => {
-    if (isFact) {
-      if (metrics.overallScore > 96) {
-        return `정밀 분석 결과, 안면 대칭 지수가 매우 높은 수준으로 나타났습니다. 골격적 정렬과 연부조직의 분포가 조화로우며, 현재의 생활 습관을 유지하는 것만으로도 충분해 보입니다.`;
-      }
-      
-      if (metrics.eyeSlant < 0.01 && metrics.jawDiff < 0.01) {
-        return `현재 측정된 수치는 매우 이상적인 균형 상태를 보여줍니다. 얼굴에서 나타날 수 있는 가장 조화로운 상태 중 하나이며, 미세한 차이는 근육의 실시간 움직임에 따른 자연스러운 현상으로 보입니다.`;
-      }
-
-      const severity = metrics.eyeSlant > 0.06 || metrics.jawDiff > 0.09 ? '근육의 강한 긴장과 정렬 차이' : '연부조직의 비대칭적 발달';
-      const recommendation = metrics.overallScore < 75 ? '전문적인 관리가 도움이 될 수 있는' : '꾸준한 홈케어와 습관 교정으로 충분히 개선 가능한';
-      
-      return `분석 결과, 안면의 수평 정렬과 하악각의 균형에서 약간의 차이가 관찰됩니다. 이는 ${recommendation} ${severity}에 의한 결과로 보입니다.`;
+  const getFactFeedback = () => {
+    if (metrics.overallScore > 96) {
+      return `정밀 분석 결과, 안면 대칭 지수가 매우 높은 수준으로 나타났습니다. 골격적 정렬과 연부조직의 분포가 조화로우며, 현재의 생활 습관을 유지하는 것만으로도 충분해 보입니다.`;
     }
-    return getRandom(angelFeedbacks);
+    
+    if (metrics.eyeSlant < 0.01 && metrics.jawDiff < 0.01) {
+      return `현재 측정된 수치는 매우 이상적인 균형 상태를 보여줍니다. 얼굴에서 나타날 수 있는 가장 조화로운 상태 중 하나이며, 미세한 차이는 근육의 실시간 움직임에 따른 자연스러운 현상으로 보입니다.`;
+    }
+
+    const severity = metrics.eyeSlant > 0.06 || metrics.jawDiff > 0.09 ? '근육의 강한 긴장과 정렬 차이' : '연부조직의 비대칭적 발달';
+    const recommendation = metrics.overallScore < 75 ? '전문적인 관리가 도움이 될 수 있는' : '꾸준한 홈케어와 습관 교정으로 충분히 개선 가능한';
+    
+    return `분석 결과, 안면의 수평 정렬과 하악각의 균형에서 약간의 차이가 관찰됩니다. 이는 ${recommendation} ${severity}에 의한 결과로 보입니다.`;
   };
+
+  const getAngelFeedback = () => getRandom(angelFeedbacks);
 
   // 7. Overall Balance Summary
   let balanceSummary = "전반적인 얼굴 균형이 비교적 안정적인 편입니다.";
@@ -442,6 +440,9 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
     jaw: metrics.jawScore,
   };
 
+  const factFeedback = getFactFeedback();
+  const angelFeedback = getAngelFeedback();
+
   return {
     overallScore: metrics.overallScore,
     symmetryScore: metrics.overallScore,
@@ -449,7 +450,9 @@ export const analyzeLocally = (metrics: AnalysisMetrics): AnalysisResult => {
     summary: balanceSummary,
     faceShape,
     strongestFeatures: strongestFeatures.slice(0, 3),
-    detailedFeedback: getExpertAdvice(),
+    detailedFeedback: factFeedback,
+    factFeedback,
+    angelFeedback,
     primaryImbalance,
     analysisSummary,
     homeCareGuide,

@@ -81,7 +81,6 @@ export default function App() {
   const [debugInfo, setDebugInfo] = useState<any>(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
-  const [personality, setPersonality] = useState<'fact' | 'angel'>('fact');
   const [analysisStep, setAnalysisStep] = useState<string>('');
   const [faceMeshLoaded, setFaceMeshLoaded] = useState(false);
   const [isGeneratingShareImage, setIsGeneratingShareImage] = useState(false);
@@ -284,7 +283,7 @@ export default function App() {
         const dataUrl = canvas.toDataURL('image/jpeg');
         setImage(dataUrl);
         stopCamera();
-        analyzeImage(dataUrl, personality);
+        analyzeImage(dataUrl);
       }
     } else {
       console.error("Refs not ready:", { video: !!videoRef.current, canvas: !!canvasRef.current });
@@ -298,7 +297,7 @@ export default function App() {
       reader.onload = (event) => {
         const dataUrl = event.target?.result as string;
         setImage(dataUrl);
-        analyzeImage(dataUrl, personality);
+        analyzeImage(dataUrl);
       };
       reader.readAsDataURL(file);
     }
@@ -339,7 +338,12 @@ export default function App() {
       link.download = `face-symmetry-result-${Date.now()}.png`;
       link.href = dataUrl;
       link.click();
-    } catch (err) {
+    } catch (err: any) {
+      // Ignore cancellation errors
+      if (err.name === 'AbortError' || err.message === 'Share canceled') {
+        console.log('Share canceled by user');
+        return;
+      }
       console.error("Share Image Generation Error:", err);
       setError("공유 이미지 생성 중 오류가 발생했습니다.");
     } finally {
@@ -542,7 +546,7 @@ export default function App() {
     }
   };
 
-  const analyzeImage = async (base64Image: string, selectedPersonality: 'fact' | 'angel') => {
+  const analyzeImage = async (base64Image: string) => {
     setIsAnalyzing(true);
     setError(null);
     setDebugInfo(null);
@@ -726,7 +730,6 @@ export default function App() {
         jawDiff: Math.abs(dist2D(alignedLandmarks[152], alignedLandmarks[234]) - dist2D(alignedLandmarks[152], alignedLandmarks[454])) / faceWidth,
         eyeSlant: Math.abs(alignedLandmarks[33].y - alignedLandmarks[263].y) / faceWidth,
         mouthSlant: Math.abs(alignedLandmarks[61].y - alignedLandmarks[291].y) / faceWidth,
-        personality: personality,
         midline: midlineX,
         faceRatio: faceHeight / faceWidth,
         eyeDistanceRatio: eyeDistance / faceWidth,
@@ -868,7 +871,7 @@ export default function App() {
         "sticky top-0 z-50 bg-[#0A0A0B]/80 backdrop-blur-xl border-b border-white/5 px-6 transition-all duration-500",
         result ? "py-3" : "py-4"
       )}>
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center text-black shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.4)]">
@@ -884,40 +887,6 @@ export default function App() {
               <RefreshCw size={20} className={cn(isAnalyzing && "animate-spin")} />
             </button>
           </div>
-          
-          {!result && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8 animate-in fade-in slide-in-from-top-2 duration-500">
-              <div className="flex flex-col gap-2">
-                <span className="text-[10px] tracking-[0.2em] font-bold text-white/40 px-1 uppercase">
-                  Select Analyst
-                </span>
-                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 w-full sm:w-auto">
-                  <button
-                    onClick={() => setPersonality('fact')}
-                    className={cn(
-                      "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
-                      personality === 'fact' 
-                        ? "bg-emerald-500 text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]" 
-                        : "text-white/40 hover:text-white/60"
-                    )}
-                  >
-                    Dr. Fact
-                  </button>
-                  <button
-                    onClick={() => setPersonality('angel')}
-                    className={cn(
-                      "flex-1 sm:flex-none px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg transition-all",
-                      personality === 'angel' 
-                        ? "bg-orange-500 text-white shadow-[0_0_15px_rgba(249,115,22,0.3)]" 
-                        : "text-white/40 hover:text-white/60"
-                    )}
-                  >
-                    Angel Guide
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </header>
 
@@ -930,75 +899,32 @@ export default function App() {
           {/* Input/Preview Section - Hidden when results are shown to save space */}
           {!result && (
             <div className="space-y-6">
-              <AnimatePresence mode="wait">
-              <motion.div
-                key={personality}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className={cn(
-                  "p-6 rounded-2xl border bg-white/5 backdrop-blur-sm transition-all",
-                  personality === 'fact' 
-                    ? "border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.1)]" 
-                    : "border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.1)]"
-                )}
-              >
-                <div className="flex items-start gap-4">
-                  <div className={cn(
-                    "w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm transition-colors",
-                    personality === 'fact' ? "bg-blue-500/20 text-blue-400" : "bg-orange-500/20 text-orange-400"
-                  )}>
-                    {personality === 'fact' ? <Scan size={24} /> : <CheckCircle2 size={24} />}
-                  </div>
-                  <div className="space-y-1">
-                    <h4 className={cn(
-                      "font-bold text-[10px] uppercase tracking-[0.2em]",
-                      personality === 'fact' ? "text-blue-400" : "text-orange-400"
-                    )}>
-                      {personality === 'fact' ? "System: Dr. Fact" : "System: Angel Guide"}
-                    </h4>
-                    <p className="text-sm leading-relaxed text-white/80 italic break-keep">
-                      {personality === 'fact' 
-                        ? '"안녕하세요, 닥터 팩트입니다. 저는 당신의 얼굴 비대칭을 1mm 단위로 정밀하게 분석하여 냉철한 팩트만을 전달합니다. 분석 데이터는 보안 프로토콜에 따라 즉시 삭제되니 안심하고 진단받으십시오."'
-                        : '"반가워요! 저는 엔젤 가이드예요. 당신이 가진 본연의 아름다움을 찾아내고, 더 밝은 미소를 가질 수 있도록 따뜻하게 도와드릴게요. 당신의 소중한 사진은 저만 살짝 보고 바로 지울게요. 걱정 마세요!"'}
-                    </p>
-                    <div className="flex items-center gap-2 pt-2 border-t border-white/5 mt-2">
-                      <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                      <p className="text-[10px] text-white/40 uppercase tracking-widest">
-                        Status: Ready for analysis
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-
             <section className="bg-white/5 rounded-3xl border border-white/10 shadow-2xl overflow-hidden relative group backdrop-blur-sm">
               {!image && !isCameraActive ? (
-                <div className="aspect-[4/5] flex flex-col items-center justify-center p-12 text-center space-y-6">
+                <div className="aspect-[4/5] flex flex-col items-center justify-center p-12 text-center space-y-8">
                   <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-2 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
                     <Camera size={40} />
                   </div>
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-bold tracking-tighter uppercase italic">Initialize Scan</h2>
-                    <p className="text-white/40 max-w-xs mx-auto text-sm font-mono">
-                      [SYSTEM] Please upload a front-facing image or activate camera for real-time biometric analysis.
+                  <div className="space-y-3">
+                    <h2 className="text-3xl font-black tracking-tighter uppercase italic">Face Symmetry Pro</h2>
+                    <p className="text-white/60 max-w-xs mx-auto text-sm font-medium">
+                      AI Facial Balance Analysis
                     </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+                  <div className="flex flex-col gap-3 w-full max-w-xs">
                     <button 
                       onClick={startCamera}
-                      className="flex-1 bg-emerald-500 text-black px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                      className="w-full bg-emerald-500 text-black px-6 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 hover:bg-emerald-400 transition-all active:scale-95 shadow-[0_0_30px_rgba(16,185,129,0.3)]"
                     >
-                      <Camera size={16} />
+                      <Camera size={18} />
                       Camera Start
                     </button>
                     <button 
                       onClick={() => fileInputRef.current?.click()}
-                      className="flex-1 bg-white/5 border border-white/10 text-white px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-2 hover:bg-white/10 transition-all active:scale-95"
+                      className="w-full bg-white/5 border border-white/10 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 hover:bg-white/10 transition-all active:scale-95"
                     >
-                      <Upload size={16} />
-                      Upload File
+                      <Upload size={18} />
+                      Upload Photo
                     </button>
                     <input 
                       type="file" 
@@ -1009,10 +935,10 @@ export default function App() {
                     />
                   </div>
 
-                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/5 border border-emerald-500/10 rounded-full">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-black/40 border border-white/5 rounded-full">
                     <ShieldCheck size={14} className="text-emerald-500" />
-                    <p className="text-[10px] text-emerald-500/70 font-medium uppercase tracking-wider">
-                      Privacy Secured: No images are stored on our servers.
+                    <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+                      🔒 Images are processed locally and never stored.
                     </p>
                   </div>
                 </div>
@@ -1289,31 +1215,6 @@ export default function App() {
                 </div>
               </div>
             )}
-
-            <div className="bg-white/5 border border-white/10 p-6 rounded-3xl space-y-4 backdrop-blur-sm">
-              <h3 className="text-[10px] font-bold text-emerald-400 flex items-center gap-2 uppercase tracking-[0.2em]">
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
-                Analysis Protocol: Tips
-              </h3>
-              <ul className="text-xs text-white/60 space-y-3 font-mono">
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 mt-0.5">01</span>
-                  <span>정면을 똑바로 바라보고 촬영하세요. (Maintain eye level)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 mt-0.5">02</span>
-                  <span>밝고 균일한 조명 아래에서 촬영하세요. (Uniform lighting)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 mt-0.5">03</span>
-                  <span>안경이나 머리카락이 얼굴을 가리지 않게 해주세요. (Clear visibility)</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-emerald-500 mt-0.5">04</span>
-                  <span>무표정 상태로 촬영하는 것이 가장 정확합니다. (Neutral expression)</span>
-                </li>
-              </ul>
-            </div>
           </div>
         )}
 
@@ -1342,9 +1243,17 @@ export default function App() {
                     ))}
                   </div>
 
-                  <div className="flex-1 min-h-0 overflow-hidden">
+                  <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
                     {reportStep === 0 && (
-                      <div className="flex flex-col gap-4 h-full min-h-0 justify-center">
+                      <div className="flex flex-col gap-4 min-h-0 py-2">
+                        {/* Dr. Fact Analysis Header */}
+                        <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-2xl border border-white/10 w-fit self-center mb-2">
+                          <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                            <User size={14} className="text-emerald-400" />
+                          </div>
+                          <span className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em] font-mono">AI Analysis Report</span>
+                        </div>
+
                         {/* Score Card */}
                         <motion.div 
                           initial={{ opacity: 0, scale: 0.95 }}
@@ -1403,12 +1312,12 @@ export default function App() {
                           </div>
                         </motion.div>
 
-                        {/* Key Insight */}
+                        {/* Key Insight Summary */}
                         <motion.div 
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.5, delay: 0.3 }}
-                          className="bg-emerald-500/10 rounded-3xl border border-emerald-500/20 p-5 shadow-xl backdrop-blur-sm relative overflow-hidden group"
+                          className="bg-emerald-500/10 rounded-3xl border border-emerald-500/20 p-5 shadow-xl backdrop-blur-sm relative group"
                         >
                           <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
                             <Zap size={40} className="text-emerald-400" />
@@ -1417,15 +1326,35 @@ export default function App() {
                             <Zap size={14} className="text-emerald-400" />
                             <h4 className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] font-mono">Key Insight</h4>
                           </div>
-                          <p className="text-[13px] font-bold text-white leading-relaxed whitespace-pre-line relative z-10">
-                            {result.primaryImbalance}
-                          </p>
+                          <div className="space-y-2 relative z-10">
+                            {result.primaryImbalance.split('\n').map((line, i) => (
+                              <p key={i} className="text-[12px] font-bold text-white leading-tight flex gap-2">
+                                <span className="text-emerald-400 shrink-0">•</span>
+                                {line}
+                              </p>
+                            ))}
+                          </div>
                         </motion.div>
                       </div>
                     )}
 
                     {reportStep === 1 && (
-                      <div className="flex flex-col gap-3 h-full min-h-0">
+                      <div className="flex flex-col gap-3 min-h-0 py-2">
+                        {/* Expert Insight Card - Moved from Step 0 */}
+                        <motion.div
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className="bg-emerald-500/10 rounded-2xl border border-emerald-500/20 p-4 shadow-lg backdrop-blur-sm"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <User size={12} className="text-emerald-400" />
+                            <h4 className="text-[9px] font-black text-emerald-400 uppercase tracking-widest font-mono">Expert Analysis</h4>
+                          </div>
+                          <p className="text-[12px] font-bold text-white leading-relaxed italic">
+                            "{result.factFeedback}"
+                          </p>
+                        </motion.div>
+
                         {/* Radar Chart */}
                         <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm flex-[1.2] flex flex-col min-h-0">
                           <h3 className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/40 font-mono mb-2 shrink-0">Balance Distribution</h3>
@@ -1442,6 +1371,14 @@ export default function App() {
                                 <Radar name="Symmetry" dataKey="A" stroke="#10b981" fill="#10b981" fillOpacity={0.4} />
                               </RadarChart>
                             </ResponsiveContainer>
+                          </div>
+                          <div className="mt-2 pt-3 border-t border-white/5 space-y-2">
+                            <p className="text-[12px] font-bold text-emerald-400 leading-relaxed text-center">
+                              {result.summary}
+                            </p>
+                            <p className="text-[10px] text-white/60 leading-relaxed text-center font-medium px-2">
+                              {result.analysisSummary}
+                            </p>
                           </div>
                         </div>
 
@@ -1502,14 +1439,15 @@ export default function App() {
                         {/* Part Scores */}
                         <div className="grid grid-cols-4 gap-2 shrink-0">
                           {[
-                            { label: '눈', score: result.partScores?.eyes || result.landmarks.eyes.score },
-                            { label: '눈썹', score: result.partScores?.brows || result.landmarks.brows.score },
-                            { label: '입', score: result.partScores?.mouth || result.landmarks.mouth.score },
-                            { label: '턱', score: result.partScores?.jaw || result.landmarks.jawline.score }
+                            { label: '눈', score: result.partScores?.eyes || result.landmarks.eyes.score, status: result.landmarks.eyes.status },
+                            { label: '눈썹', score: result.partScores?.brows || result.landmarks.brows.score, status: result.landmarks.brows.status },
+                            { label: '입', score: result.partScores?.mouth || result.landmarks.mouth.score, status: result.landmarks.mouth.status },
+                            { label: '턱', score: result.partScores?.jaw || result.landmarks.jawline.score, status: result.landmarks.jawline.status }
                           ].map((m, idx) => (
-                            <div key={idx} className="bg-white/5 p-2 rounded-xl border border-white/10 flex flex-col items-center gap-1">
+                            <div key={idx} className="bg-white/5 p-2 rounded-xl border border-white/10 flex flex-col items-center gap-0.5">
                               <span className="text-[8px] text-white/40 uppercase font-mono font-bold">{m.label}</span>
                               <span className="text-[14px] font-black text-emerald-400 italic">{m.score}</span>
+                              <span className="text-[7px] text-white/30 font-bold truncate w-full text-center">{m.status}</span>
                             </div>
                           ))}
                         </div>
@@ -1517,7 +1455,7 @@ export default function App() {
                     )}
 
                     {reportStep === 2 && (
-                      <div className="flex flex-col gap-3 h-full min-h-0">
+                      <div className="flex flex-col gap-3 min-h-0 py-2">
                         <div className="grid grid-cols-2 gap-3 shrink-0">
                           {/* Face Shape Card */}
                           <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-xl backdrop-blur-sm flex flex-col justify-center gap-1">
@@ -1608,14 +1546,24 @@ export default function App() {
                     {reportStep === 3 && (
                       <div className="flex flex-col gap-3 h-full min-h-0 w-full overflow-x-hidden min-w-0">
                         {/* Summary Card */}
-                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0">
-                          <div className="flex items-center gap-2 mb-2 w-full min-w-0">
-                            <BarChart3 size={14} className="text-emerald-500 shrink-0" />
-                            <h4 className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] font-mono truncate">Analysis Summary</h4>
+                        <div className="bg-white/5 rounded-3xl border border-white/10 p-4 shadow-2xl backdrop-blur-sm shrink-0 w-full min-w-0 relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Sparkles size={40} className="text-blue-400" />
                           </div>
-                          <p className="text-[12px] text-white/80 leading-relaxed font-medium">
-                            {result.analysisSummary}
+                          <div className="flex items-center gap-2 mb-3 w-full min-w-0">
+                            <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                              <Sparkles size={14} className="text-blue-400" />
+                            </div>
+                            <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] font-mono truncate">Angel Comment</h4>
+                          </div>
+                          <p className="text-[13px] text-white leading-relaxed font-bold italic relative z-10">
+                            "{result.angelFeedback}"
                           </p>
+                          <div className="mt-3 pt-3 border-t border-white/5">
+                            <p className="text-[11px] text-white/60 leading-relaxed font-medium italic">
+                              분석 결과를 바탕으로 맞춤형 케어 가이드를 확인해보세요.
+                            </p>
+                          </div>
                         </div>
 
                         {/* Care Guides */}
