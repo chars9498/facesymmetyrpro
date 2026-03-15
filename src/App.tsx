@@ -77,6 +77,7 @@ export default function App() {
     stability: 'High' | 'Medium' | 'Low';
   }>({ alignment: 'Good', lighting: 'Good', stability: 'High' });
   const [isFakeScanning, setIsFakeScanning] = useState(false);
+  const [uploadDebug, setUploadDebug] = useState<string | null>(null);
   const faceMeshCallbackRef = useRef<((results: faceMesh.Results) => void) | null>(null);
   const realTimeCallbackRef = useRef<((results: faceMesh.Results) => void) | null>(null);
   const [debugStage, setDebugStage] = useState<string | null>(null);
@@ -355,14 +356,61 @@ export default function App() {
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isAnalyzing) return;
+    
+    // Stop camera if it was active
+    if (isCameraActive) {
+      stopCamera();
+    }
+
     const file = e.target.files?.[0];
     if (file) {
+      console.log("[FILE_SELECTED]", file.name, "Size:", file.size);
+      setUploadDebug("File selected: " + file.name);
+      
       const reader = new FileReader();
       reader.onload = (event) => {
-        const dataUrl = event.target?.result as string;
-        setImage(dataUrl);
-        analyzeImage(dataUrl);
+        try {
+          console.log("[FILE_READER_DONE]");
+          const dataUrl = event.target?.result as string;
+          
+          if (!dataUrl) {
+            throw new Error("Failed to read file content");
+          }
+
+          setUploadDebug("Loading image element...");
+          const img = new Image();
+          img.onload = () => {
+            console.log("[IMAGE_ELEMENT_LOADED]", img.width, "x", img.height);
+            if (img.width > 0 && img.height > 0) {
+              // Set the image for preview
+              setImage(dataUrl);
+              
+              // Start analysis
+              console.log("[ANALYZE_IMAGE_CALLED]");
+              setUploadDebug("Image ready, starting analysis...");
+              analyzeImage(dataUrl);
+            } else {
+              throw new Error("Invalid image dimensions");
+            }
+          };
+          img.onerror = () => {
+            console.error("[IMAGE_LOAD_ERROR]");
+            setError("이미지를 불러오지 못했습니다. 파일 형식을 확인해주세요.");
+            setUploadDebug(null);
+          };
+          img.src = dataUrl;
+        } catch (err: any) {
+          console.error("[UPLOAD_PROCESS_ERROR]", err);
+          setError(err.message || "이미지 처리 중 오류가 발생했습니다.");
+          setUploadDebug(null);
+        }
       };
+      reader.onerror = () => {
+        console.error("[FILE_READER_ERROR]");
+        setError("파일을 읽는 중 오류가 발생했습니다.");
+        setUploadDebug(null);
+      };
+      console.log("[FILE_READER_START]");
       reader.readAsDataURL(file);
     }
   };
@@ -711,7 +759,8 @@ export default function App() {
       if (isLocked) setError("분석 한도에 도달했습니다. 광고를 시청하고 추가 분석을 잠금 해제하세요.");
       return;
     }
-    console.log("[ANALYSIS_START]");
+    console.log("[ANALYSIS_START] Image length:", base64Image.length);
+    setUploadDebug("Starting AI analysis...");
     console.time('Analysis-Total');
     setIsAnalyzing(true);
     setError(null);
@@ -811,8 +860,10 @@ export default function App() {
             faceMeshCallbackRef.current = null;
             if (!results || !results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
               console.log("[FACEMESH_DONE] No face detected in results");
+              setUploadDebug("No face detected. Please try another photo.");
             } else {
               console.log("[FACEMESH_DONE] Face detected");
+              setUploadDebug("Face detected, calculating symmetry...");
             }
             resolve(results);
           };
@@ -1035,6 +1086,7 @@ export default function App() {
       setIsAnalyzing(false);
       setAnalysisStep('');
       setDebugStage(null);
+      setUploadDebug(null);
       faceMeshCallbackRef.current = null;
     }
   };
@@ -1098,6 +1150,7 @@ export default function App() {
               <h1 className="text-xl font-bold tracking-tighter uppercase italic whitespace-nowrap">Face Symmetry <span className="text-emerald-500">Pro</span></h1>
             </div>
             <button 
+              type="button"
               onClick={reset}
               className="p-2 hover:bg-white/5 rounded-full transition-colors text-white/60"
               title="Reset"
@@ -1135,6 +1188,7 @@ export default function App() {
                   </div>
                   <div className="flex flex-col gap-3 w-full max-w-xs">
                     <button 
+                      type="button"
                       onClick={startCamera}
                       className="w-full bg-emerald-500 text-black px-6 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 hover:bg-emerald-400 transition-all active:scale-95 shadow-[0_0_30px_rgba(16,185,129,0.3)]"
                     >
@@ -1142,6 +1196,7 @@ export default function App() {
                       Camera Start
                     </button>
                     <button 
+                      type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="w-full bg-white/5 border border-white/10 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 hover:bg-white/10 transition-all active:scale-95"
                     >
@@ -1356,6 +1411,11 @@ export default function App() {
                       </div>
                       <div className="text-center space-y-2">
                         <p className="text-xl font-bold tracking-tight text-emerald-400">{analysisStep || "AI 분석 진행 중..."}</p>
+                        {uploadDebug && (
+                          <div className="bg-black/40 px-3 py-1 rounded-full border border-white/10">
+                            <p className="text-[10px] text-emerald-400 uppercase tracking-widest">Debug: {uploadDebug}</p>
+                          </div>
+                        )}
                         {debugStage && (
                           <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Stage: {debugStage}</p>
                         )}
@@ -1384,6 +1444,17 @@ export default function App() {
                   <div className="space-y-1 w-full">
                     <p className="text-[10px] font-bold uppercase tracking-widest">System Error</p>
                     <p className="text-sm font-mono break-all">{error}</p>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (image) analyzeImage(image);
+                        else setError(null);
+                      }}
+                      className="mt-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all w-fit"
+                    >
+                      Retry Analysis
+                    </button>
                     
                     {debugInfo && debugInfo.envName && (
                       <p className="text-[10px] text-white/50 font-mono">Detected Source: {debugInfo.envName}</p>
@@ -2114,6 +2185,7 @@ export default function App() {
 
                 <div className="grid gap-2">
                   <button 
+                    type="button"
                     onClick={() => {
                       if (exportType === 'symmetry') exportSymmetryCard('save');
                       else exportResultCard('save');
@@ -2134,6 +2206,7 @@ export default function App() {
                   </button>
 
                   <button 
+                    type="button"
                     onClick={() => {
                       if (exportType === 'symmetry') exportSymmetryCard('share');
                       else exportResultCard('share');
@@ -2154,6 +2227,7 @@ export default function App() {
                   </button>
 
                   <button 
+                    type="button"
                     onClick={copyLink}
                     className="w-full flex items-center justify-between p-4 bg-white/5 hover:bg-white/10 rounded-2xl border border-white/5 transition-all group"
                   >
@@ -2170,6 +2244,7 @@ export default function App() {
                 </div>
 
                 <button 
+                  type="button"
                   onClick={() => setShowExportModal(false)}
                   className="w-full py-4 text-sm font-bold text-white/40 hover:text-white transition-colors"
                 >

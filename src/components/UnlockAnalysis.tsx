@@ -41,6 +41,7 @@ export const UnlockAnalysis: React.FC<UnlockAnalysisProps> = ({ onUnlock }) => {
 
       <div className="grid gap-3">
         <button
+          type="button"
           onClick={handleWatchAd}
           disabled={isWatchingAd}
           className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-black font-black uppercase tracking-widest py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95"
@@ -59,6 +60,7 @@ export const UnlockAnalysis: React.FC<UnlockAnalysisProps> = ({ onUnlock }) => {
         </button>
 
         <button
+          type="button"
           className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95"
         >
           <Crown className="text-yellow-400" size={20} fill="currentColor" />

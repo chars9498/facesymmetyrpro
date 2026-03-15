@@ -15,6 +15,7 @@ export const PrivacyNote: React.FC<PrivacyNoteProps> = ({ onOpenPolicy }) => {
         </p>
       </div>
       <button 
+        type="button"
         onClick={onOpenPolicy}
         className="flex items-center gap-1.5 text-[10px] text-white/30 hover:text-white/50 transition-colors font-bold uppercase tracking-widest"
       >
