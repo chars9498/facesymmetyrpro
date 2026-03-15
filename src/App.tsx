@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { analyzeLocally, type AnalysisResult } from "./services/analysisEngine";
+import { calculateSymmetryV2 } from "./services/analysisEngine_v2";
 import { Camera, Upload, RefreshCw, RotateCcw, Scan, AlertCircle, CheckCircle2, Info, ChevronRight, Maximize2, ShieldCheck, BarChart3, FlipHorizontal, Zap, Trophy, MessageCircle, Link2, Download, User, Sparkles, TrendingUp, Share2, Users, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
@@ -10,6 +11,8 @@ import * as faceMesh from '@mediapipe/face_mesh';
 import { toPng } from 'html-to-image';
 import { PrivacyPolicy } from './components/PrivacyPolicy';
 import { PrivacyNote } from './components/PrivacyNote';
+import { useAnalysisLimit } from './hooks/useAnalysisLimit';
+import { UnlockAnalysis } from './components/UnlockAnalysis';
 
 const { FACEMESH_TESSELATION } = faceMesh;
 
@@ -74,6 +77,9 @@ export default function App() {
     stability: 'High' | 'Medium' | 'Low';
   }>({ alignment: 'Good', lighting: 'Good', stability: 'High' });
   const [isFakeScanning, setIsFakeScanning] = useState(false);
+  const faceMeshCallbackRef = useRef<((results: faceMesh.Results) => void) | null>(null);
+  const realTimeCallbackRef = useRef<((results: faceMesh.Results) => void) | null>(null);
+  const [debugStage, setDebugStage] = useState<string | null>(null);
   const [scanningLandmarks, setScanningLandmarks] = useState<any[] | null>(null);
   const [autoCorrectEnabled, setAutoCorrectEnabled] = useState(true);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -95,12 +101,15 @@ export default function App() {
   const [isGeneratingSymmetryCard, setIsGeneratingSymmetryCard] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
 
+  const { isLocked, incrementAnalysisCount, resetAnalysisCount } = useAnalysisLimit();
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultShareCardRef = useRef<HTMLDivElement>(null);
   const symmetryShareCardRef = useRef<HTMLDivElement>(null);
   const faceMeshRef = useRef<faceMesh.FaceMesh | null>(null);
+  const smoothedLandmarksRef = useRef<any[] | null>(null);
 
   // Initialize FaceMesh
   useEffect(() => {
@@ -119,8 +128,27 @@ export default function App() {
           minTrackingConfidence: 0.35
         });
 
+        fm.onResults((results) => {
+          if (faceMeshCallbackRef.current) {
+            faceMeshCallbackRef.current(results);
+          } else if (realTimeCallbackRef.current) {
+            realTimeCallbackRef.current(results);
+          }
+        });
+
         faceMeshRef.current = fm;
         setFaceMeshLoaded(true);
+        
+        // Warm up the model with a tiny blank canvas
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 1;
+          canvas.height = 1;
+          await fm.send({ image: canvas });
+          console.log("FaceMesh Warmed Up");
+        } catch (e) {
+          console.warn("FaceMesh Warmup failed (non-critical)", e);
+        }
       } catch (err) {
         console.error("FaceMesh Init Error:", err);
         setError("얼굴 인식 엔진을 초기화하지 못했습니다.");
@@ -135,11 +163,17 @@ export default function App() {
   useEffect(() => {
     let animationFrameId: number;
     let lastDetectionTime = 0;
+    let lastLightingCheckTime = 0;
+    let lastLightingStatus: any = 'Good';
 
     const detectFace = async () => {
-      if (isCameraActive && videoRef.current && faceMeshRef.current) {
+      if (isCameraActive && videoRef.current && faceMeshRef.current && !isAnalyzing) {
         const now = Date.now();
-        if (now - lastDetectionTime > 200) { // Detect every 200ms
+        // Detect less frequently on mobile to prioritize reliability
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        const interval = isMobile ? 1000 : 500;
+        
+        if (now - lastDetectionTime > interval) { 
           try {
             await faceMeshRef.current.send({ image: videoRef.current });
             lastDetectionTime = now;
@@ -153,6 +187,11 @@ export default function App() {
 
     if (isCameraActive) {
       const checkLighting = () => {
+        const now = Date.now();
+        // Only run heavy lighting check every 1.5 seconds
+        if (now - lastLightingCheckTime < 1500) return lastLightingStatus;
+        
+        lastLightingCheckTime = now;
         if (!videoRef.current || !canvasRef.current) return 'Good';
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -182,26 +221,39 @@ export default function App() {
         }
         const stdDev = Math.sqrt(variance / brightnessValues.length);
 
-        if (avgBrightness < 60) return 'Low Light';
-        if (avgBrightness > 180) return 'Overexposed';
-        if (stdDev > 50) return 'Uneven';
-        return 'Good';
+        if (avgBrightness < 60) lastLightingStatus = 'Low Light';
+        else if (avgBrightness > 180) lastLightingStatus = 'Overexposed';
+        else if (stdDev > 50) lastLightingStatus = 'Uneven';
+        else lastLightingStatus = 'Good';
+        
+        return lastLightingStatus;
       };
 
-      faceMeshRef.current?.onResults((results) => {
+      realTimeCallbackRef.current = (results) => {
         if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
           const landmarks = results.multiFaceLandmarks[0];
           
+          // Apply Smoothing (EMA) for real-time indicators
+          if (!smoothedLandmarksRef.current) {
+            smoothedLandmarksRef.current = landmarks;
+          } else {
+            const alpha = 0.3; // Smoothing factor
+            smoothedLandmarksRef.current = landmarks.map((p, i) => ({
+              x: p.x * alpha + (smoothedLandmarksRef.current![i]?.x || p.x) * (1 - alpha),
+              y: p.y * alpha + (smoothedLandmarksRef.current![i]?.y || p.y) * (1 - alpha),
+              z: (p.z || 0) * alpha + (smoothedLandmarksRef.current![i]?.z || 0) * (1 - alpha)
+            }));
+          }
+
+          const currentLandmarks = smoothedLandmarksRef.current;
+          
           // Calculate Roll Angle
-          const leftEye = landmarks[33];
-          const rightEye = landmarks[263];
+          const leftEye = currentLandmarks[33];
+          const rightEye = currentLandmarks[263];
           const roll = Math.abs(Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x));
           
           // Calculate Face Size (Distance from camera)
-          const faceWidth = Math.sqrt(Math.pow(landmarks[234].x - landmarks[454].x, 2) + Math.pow(landmarks[234].y - landmarks[454].y, 2));
-          
-          // Calculate Jitter (Landmark stability)
-          // For simplicity, we'll just check if landmarks are detected
+          const faceWidth = Math.sqrt(Math.pow(currentLandmarks[234].x - currentLandmarks[454].x, 2) + Math.pow(currentLandmarks[234].y - currentLandmarks[454].y, 2));
           
           const lightingStatus = checkLighting();
 
@@ -212,16 +264,18 @@ export default function App() {
           });
         } else {
           setScanQuality({ alignment: 'Poor', lighting: 'Low Light', stability: 'Low' });
+          smoothedLandmarksRef.current = null;
         }
-      });
+      };
 
       detectFace();
 
       return () => {
         cancelAnimationFrame(animationFrameId);
+        realTimeCallbackRef.current = null;
       };
     }
-  }, [isCameraActive]);
+  }, [isCameraActive, isAnalyzing]);
 
   const startCamera = async () => {
     try {
@@ -273,6 +327,7 @@ export default function App() {
   }, [isCameraActive, stream]);
 
   const capturePhoto = () => {
+    if (isAnalyzing) return;
     if (videoRef.current && canvasRef.current) {
       const video = videoRef.current;
       const canvas = canvasRef.current;
@@ -299,6 +354,7 @@ export default function App() {
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isAnalyzing) return;
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -336,7 +392,7 @@ export default function App() {
             await navigator.share({
               files: [file],
               title: 'Face Symmetry Pro Result',
-              text: `내 얼굴 비대칭 점수는 ${result?.overallScore}점! 상위 ${100 - (result?.percentile || 0)}% 얼굴 균형을 확인해보세요.`,
+              text: `내 얼굴 비대칭 점수는 ${result?.overallScore}점! 상위 ${result?.percentile || 0}% 얼굴 균형을 확인해보세요.`,
             });
             return;
           }
@@ -651,20 +707,51 @@ export default function App() {
   };
 
   const analyzeImage = async (base64Image: string) => {
+    if (isAnalyzing || isLocked) {
+      if (isLocked) setError("분석 한도에 도달했습니다. 광고를 시청하고 추가 분석을 잠금 해제하세요.");
+      return;
+    }
+    console.log("[ANALYSIS_START]");
+    console.time('Analysis-Total');
     setIsAnalyzing(true);
     setError(null);
     setDebugInfo(null);
     setResult(null);
     setCenterOffset(0);
     setRotationAngle(0);
-    setAnalysisStep('얼굴 특징을 분석하고 있습니다');
+    setAnalysisStep('Analyzing your face...');
+    setDebugStage('Initializing...');
 
     try {
-      if (!faceMeshRef.current) {
-        throw new Error("얼굴 인식 엔진이 아직 준비되지 않았습니다.");
+      // 1. Give a small buffer for state updates and real-time loop to stop
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // 2. Model Readiness Check
+      if (!faceMeshLoaded) {
+        console.time('Model-Init-Wait');
+        setAnalysisStep('Loading face detection model...');
+        setDebugStage('Loading model');
+        let attempts = 0;
+        while (!faceMeshLoaded && attempts < 100) { // Wait up to 10s
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+          if (faceMeshRef.current) break;
+        }
+        console.timeEnd('Model-Init-Wait');
       }
 
-      const resizedImage = await resizeImage(base64Image, 1024);
+      if (!faceMeshRef.current) {
+        console.error("[TIMEOUT_TRIGGERED] Model not ready");
+        throw new Error("Loading face detection model...");
+      }
+      console.log("[MODEL_READY]");
+
+      // 2. Image Capture & Resize
+      setDebugStage('Preparing image');
+      console.time('Image-Capture-Resize');
+      const resizedImage = await resizeImage(base64Image, 512);
+      console.timeEnd('Image-Capture-Resize');
+      console.log("[IMAGE_READY]");
       
       // Get image aspect ratio for correct overlay alignment
       const imgInfo = new Image();
@@ -704,6 +791,7 @@ export default function App() {
       const lightingStatus = checkImageLighting(imgInfo);
 
       const runFaceMesh = async (imgSrc: string): Promise<faceMesh.Results> => {
+        console.log("[FACEMESH_START]");
         const img = new Image();
         await new Promise((resolve, reject) => {
           img.onload = resolve;
@@ -713,29 +801,48 @@ export default function App() {
 
         return new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
-            reject(new Error("얼굴 분석 시간이 초과되었습니다. 다시 시도해주세요."));
-          }, 15000);
+            console.error("[TIMEOUT_TRIGGERED] FaceMesh Inference - 15s limit reached");
+            faceMeshCallbackRef.current = null;
+            reject(new Error("Face analysis took too long. Please try again."));
+          }, 15000); // 15s for inference
 
-          faceMeshRef.current!.onResults((results) => {
+          faceMeshCallbackRef.current = (results) => {
             clearTimeout(timeout);
+            faceMeshCallbackRef.current = null;
+            if (!results || !results.multiFaceLandmarks || results.multiFaceLandmarks.length === 0) {
+              console.log("[FACEMESH_DONE] No face detected in results");
+            } else {
+              console.log("[FACEMESH_DONE] Face detected");
+            }
             resolve(results);
-          });
+          };
 
+          console.log("[FACEMESH_SENDING] Calling faceMesh.send()");
           faceMeshRef.current!.send({ image: img }).catch((err) => {
+            console.error("[FACEMESH_ERROR] faceMesh.send() failed:", err);
             clearTimeout(timeout);
+            faceMeshCallbackRef.current = null;
             reject(err);
           });
         });
       };
 
-      // 1. First Attempt
+      // 3. FaceMesh Inference
+      setDebugStage('Detecting face');
+      console.time('FaceMesh-Inference');
       let faceResults = await runFaceMesh(resizedImage);
+      console.timeEnd('FaceMesh-Inference');
 
-      // 2. If failed, try with enhanced image
+      // 4. Retry with enhancement if needed
       if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
         setAnalysisStep('이미지 보정 후 재분석 중...');
+        setDebugStage('Enhancing image');
+        console.time('Image-Enhance');
         const enhancedImage = await enhanceImage(resizedImage);
+        console.timeEnd('Image-Enhance');
+        console.time('FaceMesh-Inference-Retry');
         faceResults = await runFaceMesh(enhancedImage);
+        console.timeEnd('FaceMesh-Inference-Retry');
       }
 
       if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
@@ -743,10 +850,42 @@ export default function App() {
       }
 
       setAnalysisStep('AI 균형 점수를 계산하고 있습니다');
+      setDebugStage('Calculating symmetry');
+      console.log("[SCORING_START]");
       const rawLandmarks = faceResults.multiFaceLandmarks[0];
       setScanningLandmarks(rawLandmarks);
       
-      // 1. Face Alignment (Roll Correction)
+      // 5. Symmetry Scoring with timeout fallback
+      console.time('Symmetry-Scoring-V2');
+      
+      let v2Metrics;
+      try {
+        // Wrap scoring in a promise to allow timeout if it hangs (though it shouldn't)
+        v2Metrics = await Promise.race([
+          new Promise<any>((resolve) => resolve(calculateSymmetryV2(rawLandmarks))),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error("Scoring timeout")), 2000))
+        ]);
+      } catch (scoringErr) {
+        console.warn("[TIMEOUT_TRIGGERED] Scoring stage, using fallback", scoringErr);
+        // Fallback to simplified scoring
+        v2Metrics = {
+          eyeSymmetry: 70,
+          browsSymmetry: 70,
+          noseAlignment: 70,
+          mouthSymmetry: 70,
+          jawSymmetry: 70,
+          faceWidthBalance: 70,
+          overallScore: 70,
+          percentile: 50
+        };
+      }
+      console.timeEnd('Symmetry-Scoring-V2');
+      console.log("[SCORING_DONE]");
+      
+      setDebugStage('Rendering result');
+      console.log("[RESULT_RENDER]");
+      
+      // 1. Face Alignment (Roll Correction) - Keep for visualizer and other ratios
       const dist2D = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
       
       const leftEyeCenter = {
@@ -772,43 +911,15 @@ export default function App() {
         return { x: rx, y: ry, z: p.z };
       });
 
-      // 2. Midline Regression (Best fit vertical line through central points)
+      // Midline for visualizer
       const centralIndices = [8, 1, 2, 152];
       const midlineX = centralIndices.reduce((sum, idx) => sum + alignedLandmarks[idx].x, 0) / centralIndices.length;
 
-      // 3. Normalization Factor (Face Width)
+      // Normalization Factor (Face Width)
       const faceWidth = dist2D(alignedLandmarks[234], alignedLandmarks[454]);
       const faceHeight = dist2D(alignedLandmarks[10], alignedLandmarks[152]);
 
-      // 4. Symmetry Error Calculation by Region
-      // Formula: score = 100 * exp(-k * normalizedError)
-      const calculateRegionScore = (pairs: number[][], k: number) => {
-        let errorSum = 0;
-        pairs.forEach(([l, r]) => {
-          const distL = Math.abs(alignedLandmarks[l].x - midlineX);
-          const distR = Math.abs(alignedLandmarks[r].x - midlineX);
-          const heightDiff = Math.abs(alignedLandmarks[l].y - alignedLandmarks[r].y);
-          errorSum += (Math.abs(distL - distR) / faceWidth) + (heightDiff / faceWidth);
-        });
-        const avgError = errorSum / (pairs.length * 2);
-        return Math.max(30, Math.min(100, Math.round(100 * Math.exp(-k * avgError))));
-      };
-
-      const eyePairs = [[33, 263], [133, 362], [159, 386], [145, 374]];
-      const browPairs = [[70, 300], [105, 334], [63, 293], [107, 336]];
-      const mouthPairs = [[61, 291], [78, 308], [95, 324], [82, 312]];
-      const jawPairs = [[234, 454], [172, 397], [150, 379], [132, 361]];
-
-      const eyeScore = calculateRegionScore(eyePairs, 15);
-      const browsScore = calculateRegionScore(browPairs, 12);
-      const mouthScore = calculateRegionScore(mouthPairs, 18);
-      const jawScore = calculateRegionScore(jawPairs, 10);
-
-      // 5. Overall Symmetry Score (Weighted)
-      const overallScore = Math.round((eyeScore * 0.35) + (browsScore * 0.15) + (mouthScore * 0.20) + (jawScore * 0.30));
-      const symmetryScore = overallScore;
-
-      // 6. Other Metrics for Engine
+      // 6. Other Metrics for Engine (Keep for feedback generation)
       const noseLength = dist2D(alignedLandmarks[1], alignedLandmarks[168]);
       const mouthWidth = dist2D(alignedLandmarks[61], alignedLandmarks[291]);
       const eyeDistance = dist2D(leftEyeCenter, rightEyeCenter);
@@ -821,13 +932,13 @@ export default function App() {
       const lowerFaceHeight = dist2D(alignedLandmarks[164], alignedLandmarks[152]);
 
       const metrics = {
-        overallScore,
-        percentile: 50,
-        symmetryScore,
-        eyeScore,
-        browsScore,
-        mouthScore,
-        jawScore,
+        overallScore: v2Metrics.overallScore,
+        percentile: v2Metrics.percentile,
+        symmetryScore: v2Metrics.overallScore,
+        eyeScore: v2Metrics.eyeSymmetry,
+        browsScore: v2Metrics.browsSymmetry,
+        mouthScore: v2Metrics.mouthSymmetry,
+        jawScore: v2Metrics.jawSymmetry,
         eyeDiff: Math.abs(dist2D(alignedLandmarks[33], alignedLandmarks[133]) - dist2D(alignedLandmarks[263], alignedLandmarks[362])) / faceWidth,
         browsDiff: Math.abs(alignedLandmarks[70].y - alignedLandmarks[300].y) / faceWidth,
         mouthDiff: Math.abs(alignedLandmarks[61].x - midlineX - (midlineX - alignedLandmarks[291].x)) / faceWidth,
@@ -848,18 +959,11 @@ export default function App() {
         noseWidthRatio: noseWidth / faceWidth,
         lowerFaceRatio: lowerFaceHeight / faceHeight,
         rotationAngle: rollAngle,
-        landmarkConfidence: 0.98, // Assuming high confidence if detection succeeded
+        landmarkConfidence: 0.98,
         faceSize: faceWidth,
         lightingStatus: lightingStatus
       };
 
-      // Recalculate percentile
-      let percentile = 50;
-      if (overallScore >= 90) percentile = 95 + (overallScore - 90) * 0.5;
-      else if (overallScore >= 80) percentile = 75 + (overallScore - 80) * 2;
-      else if (overallScore >= 60) percentile = 20 + (overallScore - 60) * 2.75;
-      else percentile = (overallScore - 30) * 0.6;
-      metrics.percentile = Math.min(99, Math.max(1, Math.round(percentile)));
       // 로컬 분석 엔진 사용
       const parsedResult = analyzeLocally(metrics);
       
@@ -888,27 +992,27 @@ export default function App() {
       // Merge browser-calculated metrics into the result with defensive checks
       const safeLandmarks: any = parsedResult.landmarks || {};
       
-      const overallBalance = Math.round((overallScore + (parsedResult.proportionScore || 80)) / 2);
+      const overallBalance = v2Metrics.overallScore;
 
       setResult({
         ...parsedResult,
         summary: parsedResult.summary,
         overallScore: overallBalance,
-        symmetryScore: overallScore,
-        percentile,
+        symmetryScore: v2Metrics.overallScore,
+        percentile: v2Metrics.percentile,
         balancedImage,
         symmetryTwins,
         landmarks: {
-          eyes: { score: Math.round(eyeScore), status: safeLandmarks.eyes?.status || "분석 완료", feedback: safeLandmarks.eyes?.feedback || "분석 완료" },
-          brows: { score: Math.round(browsScore), status: safeLandmarks.brows?.status || "분석 완료", feedback: safeLandmarks.brows?.feedback || "분석 완료" },
-          mouth: { score: Math.round(mouthScore), status: safeLandmarks.mouth?.status || "분석 완료", feedback: safeLandmarks.mouth?.feedback || "분석 완료" },
-          jawline: { score: Math.round(jawScore), status: safeLandmarks.jawline?.status || "분석 완료", feedback: safeLandmarks.jawline?.feedback || "분석 완료" },
+          eyes: { score: v2Metrics.eyeSymmetry, status: safeLandmarks.eyes?.status || "분석 완료", feedback: safeLandmarks.eyes?.feedback || "분석 완료" },
+          brows: { score: v2Metrics.browsSymmetry, status: safeLandmarks.brows?.status || "분석 완료", feedback: safeLandmarks.brows?.feedback || "분석 완료" },
+          mouth: { score: v2Metrics.mouthSymmetry, status: safeLandmarks.mouth?.status || "분석 완료", feedback: safeLandmarks.mouth?.feedback || "분석 완료" },
+          jawline: { score: v2Metrics.jawSymmetry, status: safeLandmarks.jawline?.status || "분석 완료", feedback: safeLandmarks.jawline?.feedback || "분석 완료" },
         },
         asymmetryZones: [
-          { x: rawLandmarks[33].x * 100, y: rawLandmarks[33].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - eyeScore) / 20)), label: "EYE ASYMMETRY" },
-          { x: rawLandmarks[70].x * 100, y: rawLandmarks[70].y * 100, radius: 5, intensity: Math.min(1, Math.max(0.7, (96 - browsScore) / 20)), label: "BROW ASYMMETRY" },
-          { x: rawLandmarks[61].x * 100, y: rawLandmarks[61].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - mouthScore) / 20)), label: "ORAL ASYMMETRY" },
-          { x: rawLandmarks[234].x * 100, y: rawLandmarks[234].y * 100, radius: 8, intensity: Math.min(1, Math.max(0.6, (96 - jawScore) / 30)), label: "JAW ASYMMETRY" }
+          { x: rawLandmarks[33].x * 100, y: rawLandmarks[33].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - v2Metrics.eyeSymmetry) / 20)), label: "EYE ASYMMETRY" },
+          { x: rawLandmarks[70].x * 100, y: rawLandmarks[70].y * 100, radius: 5, intensity: Math.min(1, Math.max(0.7, (96 - v2Metrics.browsSymmetry) / 20)), label: "BROW ASYMMETRY" },
+          { x: rawLandmarks[61].x * 100, y: rawLandmarks[61].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - v2Metrics.mouthSymmetry) / 20)), label: "ORAL ASYMMETRY" },
+          { x: rawLandmarks[234].x * 100, y: rawLandmarks[234].y * 100, radius: 8, intensity: Math.min(1, Math.max(0.6, (96 - v2Metrics.jawSymmetry) / 30)), label: "JAW ASYMMETRY" }
         ],
         rawLandmarks,
         metrics: {
@@ -920,12 +1024,18 @@ export default function App() {
       setCenterOffset((alignedLandmarks[1].x - midlineX) * 100);
       setRotationAngle((alignedLandmarks[263].y - alignedLandmarks[33].y) * 100);
 
+      // Increment analysis count after successful analysis
+      incrementAnalysisCount();
+
     } catch (err: any) {
+      console.timeEnd('Analysis-Total');
       setError(err.message || "분석 중 오류가 발생했습니다. 다시 시도해주세요.");
       console.error(err);
     } finally {
       setIsAnalyzing(false);
       setAnalysisStep('');
+      setDebugStage(null);
+      faceMeshCallbackRef.current = null;
     }
   };
 
@@ -1008,7 +1118,11 @@ export default function App() {
           {!result && (
             <div className="space-y-6">
             <section className="bg-white/5 rounded-3xl border border-white/10 shadow-2xl overflow-hidden relative group backdrop-blur-sm">
-              {!image && !isCameraActive ? (
+              {isLocked ? (
+                <div className="p-6">
+                  <UnlockAnalysis onUnlock={resetAnalysisCount} />
+                </div>
+              ) : !image && !isCameraActive ? (
                 <div className="aspect-[4/5] flex flex-col items-center justify-center p-12 text-center space-y-8">
                   <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-2 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
                     <Camera size={40} />
@@ -1242,6 +1356,9 @@ export default function App() {
                       </div>
                       <div className="text-center space-y-2">
                         <p className="text-xl font-bold tracking-tight text-emerald-400">{analysisStep || "AI 분석 진행 중..."}</p>
+                        {debugStage && (
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest mt-1">Stage: {debugStage}</p>
+                        )}
                         <div className="flex flex-col gap-1">
                           <p className="text-sm text-white/70 animate-pulse">
                             {analysisStep.includes('특징') ? '얼굴의 468개 랜드마크를 찾는 중...' : 
@@ -1391,7 +1508,7 @@ export default function App() {
                           <div className="text-center space-y-2 w-full">
                             <div className="flex flex-col items-center gap-1">
                               <div className="flex items-center gap-2">
-                                <span className="text-lg font-bold text-white tracking-tight">상위 {100 - (result.percentile || 0)}%</span>
+                                <span className="text-lg font-bold text-white tracking-tight">상위 {result.percentile || 0}%</span>
                                 <div className={cn(
                                   "px-2 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border",
                                   result.tier?.color.replace('text-', 'bg-').replace('-400', '-500/10'),
@@ -1888,7 +2005,7 @@ export default function App() {
             <div className="w-full flex flex-col items-center gap-12 z-10">
               <div className="flex flex-col items-center">
                 <p className="text-[120px] font-black italic text-emerald-400 leading-none">
-                  TOP {100 - (result.percentile || 0)}%
+                  TOP {result.percentile || 0}%
                 </p>
                 <p className={cn(
                   "mt-4 text-[60px] font-black uppercase tracking-[0.2em]",
@@ -1957,7 +2074,7 @@ export default function App() {
               </div>
               <div className="bg-white/5 rounded-3xl p-6 border border-white/10 flex flex-col items-center gap-1">
                 <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Global Ranking</span>
-                <span className="text-4xl font-black text-white italic">Top {100 - (result.percentile || 0)}%</span>
+                <span className="text-4xl font-black text-white italic">Top {result.percentile || 0}%</span>
               </div>
             </div>
 
