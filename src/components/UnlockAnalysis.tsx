@@ -1,76 +1,42 @@
-import React, { useState } from 'react';
-import { Lock, Play, Crown, Loader2 } from 'lucide-react';
-import { watchAdToUnlock } from '../services/adUnlock';
+import React from 'react';
+import { Lock, CreditCard, Check } from 'lucide-react';
 
 interface UnlockAnalysisProps {
   onUnlock: () => void;
 }
 
 export const UnlockAnalysis: React.FC<UnlockAnalysisProps> = ({ onUnlock }) => {
-  const [isWatchingAd, setIsWatchingAd] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(5);
-
-  const handleWatchAd = async () => {
-    setIsWatchingAd(true);
-    await watchAdToUnlock((timeLeft) => {
-      setSecondsLeft(timeLeft);
-    });
-    setIsWatchingAd(false);
-    onUnlock();
-  };
-
   return (
-    <div className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8 text-center space-y-6 max-w-md mx-auto">
-      <div className="flex flex-col items-center gap-3">
-        <div className="w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center">
-          <Lock className="text-emerald-500" size={32} />
-        </div>
-        <p className="text-[10px] text-emerald-500/60 font-bold uppercase tracking-widest">
-          Watching a short ad helps support the app.
-        </p>
+    <div className="flex flex-col items-center text-center space-y-6 py-8">
+      <div className="w-20 h-20 bg-indigo-500/10 rounded-3xl flex items-center justify-center border border-indigo-500/20 shadow-[0_0_30px_rgba(99,102,241,0.1)]">
+        <Lock size={40} className="text-indigo-400" />
       </div>
       
       <div className="space-y-2">
-        <h2 className="text-2xl font-black italic tracking-tighter text-white uppercase">
-          Detailed Analysis Locked 🔒
-        </h2>
-        <p className="text-white/60 text-sm leading-relaxed">
-          You've used your free daily analysis. Unlock another one instantly by watching a short ad or upgrading to Pro.
+        <h2 className="text-2xl font-black italic tracking-tighter uppercase">Daily Limit Reached</h2>
+        <p className="text-white/60 text-sm font-medium max-w-xs mx-auto leading-relaxed">
+          You've used your 2 free daily analyses. Unlock unlimited access to continue.
         </p>
       </div>
 
-      <div className="grid gap-3">
-        <button
-          type="button"
-          onClick={handleWatchAd}
-          disabled={isWatchingAd}
-          className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-black font-black uppercase tracking-widest py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95"
-        >
-          {isWatchingAd ? (
-            <>
-              <Loader2 className="animate-spin" size={20} />
-              Watching Ad ({secondsLeft}s)...
-            </>
-          ) : (
-            <>
-              <Play size={20} fill="currentColor" />
-              Watch Ad to Unlock
-            </>
-          )}
-        </button>
+      <div className="w-full max-w-xs space-y-3">
+        <div className="bg-white/5 rounded-2xl p-4 border border-white/5 space-y-2">
+          {['Unlimited daily analyses', 'Full symmetry breakdown', 'Symmetry twin simulation'].map((benefit, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Check size={14} className="text-emerald-400" />
+              <span className="text-[11px] text-white/70 font-medium">{benefit}</span>
+            </div>
+          ))}
+        </div>
 
-        <button
-          type="button"
-          className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest py-4 rounded-2xl flex items-center justify-center gap-3 transition-all active:scale-95"
+        <button 
+          onClick={onUnlock}
+          className="w-full bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all active:scale-95 shadow-[0_0_30px_rgba(99,102,241,0.3)]"
         >
-          <Crown className="text-yellow-400" size={20} fill="currentColor" />
-          Upgrade to Pro
+          <CreditCard size={18} />
+          Unlock Pro – $2.99
         </button>
       </div>
-
-      <p className="text-[10px] text-white/30 uppercase tracking-widest">
-        Pro users get unlimited analysis & no ads
-      </p>
     </div>
   );
 };

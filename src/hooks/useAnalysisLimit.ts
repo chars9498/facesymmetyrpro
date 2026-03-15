@@ -1,31 +1,39 @@
 import { useState, useEffect } from 'react';
 
-const STORAGE_KEY = 'face_symmetry_pro_analysis_count';
-
 export const useAnalysisLimit = () => {
-  const [analysisCount, setAnalysisCount] = useState<number>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? parseInt(saved, 10) : 0;
-  });
+  const [analysisCount, setAnalysisCount] = useState(0);
+  const [isLocked, setIsLocked] = useState(false);
+
+  const unlock = () => {
+    setIsLocked(false);
+    // For demo purposes, we can reset the count or just set isLocked to false
+    // If we want it to persist, we could use another localStorage key
+    localStorage.setItem('face_analysis_pro', 'true');
+  };
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, analysisCount.toString());
-  }, [analysisCount]);
+    const isPro = localStorage.getItem('face_analysis_pro') === 'true';
+    const count = parseInt(localStorage.getItem('face_analysis_count') || '0');
+    setAnalysisCount(count);
+    
+    if (isPro) {
+      setIsLocked(false);
+    } else if (count >= 2) {
+      setIsLocked(true);
+    }
+  }, []);
 
-  const incrementAnalysisCount = () => {
-    setAnalysisCount(prev => prev + 1);
+  const incrementCount = () => {
+    const isPro = localStorage.getItem('face_analysis_pro') === 'true';
+    if (isPro) return;
+
+    const newCount = analysisCount + 1;
+    setAnalysisCount(newCount);
+    localStorage.setItem('face_analysis_count', newCount.toString());
+    if (newCount >= 2) {
+      setIsLocked(true);
+    }
   };
 
-  const resetAnalysisCount = () => {
-    setAnalysisCount(0);
-  };
-
-  const isLocked = analysisCount >= 1;
-
-  return {
-    analysisCount,
-    isLocked,
-    incrementAnalysisCount,
-    resetAnalysisCount,
-  };
+  return { analysisCount, isLocked, incrementCount, unlock };
 };
