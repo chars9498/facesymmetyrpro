@@ -12,6 +12,7 @@ import { FaceMeshCanvas } from './components/FaceMeshCanvas';
 // Hooks
 import { useAnalysisFlow } from './hooks/useAnalysisFlow';
 import { useAnalysisLimit } from './hooks/useAnalysisLimit';
+import { useAnalysisHistory } from './hooks/useAnalysisHistory';
 
 // Utils
 import { cn } from './lib/utils';
@@ -32,9 +33,17 @@ export default function App() {
 
   // Custom Hooks
   const { isLocked, incrementCount, unlock } = useAnalysisLimit();
+  const { history: analysisHistory, saveToHistory, getPreviousScan } = useAnalysisHistory();
+  const [previousScan, setPreviousScan] = useState<any>(null);
+
   const analysis = useAnalysisFlow({
-    onAnalysisComplete: () => {
+    onAnalysisComplete: (result) => {
+      // Get previous scan BEFORE saving current one
+      const prev = getPreviousScan();
+      setPreviousScan(prev);
+      
       incrementCount();
+      saveToHistory(result.overallScore);
     }
   });
   
@@ -196,6 +205,8 @@ export default function App() {
               onAction={handleAction}
               isExporting={isExporting}
               exportSuccess={exportSuccess}
+              previousScan={previousScan}
+              history={analysisHistory}
             />
           )}
         </AnimatePresence>

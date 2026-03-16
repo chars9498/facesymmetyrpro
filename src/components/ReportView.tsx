@@ -4,6 +4,10 @@ import { User, Trophy, Zap, Sparkles, Lock, Check, CreditCard, Scan, Download, R
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { cn } from '../lib/utils';
 import { type AnalysisResult } from '../services/analysisEngine';
+import { ProgressTracking } from './ProgressTracking';
+import { AIImprovementTips } from './AIImprovementTips';
+import { ScoreHistory } from './ScoreHistory';
+import { HistoryItem } from '../hooks/useAnalysisHistory';
 
 interface ReportViewProps {
   result: AnalysisResult;
@@ -29,6 +33,8 @@ interface ReportViewProps {
   onAction: (action: 'save' | 'share' | 'copy') => void;
   isExporting: boolean;
   exportSuccess: boolean;
+  previousScan: HistoryItem | null;
+  history: HistoryItem[];
 }
 
 export const ReportView: React.FC<ReportViewProps> = ({
@@ -54,7 +60,9 @@ export const ReportView: React.FC<ReportViewProps> = ({
   onReset,
   onAction,
   isExporting,
-  exportSuccess
+  exportSuccess,
+  previousScan,
+  history
 }) => {
   const imageRef = React.useRef<HTMLImageElement>(null);
   const steps = [
@@ -139,6 +147,18 @@ export const ReportView: React.FC<ReportViewProps> = ({
                       ))}
                     </div>
                   </div>
+
+                  {/* Progress Tracking Section */}
+                  <ProgressTracking 
+                    currentScore={result.overallScore} 
+                    previousScan={previousScan} 
+                  />
+
+                  {/* Score History Section */}
+                  <ScoreHistory history={history} />
+
+                  {/* AI Improvement Tips Section */}
+                  <AIImprovementTips result={result} />
 
                   {/* Visual Analysis (Mesh) */}
                   <div className="bg-white/5 rounded-3xl border border-white/10 p-5 shadow-xl backdrop-blur-sm overflow-hidden">
