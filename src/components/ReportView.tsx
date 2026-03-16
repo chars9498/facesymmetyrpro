@@ -68,6 +68,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
   weeklyScans
 }) => {
   const imageRef = React.useRef<HTMLImageElement>(null);
+
   const steps = [
     { id: 0, label: 'Analysis' },
     { id: 1, label: 'Twins' },
@@ -163,6 +164,24 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   {/* AI Improvement Tips Section */}
                   <AIImprovementTips result={result} />
 
+                  {/* Summary & Recommendations */}
+                  <div className="bg-white/5 rounded-3xl border border-white/10 p-5 shadow-xl backdrop-blur-sm">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Sparkles size={14} className="text-emerald-400" />
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">AI Analysis Summary</h3>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
+                        <p className="text-[13px] font-bold text-emerald-400 leading-normal">
+                          {result.summary}
+                        </p>
+                      </div>
+                      <p className="text-[11px] text-white/60 leading-relaxed font-medium">
+                        {result.analysisSummary}
+                      </p>
+                    </div>
+                  </div>
+
                   {/* Weekly Challenge Section */}
                   <WeeklyChallenge scans={weeklyScans} />
 
@@ -233,24 +252,6 @@ export const ReportView: React.FC<ReportViewProps> = ({
                         <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
                         <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Asymmetry</span>
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Summary & Recommendations */}
-                  <div className="bg-white/5 rounded-3xl border border-white/10 p-5 shadow-xl backdrop-blur-sm">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Sparkles size={14} className="text-emerald-400" />
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">AI Analysis Summary</h3>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
-                        <p className="text-[13px] font-bold text-emerald-400 leading-normal">
-                          {result.summary}
-                        </p>
-                      </div>
-                      <p className="text-[11px] text-white/60 leading-relaxed font-medium">
-                        {result.analysisSummary}
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -496,46 +497,65 @@ export const ReportView: React.FC<ReportViewProps> = ({
       <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#050505] via-[#050505]/95 to-transparent z-40 pointer-events-none">
         <div className="max-w-md mx-auto flex flex-col gap-3 pointer-events-auto">
           <div className="flex gap-2">
-            {reportStep > 0 && (
-              <button
-                type="button"
-                onClick={() => setReportStep(reportStep - 1)}
-                className="flex-1 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all active:scale-[0.98]"
-              >
-                Back
-              </button>
-            )}
-            
-            {reportStep === 0 && !isUnlocked ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsUnlocked(true);
-                  setReportStep(1);
-                }}
-                className="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
-              >
-                Next Step
-                <Sparkles size={14} />
-              </button>
-            ) : reportStep < steps.length - 1 ? (
-              <button
-                type="button"
-                onClick={() => setReportStep(reportStep + 1)}
-                className="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
-              >
-                Next Step
-                <Sparkles size={14} />
-              </button>
+            {reportStep === 0 ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    console.log("STEP0_SHARE_CLICKED");
+                    setExportType('result');
+                    onAction('share');
+                  }}
+                  disabled={isExporting}
+                  className="flex-1 py-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 text-emerald-400"
+                >
+                  <Share2 size={14} className={cn(isExporting && "animate-pulse")} />
+                  {isExporting ? 'Generating...' : 'Share Result'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUnlocked(true);
+                    setReportStep(1);
+                  }}
+                  className="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
+                >
+                  Next Step
+                  <Sparkles size={14} />
+                </button>
+              </>
             ) : (
-              <button
-                type="button"
-                onClick={onReset}
-                className="flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
-              >
-                Start New Analysis
-                <RotateCcw size={14} />
-              </button>
+              <>
+                {reportStep > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setReportStep(reportStep - 1)}
+                    className="flex-1 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all active:scale-[0.98]"
+                  >
+                    Back
+                  </button>
+                )}
+                
+                {reportStep < steps.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => setReportStep(reportStep + 1)}
+                    className="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
+                  >
+                    Next Step
+                    <Sparkles size={14} />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={onReset}
+                    className="flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
+                  >
+                    Start New Analysis
+                    <RotateCcw size={14} />
+                  </button>
+                )}
+              </>
             )}
           </div>
           
@@ -544,7 +564,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
             onClick={onReset}
             className="w-full py-2 text-[9px] font-bold text-white/30 uppercase tracking-[0.3em] hover:text-white/60 transition-colors"
           >
-            Retake Photo / Upload Another
+            {reportStep === 0 ? "Start New Analysis" : "Retake Photo / Upload Another"}
           </button>
         </div>
       </div>

@@ -218,6 +218,11 @@ export default function App() {
 
       {/* Hidden container for image capture */}
       <div className="fixed -left-[9999px] top-0 pointer-events-none" aria-hidden="true">
+        {analysis.result && (
+          <div id="share-card">
+            <ResultShareCard result={analysis.result} image={analysis.capturedImage} />
+          </div>
+        )}
         <div ref={shareCardRef}>
           {analysis.result && (
             exportType === 'result' ? (
