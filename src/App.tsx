@@ -13,6 +13,7 @@ import { FaceMeshCanvas } from './components/FaceMeshCanvas';
 import { useAnalysisFlow } from './hooks/useAnalysisFlow';
 import { useAnalysisLimit } from './hooks/useAnalysisLimit';
 import { useAnalysisHistory } from './hooks/useAnalysisHistory';
+import { useWeeklyChallenge } from './hooks/useWeeklyChallenge';
 
 // Utils
 import { cn } from './lib/utils';
@@ -34,6 +35,7 @@ export default function App() {
   // Custom Hooks
   const { isLocked, incrementCount, unlock } = useAnalysisLimit();
   const { history: analysisHistory, saveToHistory, getPreviousScan } = useAnalysisHistory();
+  const { challenge, incrementWeeklyScan } = useWeeklyChallenge();
   const [previousScan, setPreviousScan] = useState<any>(null);
 
   const analysis = useAnalysisFlow({
@@ -44,6 +46,7 @@ export default function App() {
       
       incrementCount();
       saveToHistory(result.overallScore);
+      incrementWeeklyScan();
     }
   });
   
@@ -207,6 +210,7 @@ export default function App() {
               exportSuccess={exportSuccess}
               previousScan={previousScan}
               history={analysisHistory}
+              weeklyScans={challenge.scans}
             />
           )}
         </AnimatePresence>

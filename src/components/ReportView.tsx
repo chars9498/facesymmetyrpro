@@ -7,6 +7,7 @@ import { type AnalysisResult } from '../services/analysisEngine';
 import { ProgressTracking } from './ProgressTracking';
 import { AIImprovementTips } from './AIImprovementTips';
 import { ScoreHistory } from './ScoreHistory';
+import { WeeklyChallenge } from './WeeklyChallenge';
 import { HistoryItem } from '../hooks/useAnalysisHistory';
 
 interface ReportViewProps {
@@ -35,6 +36,7 @@ interface ReportViewProps {
   exportSuccess: boolean;
   previousScan: HistoryItem | null;
   history: HistoryItem[];
+  weeklyScans: number;
 }
 
 export const ReportView: React.FC<ReportViewProps> = ({
@@ -62,7 +64,8 @@ export const ReportView: React.FC<ReportViewProps> = ({
   isExporting,
   exportSuccess,
   previousScan,
-  history
+  history,
+  weeklyScans
 }) => {
   const imageRef = React.useRef<HTMLImageElement>(null);
   const steps = [
@@ -159,6 +162,9 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
                   {/* AI Improvement Tips Section */}
                   <AIImprovementTips result={result} />
+
+                  {/* Weekly Challenge Section */}
+                  <WeeklyChallenge scans={weeklyScans} />
 
                   {/* Visual Analysis (Mesh) */}
                   <div className="bg-white/5 rounded-3xl border border-white/10 p-5 shadow-xl backdrop-blur-sm overflow-hidden">

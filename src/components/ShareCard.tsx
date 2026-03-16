@@ -9,63 +9,68 @@ interface ResultShareCardProps {
 
 export const ResultShareCard: React.FC<ResultShareCardProps> = ({ result, image }) => {
   return (
-    <div className="w-[360px] bg-[#050505] p-10 flex flex-col items-center gap-8 relative overflow-hidden border border-white/5">
+    <div className="w-[360px] bg-[#050505] p-10 flex flex-col items-center gap-6 relative overflow-hidden border border-white/5">
       {/* Background Accents */}
       <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
       
-      {/* Top Branding */}
-      <div className="flex flex-col items-center gap-1.5 relative z-10">
-        <h2 className="text-[12px] font-black text-white uppercase tracking-[0.5em] italic">Face Symmetry Pro</h2>
-        <p className="text-[8px] font-bold text-emerald-500/60 uppercase tracking-[0.3em]">AI Facial Balance Report</p>
+      {/* 1. Strong Test-Style Headline */}
+      <div className="flex flex-col items-center gap-1 relative z-10">
+        <h2 className="text-[14px] font-black text-white uppercase tracking-[0.4em] italic">AI FACE SYMMETRY TEST</h2>
+        <div className="h-px w-12 bg-emerald-500/30 mt-1" />
       </div>
 
-      {/* Portrait Frame */}
-      <div className="relative py-4">
-        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/20 to-transparent rounded-full blur-xl opacity-50" />
-        <div className="w-44 h-44 rounded-full overflow-hidden border border-white/10 relative z-10 shadow-2xl">
+      {/* 2. Dominant Ranking Result */}
+      <div className="flex flex-col items-center gap-0 relative z-10">
+        <div className="text-6xl font-black italic tracking-tighter text-white uppercase leading-none">
+          TOP {result.percentile}%
+        </div>
+        <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-widest mt-2">
+          Better than {100 - (result.percentile || 0)}% of people
+        </p>
+      </div>
+
+      {/* 3. Circular Face Portrait (Reduced Size) */}
+      <div className="relative py-2">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/20 to-transparent rounded-full blur-xl opacity-40" />
+        <div className="w-36 h-36 rounded-full overflow-hidden border border-white/10 relative z-10 shadow-2xl">
           <img src={image || ''} alt="Analysis" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           
           {/* Subtle Vertical Center Line */}
-          <div className="absolute inset-y-0 left-1/2 w-px bg-emerald-500/20 z-20" />
+          <div className="absolute inset-y-0 left-1/2 w-px bg-emerald-500/30 z-20" />
         </div>
       </div>
 
-      {/* Main Score Area */}
-      <div className="flex flex-col items-center gap-6 w-full relative z-10">
-        <div className="flex flex-col items-center gap-1">
-          <div className="text-4xl font-black italic tracking-tighter text-white uppercase">
-            TOP {result.percentile}%
-          </div>
-          <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-            Better than {100 - (result.percentile || 0)}% of people
-          </p>
-        </div>
-
-        <div className="flex flex-col items-center bg-white/5 border border-white/10 rounded-3xl px-8 py-4 w-full">
-          <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em] mb-1">Balance Score</span>
+      {/* 4. Balance Score Area */}
+      <div className="flex flex-col items-center gap-4 w-full relative z-10">
+        <div className="flex flex-col items-center">
+          <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.3em] mb-1">Balance Score</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-5xl font-black italic tracking-tighter text-white leading-none font-mono">{result.overallScore}</span>
-            <span className="text-lg font-black text-emerald-500 italic">/100</span>
+            <span className="text-4xl font-black italic tracking-tighter text-white leading-none font-mono">{result.overallScore}</span>
+            <span className="text-sm font-black text-emerald-500 italic">/ 100</span>
           </div>
         </div>
 
-        {/* Curiosity Line */}
-        <div className="flex flex-col items-center gap-1">
-          <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Primary Insight</span>
-          <p className="text-[11px] font-bold text-white/80 text-center leading-tight max-w-[240px]">
-            Main imbalance: {result.primaryImbalance.split('\n')[0].replace('Recommended Focus Area: ', '')}
+        {/* 5. Simplified Insight Text */}
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Main imbalance</span>
+          <p className="text-[12px] font-bold text-white/90 text-center leading-tight uppercase tracking-tight">
+            {result.primaryImbalance.split('\n')[0].replace('Recommended Focus Area: ', '').split(':')[0]}
           </p>
         </div>
       </div>
 
-      {/* Bottom CTA */}
-      <div className="mt-4 flex flex-col items-center gap-2 relative z-10">
-        <div className="px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-          <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em]">Check your face symmetry</p>
+      {/* 6 & 7. Curiosity Trigger & Improved CTA */}
+      <div className="mt-2 flex flex-col items-center gap-3 relative z-10 w-full">
+        <p className="text-[11px] font-bold text-white/40 italic tracking-wide">How symmetrical is your face?</p>
+        
+        <div className="w-full px-6 py-2.5 bg-transparent border border-emerald-500/40 rounded-full flex justify-center items-center group active:scale-95 transition-transform">
+          <p className="text-[11px] font-black text-emerald-400 uppercase tracking-[0.2em]">Check your face symmetry</p>
         </div>
-        <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">facesymmetrypro.app</p>
+        
+        {/* 8. Site Link */}
+        <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.25em] mt-1">facesymmetrypro.app</p>
       </div>
     </div>
   );
