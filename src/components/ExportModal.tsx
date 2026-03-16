@@ -6,7 +6,7 @@ import { cn } from '../lib/utils';
 interface ExportModalProps {
   show: boolean;
   onClose: () => void;
-  exportType: 'result' | 'symmetry';
+  exportType: 'result' | 'symmetry' | 'full';
   isExporting: boolean;
   exportSuccess: boolean;
   onExport: () => void;
@@ -46,13 +46,14 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             <div className="p-6 border-b border-white/5 flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-xl font-black italic tracking-tighter text-white uppercase">
-                  {exportType === 'result' ? 'Share Analysis Result' : 'Share Symmetry Twins'}
+                  {exportType === 'result' ? 'Share Analysis Result' : exportType === 'symmetry' ? 'Share Symmetry Twins' : 'Share Full Analysis'}
                 </h3>
                 <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest mt-1">
-                  {exportType === 'result' ? 'Show off your balance score' : 'Compare your left and right face'}
+                  {exportType === 'result' ? 'Show off your balance score' : exportType === 'symmetry' ? 'Compare your left and right face' : 'Complete facial symmetry report'}
                 </p>
               </div>
               <button 
+                type="button"
                 onClick={onClose}
                 className="w-10 h-10 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors"
               >
@@ -81,6 +82,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             {/* Footer Actions */}
             <div className="p-6 bg-white/5 border-t border-white/5 flex flex-col gap-3 shrink-0">
               <button
+                type="button"
                 onClick={onExport}
                 disabled={isExporting}
                 className={cn(

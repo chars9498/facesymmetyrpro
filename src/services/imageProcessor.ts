@@ -119,25 +119,71 @@ export const generateSoftSymmetry = async (
     const mirroredData = mCtx.getImageData(0, 0, width, height);
     const resultData = ctx.createImageData(width, height);
 
-    // 3, 4, 5. Soft Symmetry Blending with Feathering
-    const blendWidth = width * 0.1; // 10% width for feathering
-    const symmetryInfluence = 0.3; // 30% influence
+    // 3. Create a face mask using landmarks
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = width;
+    maskCanvas.height = height;
+    const maskCtx = maskCanvas.getContext('2d');
+    if (maskCtx) {
+      maskCtx.fillStyle = 'black';
+      maskCtx.fillRect(0, 0, width, height);
+      
+      // Draw face silhouette
+      maskCtx.fillStyle = 'white';
+      maskCtx.beginPath();
+      // Face oval indices (more precise set)
+      const faceOvalIndices = [
+        10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109
+      ];
+      
+      const firstPoint = landmarks[faceOvalIndices[0]];
+      maskCtx.moveTo(firstPoint.x * width, firstPoint.y * height);
+      for (let i = 1; i < faceOvalIndices.length; i++) {
+        const p = landmarks[faceOvalIndices[i]];
+        maskCtx.lineTo(p.x * width, p.y * height);
+      }
+      maskCtx.closePath();
+      maskCtx.fill();
+      
+      // Use a smaller blur for sharper edges, preventing background ghosting
+      maskCtx.filter = 'blur(10px)';
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      const tempCtx = tempCanvas.getContext('2d');
+      if (tempCtx) {
+        tempCtx.drawImage(maskCanvas, 0, 0);
+        maskCtx.clearRect(0, 0, width, height);
+        maskCtx.drawImage(tempCanvas, 0, 0);
+      }
+    }
+    const maskData = maskCtx?.getImageData(0, 0, width, height);
+
+    // 4, 5. Soft Symmetry Blending with Masking
+    const symmetryInfluence = 0.35; // 35% influence
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const idx = (y * width + x) * 4;
-        const distToMidline = Math.abs(x - midlineX);
         
-        // blendFactor: 0 at midline, 1 at blendWidth
-        const featherFactor = Math.min(1, distToMidline / blendWidth);
+        // Get mask value (0 to 255)
+        const maskValue = maskData ? maskData.data[idx] / 255 : 0;
         
-        // Soft blend: 70% original, 30% mirrored
-        const influence = symmetryInfluence; 
+        // Only apply symmetry where mask is white (face region)
+        // We use a sharper threshold to avoid background ghosting
+        const influence = symmetryInfluence * Math.pow(maskValue, 2); 
         
-        for (let i = 0; i < 3; i++) { // RGB
-          const original = alignedData.data[idx + i];
-          const mirrored = mirroredData.data[idx + i];
-          resultData.data[idx + i] = original * (1 - influence) + mirrored * influence;
+        if (influence > 0.01) {
+          for (let i = 0; i < 3; i++) { // RGB
+            const original = alignedData.data[idx + i];
+            const mirrored = mirroredData.data[idx + i];
+            resultData.data[idx + i] = original * (1 - influence) + mirrored * influence;
+          }
+        } else {
+          // Keep original background
+          resultData.data[idx] = alignedData.data[idx];
+          resultData.data[idx + 1] = alignedData.data[idx + 1];
+          resultData.data[idx + 2] = alignedData.data[idx + 2];
         }
         resultData.data[idx + 3] = 255;
       }
@@ -230,11 +276,52 @@ export const generateSymmetryTwins = async (
       const symData = sCtx.getImageData(0, 0, width, height);
       const resultData = tCtx.createImageData(width, height);
 
+      // Create a mask for the twin as well to avoid background duplication
+      const twinMaskCanvas = document.createElement('canvas');
+      twinMaskCanvas.width = width;
+      twinMaskCanvas.height = height;
+      const tmCtx = twinMaskCanvas.getContext('2d');
+      if (tmCtx) {
+        tmCtx.fillStyle = 'black';
+        tmCtx.fillRect(0, 0, width, height);
+        tmCtx.fillStyle = 'white';
+        tmCtx.beginPath();
+        const faceOvalIndices = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109];
+        const firstPoint = landmarks[faceOvalIndices[0]];
+        tmCtx.moveTo(firstPoint.x * width, firstPoint.y * height);
+        for (let i = 1; i < faceOvalIndices.length; i++) {
+          const p = landmarks[faceOvalIndices[i]];
+          tmCtx.lineTo(p.x * width, p.y * height);
+        }
+        tmCtx.closePath();
+        tmCtx.fill();
+        tmCtx.filter = 'blur(15px)';
+        const tempTwinCanvas = document.createElement('canvas');
+        tempTwinCanvas.width = width;
+        tempTwinCanvas.height = height;
+        const ttCtx = tempTwinCanvas.getContext('2d');
+        if (ttCtx) {
+          ttCtx.drawImage(twinMaskCanvas, 0, 0);
+          tmCtx.clearRect(0, 0, width, height);
+          tmCtx.drawImage(tempTwinCanvas, 0, 0);
+        }
+      }
+      const twinMaskData = tmCtx?.getImageData(0, 0, width, height);
+
       // Blend: strength * mirrored (symData) + (1 - strength) * original
       for (let i = 0; i < symData.data.length; i += 4) {
-        resultData.data[i] = symData.data[i] * strength + originalData.data[i] * (1 - strength);
-        resultData.data[i+1] = symData.data[i+1] * strength + originalData.data[i+1] * (1 - strength);
-        resultData.data[i+2] = symData.data[i+2] * strength + originalData.data[i+2] * (1 - strength);
+        const mVal = twinMaskData ? twinMaskData.data[i] / 255 : 0;
+        const currentStrength = strength * Math.pow(mVal, 1.5);
+
+        if (currentStrength > 0.01) {
+          resultData.data[i] = symData.data[i] * currentStrength + originalData.data[i] * (1 - currentStrength);
+          resultData.data[i+1] = symData.data[i+1] * currentStrength + originalData.data[i+1] * (1 - currentStrength);
+          resultData.data[i+2] = symData.data[i+2] * currentStrength + originalData.data[i+2] * (1 - currentStrength);
+        } else {
+          resultData.data[i] = originalData.data[i];
+          resultData.data[i+1] = originalData.data[i+1];
+          resultData.data[i+2] = originalData.data[i+2];
+        }
         resultData.data[i+3] = 255;
       }
 

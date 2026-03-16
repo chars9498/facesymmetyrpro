@@ -2,6 +2,13 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { analyzeLocally, type AnalysisResult } from "../services/analysisEngine";
 import { calculateSymmetryV2 } from "../services/analysisEngine_v2";
 
+// Fix for MediaPipe/Emscripten "Module.arguments" error
+// This error occurs when Emscripten's 'arguments' global is interfered with by polyfills or other scripts.
+// We set it once at the module level to ensure a stable environment for the WASM module.
+if (typeof window !== 'undefined' && !(window as any).arguments) {
+  (window as any).arguments = [];
+}
+
 export type ScanQuality = {
   alignment: 'Good' | 'Fair' | 'Poor';
   lighting: 'Good' | 'Low Light' | 'Overexposed' | 'Uneven';
@@ -9,7 +16,7 @@ export type ScanQuality = {
 };
 
 export function useFaceAnalysis() {
-  const [engineStatus, setEngineStatus] = useState<'idle' | 'loading' | 'ready' | 'failed'>('idle');
+  const [engineStatus, setEngineStatus] = useState<'idle' | 'loading' | 'ready' | 'failed' | 'failed-temporary'>('idle');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isFakeScanning, setIsFakeScanning] = useState(false);
   const [scanningLandmarks, setScanningLandmarks] = useState<any[] | null>(null);
@@ -22,36 +29,30 @@ export function useFaceAnalysis() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [analysisStep, setAnalysisStep] = useState<string>('');
-  const [debugLogs, setDebugLogs] = useState<string[]>([]);
-  
-  const addDebugLog = (msg: string) => {
-    console.log(`[CAMERA_DEBUG] ${msg}`);
-    setDebugLogs(prev => [...prev.slice(-4), msg]);
-  };
   
   const faceMeshRef = useRef<any | null>(null);
+  const isFaceMeshBusyRef = useRef(false);
   const faceMeshCallbackRef = useRef<((results: any) => void) | null>(null);
   const realTimeCallbackRef = useRef<((results: any) => void) | null>(null);
   const smoothedLandmarksRef = useRef<any[] | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const initRetryCountRef = useRef(0);
+  const loadingPromiseRef = useRef<Promise<boolean> | null>(null);
 
   // Handle stream attachment to video element
   useEffect(() => {
     const video = videoRef.current;
     if (video && stream) {
-      addDebugLog('VIDEO_SRC_ATTACHING');
       video.srcObject = stream;
       
       const handleLoadedMetadata = () => {
-        addDebugLog('VIDEO_METADATA_LOADED');
         video.play()
-          .then(() => addDebugLog('VIDEO_PLAY_SUCCESS'))
           .catch(err => {
-            addDebugLog(`VIDEO_PLAY_FAILED: ${err.message}`);
+            console.error("Video play failed:", err);
             // Fallback for some browsers that require user interaction even with muted
             const playOnInteraction = () => {
-              video.play();
+              video.play().catch(e => console.error("Retry play failed:", e));
               window.removeEventListener('click', playOnInteraction);
             };
             window.addEventListener('click', playOnInteraction);
@@ -65,59 +66,128 @@ export function useFaceAnalysis() {
     }
   }, [stream]);
 
-  const initFaceMesh = useCallback(async () => {
-    if (engineStatus === 'ready' || engineStatus === 'loading') return true;
-    
-    setEngineStatus('loading');
-    setError(null);
-    
-    try {
-      // Fix for "Module.arguments has been replaced with plain arguments_" error
-      if (typeof window !== 'undefined') {
-        (window as any).arguments = (window as any).arguments || [];
-      }
-
-      // Initialize FaceMesh using the global window object
-      const FaceMeshConstructor = (window as any).FaceMesh;
-
-      if (!FaceMeshConstructor || typeof FaceMeshConstructor !== 'function') {
-        throw new Error("FaceMesh constructor not found on window. Please check if the CDN script is loaded.");
-      }
-
-      const fm = new FaceMeshConstructor({
-        locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
-      });
-
-      fm.setOptions({
-        maxNumFaces: 1,
-        refineLandmarks: true,
-        minDetectionConfidence: 0.35,
-        minTrackingConfidence: 0.35
-      });
-
-      fm.onResults((results: any) => {
-        if (faceMeshCallbackRef.current) {
-          faceMeshCallbackRef.current(results);
-        } else if (realTimeCallbackRef.current) {
-          realTimeCallbackRef.current(results);
-        }
-      });
-
-      faceMeshRef.current = fm;
-      setEngineStatus('ready');
-      
-      // Warm up
-      const canvas = document.createElement('canvas');
-      canvas.width = 1;
-      canvas.height = 1;
-      await fm.send({ image: canvas });
+  const initFaceMesh = useCallback(async (isPreload: boolean = false) => {
+    // 1. Singleton Pattern: If instance already exists and is ready, reuse it.
+    if (faceMeshRef.current && engineStatus === 'ready') {
       return true;
-    } catch (err) {
-      console.error("FaceMesh Init Error:", err);
-      setEngineStatus('failed');
-      return false;
     }
-  }, [engineStatus]);
+    
+    // 2. Handle concurrent initialization attempts
+    if (loadingPromiseRef.current) {
+      if (isPreload) return true;
+      return loadingPromiseRef.current;
+    }
+    
+    console.log("FaceMesh init start", { isPreload });
+    setEngineStatus('loading');
+    if (!isPreload) setError(null);
+    
+    const performInit = async () => {
+      try {
+        // Initialize FaceMesh using the global window object
+        const FaceMeshConstructor = (window as any).FaceMesh;
+
+        if (!FaceMeshConstructor || typeof FaceMeshConstructor !== 'function') {
+          throw new Error("FaceMesh constructor not found on window. Please check if the CDN script is loaded.");
+        }
+
+        console.log("FaceMesh instance creating...");
+        const fm = new FaceMeshConstructor({
+          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+        });
+
+        fm.setOptions({
+          maxNumFaces: 1,
+          refineLandmarks: true,
+          minDetectionConfidence: 0.35,
+          minTrackingConfidence: 0.35
+        });
+
+        fm.onResults((results: any) => {
+          if (faceMeshCallbackRef.current) {
+            faceMeshCallbackRef.current(results);
+          } else if (realTimeCallbackRef.current) {
+            realTimeCallbackRef.current(results);
+          }
+        });
+
+        console.log("FaceMesh model loading...");
+        
+        // Safe initialization check
+        if (typeof fm.initialize === 'function') {
+          await fm.initialize();
+        }
+        
+        faceMeshRef.current = fm;
+        console.log("FaceMesh ready");
+        
+        setEngineStatus('ready');
+        
+        // Warm up - ensures WASM is fully loaded and ready for real data
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        isFaceMeshBusyRef.current = true;
+        try {
+          await fm.send({ image: canvas });
+        } finally {
+          isFaceMeshBusyRef.current = false;
+        }
+        return true;
+      } catch (e) {
+        faceMeshRef.current = null;
+        throw e;
+      }
+    };
+
+    const promise = (async () => {
+      try {
+        // 5. Add a timeout fallback (5 seconds)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("INITIALIZATION_TIMEOUT")), 5000)
+        );
+
+        await Promise.race([performInit(), timeoutPromise]);
+        initRetryCountRef.current = 0; // Reset on success
+        return true;
+      } catch (err: any) {
+        console.error("FaceMesh Init Error:", err);
+        faceMeshRef.current = null;
+        
+        // Retry logic only for on-demand calls
+        if (err.message === "INITIALIZATION_TIMEOUT" && initRetryCountRef.current < 1 && !isPreload) {
+          console.log("FaceMesh initialization timed out. Retrying...");
+          setAnalysisStep("AI engine initialization failed. Retrying...");
+          initRetryCountRef.current += 1;
+          
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          return initFaceMesh(false);
+        }
+
+        if (isPreload) {
+          console.log("Preload failed silently. Will retry on demand.");
+          setEngineStatus('failed-temporary');
+        } else {
+          setEngineStatus('failed');
+          setError("AI engine initialization failed. Please try again.");
+        }
+        return false;
+      }
+    })();
+
+    loadingPromiseRef.current = promise;
+    try {
+      return await promise;
+    } finally {
+      loadingPromiseRef.current = null;
+    }
+  }, [engineStatus, setAnalysisStep]);
+
+  // 3. Optional preload - silent and non-blocking
+  useEffect(() => {
+    initFaceMesh(true);
+  }, []);
 
   // Cleanup FaceMesh on unmount
   useEffect(() => {
@@ -174,66 +244,29 @@ export function useFaceAnalysis() {
     };
 
     const detectFace = async () => {
-      if (isCameraActive && videoRef.current && faceMeshRef.current && !isAnalyzing) {
-        const now = Date.now();
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        const interval = isMobile ? 1000 : 500;
-        
-        if (now - lastDetectionTime > interval) { 
-          try {
-            await faceMeshRef.current.send({ image: videoRef.current });
-            lastDetectionTime = now;
-          } catch (e) {
-            console.error("Real-time detection failed", e);
-          }
-        }
-      }
-      animationFrameId = requestAnimationFrame(detectFace);
+      // Real-time detection disabled to prevent conflicts and improve stability
+      // FaceMesh will only run on explicit capture or upload
     };
 
     if (isCameraActive) {
-      realTimeCallbackRef.current = (results) => {
-        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-          const landmarks = results.multiFaceLandmarks[0];
-          
-          if (!smoothedLandmarksRef.current) {
-            smoothedLandmarksRef.current = landmarks;
-          } else {
-            const alpha = 0.3;
-            smoothedLandmarksRef.current = landmarks.map((p, i) => ({
-              x: p.x * alpha + (smoothedLandmarksRef.current![i]?.x || p.x) * (1 - alpha),
-              y: p.y * alpha + (smoothedLandmarksRef.current![i]?.y || p.y) * (1 - alpha),
-              z: (p.z || 0) * alpha + (smoothedLandmarksRef.current![i]?.z || 0) * (1 - alpha)
-            }));
-          }
-
-          const currentLandmarks = smoothedLandmarksRef.current;
-          const leftEye = currentLandmarks[33];
-          const rightEye = currentLandmarks[263];
-          const roll = Math.abs(Math.atan2(rightEye.y - leftEye.y, rightEye.x - leftEye.x));
-          const faceWidth = Math.sqrt(Math.pow(currentLandmarks[234].x - currentLandmarks[454].x, 2) + Math.pow(currentLandmarks[234].y - currentLandmarks[454].y, 2));
-          
-          setScanQuality({
-            alignment: roll < 0.05 ? 'Good' : roll < 0.12 ? 'Fair' : 'Poor',
-            lighting: checkLighting(),
-            stability: faceWidth > 0.3 && faceWidth < 0.7 ? 'High' : 'Medium'
-          });
-        } else {
-          setScanQuality({ alignment: 'Poor', lighting: 'Low Light', stability: 'Low' });
-          smoothedLandmarksRef.current = null;
+      // Lighting check can still run as it doesn't use FaceMesh
+      const lightingInterval = setInterval(() => {
+        if (isCameraActive && !isAnalyzing) {
+          setScanQuality(prev => ({
+            ...prev,
+            lighting: checkLighting()
+          }));
         }
-      };
-      detectFace();
-    }
+      }, 2000);
 
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      realTimeCallbackRef.current = null;
-    };
+      return () => {
+        clearInterval(lightingInterval);
+        realTimeCallbackRef.current = null;
+      };
+    }
   }, [isCameraActive, isAnalyzing]);
 
   const startCamera = useCallback(async () => {
-    addDebugLog('CAMERA_REQUEST_START');
     try {
       // Lazy init engine when camera starts
       initFaceMesh();
@@ -248,12 +281,10 @@ export function useFaceAnalysis() {
           height: { ideal: 720 }
         } 
       });
-      addDebugLog('CAMERA_STREAM_RECEIVED');
       setStream(mediaStream);
       setIsCameraActive(true);
       setError(null);
     } catch (err: any) {
-      addDebugLog(`CAMERA_ERROR: ${err.name}`);
       let message = "카메라를 시작할 수 없습니다.";
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         message = "카메라 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요.";
@@ -289,8 +320,8 @@ export function useFaceAnalysis() {
     stopCamera,
     analysisStep,
     setAnalysisStep,
-    debugLogs,
     faceMeshRef,
+    isFaceMeshBusyRef,
     faceMeshCallbackRef,
     videoRef,
     canvasRef

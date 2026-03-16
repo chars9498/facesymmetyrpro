@@ -1,12 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Info, AlertCircle } from 'lucide-react';
+import { Shield, Info, AlertCircle, RotateCcw } from 'lucide-react';
 import { toPng } from 'html-to-image';
 
 // Components
 import { LandingView } from './components/LandingView';
 import { ReportView } from './components/ReportView';
-import { ExportModal } from './components/ExportModal';
 import { ResultShareCard, SymmetryShareCard } from './components/ShareCard';
 import { FaceMeshCanvas } from './components/FaceMeshCanvas';
 
@@ -21,8 +20,7 @@ export default function App() {
   // State for UI navigation and modals
   const [reportStep, setReportStep] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [exportType, setExportType] = useState<'result' | 'symmetry'>('result');
+  const [exportType, setExportType] = useState<'result' | 'symmetry' | 'full'>('result');
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
   const [showPrivacyNote, setShowPrivacyNote] = useState(false);
@@ -39,9 +37,22 @@ export default function App() {
       incrementCount();
     }
   });
+  
+  const resetApp = useCallback(() => {
+    analysis.resetAnalysis();
+    setReportStep(0);
+    setIsUnlocked(false);
+  }, [analysis]);
 
   // Export Logic
-  const handleExport = useCallback(async () => {
+  const handleAction = useCallback(async (action: 'save' | 'share' | 'copy') => {
+    if (action === 'copy') {
+      navigator.clipboard.writeText(window.location.href);
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 2000);
+      return;
+    }
+
     if (!shareCardRef.current) return;
     
     setIsExporting(true);
@@ -49,7 +60,7 @@ export default function App() {
     
     try {
       // Small delay to ensure rendering is complete
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       const dataUrl = await toPng(shareCardRef.current, {
         quality: 0.95,
@@ -57,30 +68,36 @@ export default function App() {
         cacheBust: true,
       });
       
-      const link = document.createElement('a');
-      link.download = `face-symmetry-${exportType}-${Date.now()}.png`;
-      link.href = dataUrl;
-      link.click();
-      
-      setExportSuccess(true);
-      setTimeout(() => setExportSuccess(false), 3000);
-
-      // Try native share if available
-      if (navigator.share) {
-        const blob = await (await fetch(dataUrl)).blob();
-        const file = new File([blob], 'face-analysis.png', { type: 'image/png' });
-        try {
-          await navigator.share({
-            files: [file],
-            title: 'My Face Symmetry Analysis',
-            text: 'Check out my facial balance score! Analyze yours at facesymmetrypro.app',
-          });
-        } catch (e) {
-          console.log('Share failed or cancelled');
+      if (action === 'save') {
+        const link = document.createElement('a');
+        link.download = `face-symmetry-${exportType}-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
+        setExportSuccess(true);
+        setTimeout(() => setExportSuccess(false), 3000);
+      } else if (action === 'share') {
+        if (navigator.share) {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], 'face-analysis.png', { type: 'image/png' });
+          try {
+            await navigator.share({
+              files: [file],
+              title: 'My Face Symmetry Analysis',
+              text: 'Check out my facial balance score! Analyze yours at facesymmetrypro.app',
+            });
+          } catch (e) {
+            console.log('Share failed or cancelled');
+          }
+        } else {
+          // Fallback to save if share not available
+          const link = document.createElement('a');
+          link.download = `face-symmetry-${exportType}-${Date.now()}.png`;
+          link.href = dataUrl;
+          link.click();
         }
       }
     } catch (err) {
-      console.error('Export failed:', err);
+      console.error('Action failed:', err);
     } finally {
       setIsExporting(false);
     }
@@ -90,7 +107,10 @@ export default function App() {
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#3BFF9C]/30 flex flex-col overflow-hidden">
       {/* Header */}
       <header className="shrink-0 p-4 sm:p-6 flex items-center justify-between z-50">
-        <div className="flex items-center gap-3 group cursor-pointer" onClick={analysis.resetAnalysis}>
+        <div className="flex items-center gap-3 group cursor-pointer" onClick={() => {
+          console.log('[DEBUG] NAVIGATE_HOME_CALLED');
+          resetApp();
+        }}>
           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#3BFF9C] to-[#2ee68a] flex items-center justify-center shadow-[0_0_20px_rgba(59,255,156,0.3)] group-hover:scale-110 transition-transform duration-300">
             <Shield className="text-black" size={20} strokeWidth={2.5} />
           </div>
@@ -101,7 +121,18 @@ export default function App() {
         </div>
         
         <div className="flex items-center gap-2">
+          {analysis.result && (
+            <button 
+              type="button"
+              onClick={resetApp}
+              className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/60 hover:text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+            >
+              <RotateCcw size={14} />
+              Reset
+            </button>
+          )}
           <button 
+            type="button"
             onClick={() => setShowPrivacyNote(true)}
             className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/40 hover:text-white"
           >
@@ -138,7 +169,6 @@ export default function App() {
               error={analysis.error}
               engineStatus={analysis.engineStatus}
               onUnlock={unlock}
-              debugLogs={analysis.debugLogs}
             />
           ) : (
             <ReportView 
@@ -153,7 +183,6 @@ export default function App() {
               setSymmetryStrength={analysis.setSymmetryStrength}
               updateSymmetryTwins={analysis.updateSymmetryTwins}
               setExportType={setExportType}
-              setShowExportModal={setShowExportModal}
               autoCorrectEnabled={autoCorrectEnabled}
               setAutoCorrectEnabled={setAutoCorrectEnabled}
               showOverlay={showOverlay}
@@ -163,29 +192,30 @@ export default function App() {
               imageAspectRatio={analysis.imageAspectRatio}
               imageDimensions={analysis.imageDimensions}
               FaceMeshCanvas={FaceMeshCanvas}
+              onReset={resetApp}
+              onAction={handleAction}
+              isExporting={isExporting}
+              exportSuccess={exportSuccess}
             />
           )}
         </AnimatePresence>
       </main>
 
+      {/* Hidden container for image capture */}
+      <div className="fixed -left-[9999px] top-0 pointer-events-none" aria-hidden="true">
+        <div ref={shareCardRef}>
+          {analysis.result && (
+            exportType === 'result' ? (
+              <ResultShareCard result={analysis.result} image={analysis.capturedImage} />
+            ) : (
+              <SymmetryShareCard result={analysis.result} image={analysis.capturedImage} />
+            )
+          )}
+        </div>
+      </div>
+
       {/* Modals */}
-      <ExportModal
-        show={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        exportType={exportType}
-        isExporting={isExporting}
-        exportSuccess={exportSuccess}
-        onExport={handleExport}
-        previewRef={shareCardRef}
-      >
-        {analysis.result && (
-          exportType === 'result' ? (
-            <ResultShareCard result={analysis.result} image={analysis.capturedImage} />
-          ) : (
-            <SymmetryShareCard result={analysis.result} image={analysis.capturedImage} />
-          )
-        )}
-      </ExportModal>
+      {/* ExportModal is removed as per request for direct actions */}
 
       {/* Privacy Note Modal */}
       <AnimatePresence>
@@ -225,6 +255,7 @@ export default function App() {
                 </div>
               </div>
               <button 
+                type="button"
                 onClick={() => setShowPrivacyNote(false)}
                 className="w-full mt-8 py-4 bg-white/10 hover:bg-white/20 rounded-2xl font-black uppercase tracking-widest transition-all"
               >

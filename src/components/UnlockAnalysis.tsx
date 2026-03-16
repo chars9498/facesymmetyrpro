@@ -30,6 +30,7 @@ export const UnlockAnalysis: React.FC<UnlockAnalysisProps> = ({ onUnlock }) => {
         </div>
 
         <button 
+          type="button"
           onClick={onUnlock}
           className="w-full bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all active:scale-95 shadow-[0_0_30px_rgba(99,102,241,0.3)]"
         >

@@ -9,68 +9,62 @@ interface ResultShareCardProps {
 
 export const ResultShareCard: React.FC<ResultShareCardProps> = ({ result, image }) => {
   return (
-    <div className="w-[360px] bg-[#0A0A0A] p-8 flex flex-col items-center gap-8 relative overflow-hidden">
+    <div className="w-[360px] bg-[#050505] p-10 flex flex-col items-center gap-8 relative overflow-hidden border border-white/5">
       {/* Background Accents */}
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent" />
-      <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/5 blur-[80px] rounded-full" />
+      <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent" />
+      <div className="absolute -top-24 -right-24 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
+      <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
       
-      {/* App Branding */}
-      <div className="flex flex-col items-center gap-1">
-        <h2 className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.4em] font-mono">Face Symmetry Pro</h2>
-        <div className="h-px w-12 bg-emerald-500/30" />
+      {/* Top Branding */}
+      <div className="flex flex-col items-center gap-1.5 relative z-10">
+        <h2 className="text-[12px] font-black text-white uppercase tracking-[0.5em] italic">Face Symmetry Pro</h2>
+        <p className="text-[8px] font-bold text-emerald-500/60 uppercase tracking-[0.3em]">AI Facial Balance Report</p>
       </div>
 
       {/* Portrait Frame */}
-      <div className="relative">
-        <div className="absolute -inset-1 bg-gradient-to-b from-emerald-500/40 to-transparent rounded-full blur-sm" />
-        <div className="w-48 h-48 rounded-full overflow-hidden border-2 border-emerald-500/50 relative z-10 shadow-[0_0_30px_rgba(16,185,129,0.2)]">
+      <div className="relative py-4">
+        <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/20 to-transparent rounded-full blur-xl opacity-50" />
+        <div className="w-44 h-44 rounded-full overflow-hidden border border-white/10 relative z-10 shadow-2xl">
           <img src={image || ''} alt="Analysis" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+          
+          {/* Subtle Vertical Center Line */}
+          <div className="absolute inset-y-0 left-1/2 w-px bg-emerald-500/20 z-20" />
         </div>
-        {/* Scan Line Animation */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-emerald-400/50 shadow-[0_0_15px_rgba(52,211,153,0.5)] z-20 animate-scan-slow rounded-full" />
       </div>
 
-      {/* Score Section */}
-      <div className="flex flex-col items-center gap-4 w-full relative z-10">
-        <div className="flex flex-col items-center">
-          <div className="flex items-baseline gap-1">
-            <span className="text-7xl font-black italic tracking-tighter text-white leading-none font-mono">{result.overallScore}</span>
-            <span className="text-xl font-black text-emerald-500 italic">/100</span>
+      {/* Main Score Area */}
+      <div className="flex flex-col items-center gap-6 w-full relative z-10">
+        <div className="flex flex-col items-center gap-1">
+          <div className="text-4xl font-black italic tracking-tighter text-white uppercase">
+            TOP {result.percentile}%
           </div>
-          <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em] mt-2">Symmetry Balance Score</span>
-        </div>
-
-        <div className="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl font-black text-white italic tracking-tight">TOP {result.percentile}%</span>
-            <div className={cn(
-              "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
-              result.tier?.color.replace('text-', 'bg-').replace('-400', '-500/10'),
-              result.tier?.color.replace('text-', 'border-').replace('-400', '-500/20'),
-              result.tier?.color
-            )}>
-              {result.tier?.label}
-            </div>
-          </div>
-          {/* Curiosity Line */}
-          <p className="text-[11px] font-bold text-emerald-400/90 uppercase tracking-widest">
+          <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
             Better than {100 - (result.percentile || 0)}% of people
           </p>
         </div>
 
-        {/* Insight Line */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-4 w-full mt-2">
-          <p className="text-[12px] font-bold text-white/90 text-center leading-tight">
-            {result.primaryImbalance.split('\n')[0]}
+        <div className="flex flex-col items-center bg-white/5 border border-white/10 rounded-3xl px-8 py-4 w-full">
+          <span className="text-[9px] font-black text-white/30 uppercase tracking-[0.3em] mb-1">Balance Score</span>
+          <div className="flex items-baseline gap-1">
+            <span className="text-5xl font-black italic tracking-tighter text-white leading-none font-mono">{result.overallScore}</span>
+            <span className="text-lg font-black text-emerald-500 italic">/100</span>
+          </div>
+        </div>
+
+        {/* Curiosity Line */}
+        <div className="flex flex-col items-center gap-1">
+          <span className="text-[8px] font-black text-white/20 uppercase tracking-widest">Primary Insight</span>
+          <p className="text-[11px] font-bold text-white/80 text-center leading-tight max-w-[240px]">
+            Main imbalance: {result.primaryImbalance.split('\n')[0].replace('Recommended Focus Area: ', '')}
           </p>
         </div>
       </div>
 
-      {/* Footer CTA */}
-      <div className="mt-4 flex flex-col items-center gap-2">
-        <p className="text-[11px] font-black text-emerald-500 uppercase tracking-[0.15em]">Check your face symmetry</p>
+      {/* Bottom CTA */}
+      <div className="mt-4 flex flex-col items-center gap-2 relative z-10">
+        <div className="px-4 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+          <p className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.15em]">Check your face symmetry</p>
+        </div>
         <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.2em]">facesymmetrypro.app</p>
       </div>
     </div>

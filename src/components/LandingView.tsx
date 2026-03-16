@@ -27,9 +27,8 @@ interface LandingViewProps {
   imageDimensions?: { width: number; height: number };
   scanningLandmarks?: any[] | null;
   error?: string | null;
-  engineStatus?: 'idle' | 'loading' | 'ready' | 'failed';
+  engineStatus?: 'idle' | 'loading' | 'ready' | 'failed' | 'failed-temporary';
   onUnlock?: () => void;
-  debugLogs?: string[];
 }
 
 export const LandingView: React.FC<LandingViewProps> = ({
@@ -54,8 +53,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   scanningLandmarks = null,
   error = null,
   engineStatus = 'idle',
-  onUnlock,
-  debugLogs = []
+  onUnlock
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPaywall, setShowPaywall] = React.useState(false);
@@ -96,6 +94,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <div className="p-6 min-h-[400px] flex flex-col justify-center">
             <UnlockAnalysis onUnlock={handleUnlock} />
             <button 
+              type="button"
               onClick={() => setShowPaywall(false)}
               className="mt-4 text-white/40 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors"
             >
@@ -154,21 +153,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
               muted
               className="w-full h-full object-cover scale-x-[-1]"
             />
-            
-            {/* Debug Logs Overlay */}
-            <div className="absolute top-4 left-4 z-50 pointer-events-none">
-              {debugLogs.map((log, i) => (
-                <div key={i} className="text-[10px] font-mono text-emerald-400 bg-black/50 px-2 py-0.5 rounded mb-1">
-                  {log}
-                </div>
-              ))}
-            </div>
-
-            {/* Fallback Message if video is black */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-              <p className="text-white/20 text-[10px] uppercase tracking-[0.3em] font-bold">Live Preview Active</p>
-            </div>
-
             <canvas ref={canvasRef} className="hidden" />
             
             {/* Face Guide Overlay */}
@@ -231,12 +215,14 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
             <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-4 px-6">
               <button 
+                type="button"
                 onClick={stopCamera}
                 className="bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-xl font-medium hover:bg-white/30 transition-all"
               >
                 Cancel
               </button>
               <button 
+                type="button"
                 onClick={capturePhoto}
                 className="bg-emerald-500 text-white px-8 py-3 rounded-xl font-medium shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95 flex items-center gap-2"
               >
