@@ -487,10 +487,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   setIsUnlocked(true);
                   setReportStep(1);
                 }}
-                className="flex-[2] bg-[#3BFF9C] hover:bg-[#2ee68a] text-black font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(59,255,156,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
+                className="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
               >
-                <Lock size={14} />
-                Unlock Full Analysis
+                Next Step
+                <Sparkles size={14} />
               </button>
             ) : reportStep < steps.length - 1 ? (
               <button
