@@ -56,6 +56,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
   isExporting,
   exportSuccess
 }) => {
+  const imageRef = React.useRef<HTMLImageElement>(null);
   const steps = [
     { id: 0, label: 'Analysis' },
     { id: 1, label: 'Twins' },
@@ -163,7 +164,13 @@ export const ReportView: React.FC<ReportViewProps> = ({
                           transform: autoCorrectEnabled ? `translateX(${centerOffset}%) rotate(${rotationAngle}deg) scale(1.2)` : `scale(1.0)`
                         }}
                       >
-                        <img src={image || ''} alt="Analysis" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        <img 
+                          ref={imageRef}
+                          src={image || ''} 
+                          alt="Analysis" 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer" 
+                        />
                         
                         <div className={cn(
                           "absolute inset-0 pointer-events-none transition-opacity duration-500",
@@ -172,8 +179,9 @@ export const ReportView: React.FC<ReportViewProps> = ({
                           {result.rawLandmarks && (
                             <FaceMeshCanvas 
                               landmarks={result.rawLandmarks} 
-                              width={imageDimensions.width} 
-                              height={imageDimensions.height} 
+                              imageRef={imageRef}
+                              rawWidth={imageDimensions.width}
+                              rawHeight={imageDimensions.height}
                             />
                           )}
                           {result.asymmetryZones?.map((zone, i) => (
