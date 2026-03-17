@@ -1,0 +1,600 @@
+{
+  "common": {
+    "appName": "Face Symmetry Pro",
+    "aiAnalysis": "AI面部分析",
+    "reset": "重置",
+    "cancel": "取消",
+    "back": "返回",
+    "nextStep": "下一步",
+    "startNew": "开始新分析",
+    "retake": "重新拍摄 / 上传另一张",
+    "save": "保存",
+    "share": "分享",
+    "copy": "复制",
+    "loading": "加载中...",
+    "preparing": "AI模型准备中...",
+    "privacyFirst": "隐私至上",
+    "gotIt": "确认",
+    "generating": "生成中..."
+  },
+  "landing": {
+    "title": "Face Symmetry Pro",
+    "subtitle": "AI面部平衡分析",
+    "cameraStart": "开始相机",
+    "uploadPhoto": "上传照片",
+    "guideText": "将脸部对准引导框",
+    "alignment": "对齐",
+    "lighting": "光照",
+    "capture": "拍摄",
+    "analyzing": "分析中...",
+    "onDeviceAi": "100% 本地AI分析",
+    "backToHome": "返回主页",
+    "systemError": "系统错误"
+  },
+  "report": {
+    "title": "分析报告",
+    "liveAi": "实时AI",
+    "assessment": "面部对称性与平衡评估",
+    "overallScore": "整体平衡分数",
+    "globalDatabase": "全球数据库",
+    "topPercentile": "前 {{percentile}}%",
+    "summaryTitle": "AI分析摘要",
+    "visualAnalysis": "视觉网格分析",
+    "midline": "中线",
+    "asymmetry": "不对称",
+    "symmetryTwins": "对称双生分析",
+    "original": "原始",
+    "leftSymmetry": "左对称",
+    "rightSymmetry": "右对称",
+    "symmetryStrength": "对称强度",
+    "advancedMetrics": "详细指标",
+    "faceShape": "脸型",
+    "potential": "改善潜力",
+    "balancedSimulation": "平衡面部模拟",
+    "balancedSimulationDesc": "这是AI分析的理想平衡状态的模拟结果。在保持自然个性的同时，对对称性进行了微调。",
+    "generatingSimulation": "模拟生成中...",
+    "careGuide": "个性化护理指南",
+    "focusArea": "建议重点关注区域",
+    "habitAdvice": "日常习惯建议",
+    "saveCard": "保存卡片",
+    "saved": "已保存",
+    "shareToApps": "分享到应用",
+    "copyLink": "复制分析链接",
+    "steps": {
+      "analysis": "分析",
+      "twins": "双生",
+      "metrics": "指标",
+      "care": "护理"
+    }
+  },
+  "history": {
+    "title": "面部分数历史",
+    "noHistory": "尚无历史记录",
+    "lastScan": "最近扫描",
+    "completeAnother": "完成另一次扫描以开始跟踪您的面部平衡历史。",
+    "trend": "趋势",
+    "improvement": "改善",
+    "scan": "扫描"
+  },
+  "challenge": {
+    "title": "每周面部平衡挑战",
+    "scansThisWeek": "本周扫描次数",
+    "goal": "目标：3次扫描",
+    "completed": "挑战完成 🎉",
+    "completedDesc": "挑战完成！本周面部平衡跟踪得很好。",
+    "keepGoing": "继续努力以获得更好的跟踪！",
+    "progress": "进度",
+    "scansCompleted": "{{count}} / 3次扫描已完成",
+    "moreScans": "本周挑战还需完成{{count}}次扫描。",
+    "nextScan": "建议几天后进行下一次扫描。",
+    "desc": "本周完成3次扫描，以跟踪您的面部平衡如何变化。"
+  },
+  "tips": {
+    "title": "AI改善建议",
+    "loading": "生成建议中...",
+    "focusArea": "重点关注区域",
+    "rescan": "几天后重新扫描以跟踪变化",
+    "mapping": {
+      "eyes": {
+        "label": "眼部对称性",
+        "tip": "眼部平衡可能会受到睡眠质量和屏幕时间的影响。尝试保持规律的睡眠时间，并定期休息，远离数字设备。"
+      },
+      "brows": {
+        "label": "眉部平衡",
+        "tip": "眉部对称性通常受到面部表情和肌肉紧张的影响。温和的面部放松练习有助于保持平衡的眉线。"
+      },
+      "mouth": {
+        "label": "唇部平衡",
+        "tip": "唇部对称性可能与牙齿习惯和说话模式有关。练习平衡的面部表情并保持良好的口腔姿势。"
+      },
+      "jawline": {
+        "label": "下颌对齐",
+        "tip": "下颌平衡可能会受到姿势和咀嚼习惯的影响。尝试保持头部对齐，避免主要用一侧咀嚼。"
+      }
+    }
+  },
+  "progress": {
+    "title": "进度跟踪",
+    "baselineRecorded": "您的面部基准已记录。",
+    "baselineDesc": "几天后完成另一次扫描，看看您的面部平衡随时间的变化。",
+    "info": "姿势、光照和肌肉紧张的细微变化可能会影响结果。每隔几天扫描一次效果最佳。",
+    "previousScan": "前次扫描",
+    "currentScan": "本次扫描",
+    "scoreChange": "分数变化",
+    "improvement": "改善",
+    "feedback": {
+      "noticeable": "自上次扫描以来，您的面部平衡有了明显的改善。",
+      "slight": "自上次扫描以来，您的面部平衡略有变化。",
+      "similar": "您的面部平衡与上次扫描相似。"
+    },
+    "tryAgain": "本周晚些时候再次扫描以继续跟踪您的进度。"
+  },
+  "share": {
+    "title": "我的面部对称性分析",
+    "text": "看看我的面部平衡分数！在 facesymmetrypro.app 分析您的分数。"
+  },
+  "shareCard": {
+    "title": "面部对称性",
+    "subtitle": "AI生体分析报告",
+    "testHeadline": "AI面部对称性测试",
+    "top": "前 {{percentile}}%",
+    "betterThan": "优于 {{percent}}% 的人",
+    "balanceScore": "平衡分数",
+    "mainImbalance": "主要不对称",
+    "curiosity": "您的脸部有多对称？",
+    "cta": "检查您的面部对称性",
+    "checkSymmetry": "检查您的面部对称性",
+    "biometricAnalysis": "AI 生物识别分析",
+    "leftSymmetry": "左侧对称性",
+    "rightSymmetry": "右侧对称性",
+    "twinComparison": "对称双生比较",
+    "left": "左",
+    "right": "右",
+    "score": "分数",
+    "rank": "排名",
+    "resultText": "根据对称性分析，您的面部平衡美感处于前 {{percentile}}%。"
+  },
+  "errors": {
+    "cameraFail": "无法访问相机。请检查权限。",
+    "modelFail": "AI模型加载失败。请刷新。",
+    "noFace": "未检测到脸部。请在光线更好的情况下重试。",
+    "generic": "出错了。请重试。",
+    "limitReached": "已达到分析限制。请解锁以继续。",
+    "initFailed": "无法初始化面部识别引擎。请刷新页面或稍后重试。",
+    "modelNotReady": "面部检测模型尚未就绪。",
+    "invalidDimensions": "图像尺寸无效。",
+    "canvasContext": "无法创建画布上下文。",
+    "timeout": "面部分析耗时过长。请重试。",
+    "sendFailed": "无法将图像发送到 AI 模型。",
+    "loadFailed": "无法加载用于分析的图像。",
+    "renderFailed": "无法渲染分析帧。",
+    "analysisFailed": "此图像的面部分析失败。请尝试另一张照片。",
+    "initTimeout": "AI 引擎初始化超时。请重试。",
+    "browserNotSupported": "此浏览器不支持相机功能或需要安全连接 (HTTPS)。",
+    "cameraStartFailed": "无法启动相机。",
+    "cameraPermissionDenied": "相机权限被拒绝。请在浏览器设置中允许访问。",
+    "cameraNotFound": "未找到相机。",
+    "invalidLandmarks": "提供的特征点无效。"
+  },
+  "privacy": {
+    "modalTitle": "隐私至上",
+    "p1": "您的隐私是我们的首要任务。所有面部分析都在您的浏览器中本地处理。",
+    "p2": "用于分析的图像不会发送到或存储在任何服务器上，并在您刷新页面时立即删除。",
+    "note": "AI分析结果仅供参考，不能替代医学诊断。",
+    "onDevice": "本地处理：照片永远不会离开您的设备。",
+    "viewPolicy": "查看隐私政策与数据安全"
+  },
+  "privacyPage": {
+    "title": "隐私政策",
+    "heroTitle": "隐私至上架构",
+    "heroDesc": "Face Symmetry Pro 的设计严格遵循隐私至上的原则。我们相信您的生物识别数据仅属于您自己。我们的应用程序旨在完全在您的设备上运行，无需将您的照片上传到服务器。",
+    "noUploads": "无服务器上传",
+    "noUploadsDesc": "您的照片在您的浏览器/应用程序内存中本地处理。它们永远不会传输到我们的服务器或任何第三方云端。",
+    "noStorage": "无数据存储",
+    "noStorageDesc": "我们不存储您的照片。一旦您关闭应用程序或重置分析，处理后的图像数据将从内存中清除。",
+    "noAccounts": "无需帐户",
+    "noAccountsDesc": "您无需创建帐户即可使用 Face Symmetry Pro。我们不收集您的姓名、电子邮件或任何个人标识符。",
+    "onDeviceAi": "设备端 AI",
+    "onDeviceAiDesc": "面部关键点检测和对称性分析是使用设备端机器学习模型 (MediaPipe) 执行的。",
+    "section1Title": "1. 我们收集的信息",
+    "section1Desc": "Face Symmetry Pro **不收集、存储或共享**任何个人信息或生物识别数据。该应用程序仅为了执行您请求的分析而需要访问您的摄像头或照片库。此访问由系统的标准照片选择器或摄像头界面处理。",
+    "section2Title": "2. 我们如何使用信息",
+    "section2Desc": "您提供的任何照片仅在分析会话期间**使用**。从您的面部提取的数学关键点用于计算对称性分数，并在之后立即丢弃。",
+    "section3Title": "3. 第三方服务",
+    "section3Desc": "我们使用 Google 的 MediaPipe 进行设备端面部识别。该库在本地运行，在此应用程序的分析过程中不会将您的面部数据发送到 Google 服务器。",
+    "section4Title": "4. 非医疗工具",
+    "section4Desc": "Face Symmetry Pro 是一款用于审美和教育目的的**参考分析工具**。它**不是医疗诊断应用程序**。提供的结果基于几何计算，不应用于医疗或手术决策。",
+    "section5Title": "5. 联系我们",
+    "section5Desc": "如果您对我们的隐私做法有任何疑问，请通过 chars9498@gmail.com 与我们联系。",
+    "lastUpdated": "最后更新：2026年3月14日"
+  },
+  "unlock": {
+    "title": "已达到每日限制",
+    "description": "您已使用完每日 2 次免费分析。解锁无限访问权限以继续。",
+    "benefit1": "无限次每日分析",
+    "benefit2": "完整的对称性分析",
+    "benefit3": "对称双胞胎模拟",
+    "button": "解锁 Pro – $2.99"
+  },
+  "shareModal": {
+    "title": "导出结果",
+    "subtitle": "选择您想要分享的方式",
+    "saveImage": "保存图片",
+    "saveImageDesc": "将结果卡保存到您的相册",
+    "shareApp": "分享到其他应用",
+    "shareAppDesc": "通过微信、朋友圈等分享",
+    "copyLink": "复制链接",
+    "copyLinkDesc": "将应用链接复制到剪贴板",
+    "cancel": "取消"
+  },
+  "howItWorks": {
+    "title": "AI面部对称性分析的工作原理",
+    "subtitle": "平衡背后的技术",
+    "whatIsTitle": "什么是面部对称性？",
+    "whatIsDesc": "面部对称性是衡量面部两半相互相似程度的指标。虽然没有人的脸是完全对称的，但研究人员长期以来一直在研究面部平衡与感知吸引力、健康和遗传多样性之间的关系。我们的工具使用先进的计算机视觉来量化这些细微的差异，为您提供详细的面部结构图。",
+    "step1Title": "1. AI关键点检测",
+    "step1Desc": "该过程始于我们的 AI 引擎，它使用名为 MediaPipe Face Mesh 的深度学习模型。该模型实时检测超过 468 个 3D 面部关键点。这些关键点是您脸上的特定点，例如眼角、鼻梁和下颌线的轮廓。",
+    "step1Note": "我们的 AI 以亚像素精度映射这些点，创建一个代表您独特面部几何形状的高分辨率网格。该网格被用作所有后续计算的基础。",
+    "step2Title": "2. 计算平衡分",
+    "step2Desc": "一旦检测到关键点，我们的算法就会计算您脸部的“中线”。这是理论上将您的脸分成相等的两半的垂直轴。然后，我们测量相应关键点（例如左眼角与右眼角）相对于该中线的距离和角度。",
+    "step2Note": "“整体平衡分”是四个关键区域（眼睛、眉毛、嘴巴和下颌线）对称性的加权平均值。100 分代表数学上的完美对称，而较低的分数则表示不同程度的自然不对称。",
+    "step3Title": "3. 结果可能不同的原因",
+    "step3Desc": "了解面部对称性分析对外部因素高度敏感非常重要。为了获得最准确的结果，您应该考虑以下几点：",
+    "lighting": "光照",
+    "lightingDesc": "不均匀的阴影会使脸的一侧在 AI 看来有所不同。",
+    "angle": "角度",
+    "angleDesc": "即使是头部的轻微倾斜也会显著影响对称性分数。",
+    "expression": "表情",
+    "expressionDesc": "微笑或眨眼自然会在关键点中产生不对称。",
+    "distance": "距离",
+    "distanceDesc": "离摄像头太近或太远都会影响透视。",
+    "step4Title": "4. 本地浏览器处理",
+    "step4PrivacyTitle": "隐私至上架构",
+    "step4PrivacyDesc": "我们技术最关键的部分在于它的运行位置。所有的 AI 模型和数学计算都在您的浏览器中使用您的设备硬件直接执行。您的摄像头馈送和照片永远不会上传到服务器。这确保了您的生物识别数据始终保持私密和安全。",
+    "footerNote": "Face Symmetry Pro 是一款旨在帮助您了解面部结构的教育和娱乐工具。提供的结果基于 2D 图像的数学分析，不应用于医疗或诊断目的。"
+  },
+  "guide": {
+    "title": "面部对称性指南",
+    "subtitle": "了解面部平衡与对称性",
+    "whatIsTitle": "什么是面部对称性？",
+    "whatIsDesc": "面部对称性是衡量面部两半相互相似程度的指标。虽然没有人的脸是完全对称的，但研究人员长期以来一直在研究面部平衡与感知吸引力、健康和遗传多样性之间的关系。我们的工具使用先进的计算机视觉来量化这些细微的差异，为您提供详细的面部结构图。",
+    "curiosityTitle": "1. 为什么人们对对称性感到好奇",
+    "curiosityDesc": "人类天生会被对称性所吸引。在自然界中，对称性通常预示着健康和遗传适应性。在艺术和建筑中，它创造了一种和谐与平衡感。说到人脸，对称性通常与感知的美丽和吸引力联系在一起。然而，重要的是要记住，不对称才是让每张脸都独一无二且充满个性的原因。",
+    "curiosityNote": "许多人使用对称性分析来更好地了解自己的特征，无论是为了修容、化妆，还是仅仅出于对自己面部几何形状的好奇。",
+    "mythsTitle": "2. 常见误区 vs. 现实",
+    "mythsDesc": "关于面部对称性有很多误解。让我们澄清一些最常见的误区：",
+    "myth1": "误区：完美对称是正常的",
+    "myth1Desc": "现实：几乎每个人都有一定程度的不对称。这是人类生物学的自然组成部分。",
+    "myth2": "误区：不对称意味着健康状况不佳",
+    "myth2Desc": "现实：虽然极端的不对称有时可能是健康问题的征兆，但轻微的不对称是完全正常的。",
+    "myth3": "误区：对称是美丽的唯一关键",
+    "myth3Desc": "现实：美是主观且多方面的。许多著名且有吸引力的人都有明显的不对称。",
+    "myth4": "误区：对称性无法改变",
+    "myth4Desc": "现实：姿势、牙科工作甚至睡眠习惯等因素都会随着时间的推移影响面部平衡。",
+    "tipsTitle": "3. 获得更好扫描效果的实用技巧",
+    "tipsDesc": "为了从我们的 AI 分析中获得最准确和一致的结果，请遵循以下实用技巧：",
+    "tip1Title": "保持良好的姿势",
+    "tip1Desc": "保持头部水平并直视摄像头。避免倾斜或转动头部。",
+    "tip2Title": "使用均匀的光照",
+    "tip2Desc": "确保您的脸部从正面均匀受光。避免产生阴影的强烈侧光。",
+    "tip3Title": "保持中立的表情",
+    "tip3Desc": "尽量保持面部放松和中立。微笑或眯眼会自然地引入人为的不对称。",
+    "tip4Title": "保持一致性",
+    "tip4Desc": "为了获得最佳结果，请尝试每次在相同的环境和光照下进行扫描。",
+    "uniqueTitle": "4. 拥抱您独特的平衡",
+    "characterTitle": "个性重于完美",
+    "characterDesc": "虽然探索面部对称性很有趣，但请记住，您独特的特征才是成就您的原因。不对称往往是赋予面部个性、魅力和性格的因素。将此工具作为一种更多了解您面部结构的方式，但不要让它定义您的自我价值感或美感。",
+    "footerNote": "Face Symmetry Pro 是一款旨在帮助您了解面部结构的教育和娱乐工具。提供的结果基于 2D 图像的数学分析，不应用于医疗或诊断目的。"
+  },
+  "footer": {
+    "resources": "资源",
+    "privacyPolicy": "隐私政策",
+    "howItWorks": "工作原理",
+    "guide": "面部对称性指南",
+    "connect": "连接",
+    "rights": "© 2026 Face Symmetry Pro. All rights reserved.",
+    "home": "主页",
+    "privacy": "隐私",
+    "technology": "技术"
+  },
+  "analysis": {
+    "summaries": {
+      "high": "接近黄金比例的理想对称结构",
+      "high2": "面部骨骼排列非常优秀的案例",
+      "high3": "平衡美感突出的高完成度面容",
+      "mid": "整体具有和谐对称性的面部",
+      "mid2": "细微的不对称升华为魅力的结构",
+      "mid3": "维持着稳定的骨骼排列状态",
+      "low": "个性化的不对称达成和谐的面容",
+      "low2": "观察到特定部位肌肉不平衡的结构",
+      "low3": "存在需要矫正的不对称要素的状态"
+    },
+    "faceShapes": {
+      "oblong": "长脸型",
+      "square": "方脸型",
+      "round": "圆脸型",
+      "heart": "心形脸",
+      "oval": "鹅蛋脸"
+    },
+    "features": {
+      "eyeSpacing": "理想的眼间距",
+      "jawline": "立体且清晰的轮廓",
+      "proportions": "迷人的面部比例"
+    },
+    "metrics": {
+      "eyeSpacing": {
+        "good": "平衡良好",
+        "goodDesc": "双眼间距与眼宽比例相近，显示出稳定的面部平衡。",
+        "narrow": "间距较窄",
+        "narrowDesc": "双眼间距相对于眼宽显得略窄。",
+        "wide": "间距较宽",
+        "wideDesc": "双眼间距相对于眼宽显得略宽。"
+      },
+      "proportion": {
+        "ideal": "理想比例",
+        "idealDesc": "面部纵向比例接近 1:1:1，构成了非常稳定的和谐感。",
+        "longMid": "中庭较长",
+        "longMidDesc": "中庭比例相对于其他部位显得略长。",
+        "longLower": "下庭较长",
+        "longLowerDesc": "下庭比例相对于其他部位显得略长。",
+        "longUpper": "上庭较长",
+        "longUpperDesc": "上庭比例相对于其他部位显得略长。"
+      },
+      "faceRatio": {
+        "balanced": "平衡范围",
+        "balancedDesc": "面部宽高比处于相对平衡的范围内。",
+        "slim": "苗条比例",
+        "slimDesc": "面部呈现苗条比例，纵向长度相对于宽度较长。",
+        "wide": "宽阔比例",
+        "wideDesc": "面部宽度相对于纵向长度显得较宽。"
+      }
+    },
+    "summary": {
+      "low": "{{area}} 的对称性目前低于其他区域。通过针对该区域的集中护理，您可能会看到整体平衡的显著改善。",
+      "mid": "您整体上具有良好的对称性，但在 {{area}} 区域有轻微偏差。通过微调，您可以实现更好的平衡。",
+      "high": "太棒了！您的面部对称性在所有测量区域都高度平衡。请保持目前的健康习惯。"
+    },
+    "feedback": {
+      "status": {
+        "excellent": "平衡非常优秀",
+        "good": "平衡良好",
+        "slight": "轻微不对称",
+        "noticeable": "不对称明显",
+        "analyzed": "分析完成"
+      },
+      "eyes": {
+        "excellent": "左右眼高度和间距非常稳定，维持了良好的上庭平衡。",
+        "good": "左右眼位置整体平衡，眼周结构显得比较稳定。",
+        "slight": "左右眼高度存在细微差异，上庭平衡可能并非完全一致。",
+        "noticeable": "双眼高度或倾斜度存在明显差异，上庭左右平衡显得不同。"
+      },
+      "brows": {
+        "excellent": "双眉高度和曲线排列稳定，维持了非常自然的上庭平衡。",
+        "good": "左右眉高度整体平衡，表情肌的使用显得比较稳定。",
+        "slight": "左右眉高度存在细微差异，做表情时上庭平衡可能显得略有不同。",
+        "noticeable": "眉毛高度或角度存在明显差异，上庭左右平衡显得不同。"
+      },
+      "mouth": {
+        "excellent": "嘴角高度和嘴角周围肌肉平衡稳定，下庭和谐自然。",
+        "good": "嘴角高度整体平衡，表情肌运动显得比较稳定。",
+        "slight": "左右嘴角高度存在细微差异，表情肌使用模式可能略有不同。",
+        "noticeable": "嘴角位置或唇线倾斜度存在明显差异，下庭平衡显得不同。"
+      },
+      "jaw": {
+        "excellent": "下颌线左右体积和轮廓维持稳定，呈现出非常自然的下庭平衡。",
+        "good": "下颌线左右平衡显得比较稳定，下庭结构自然排列。",
+        "slight": "下颌线左右体积或角度存在细微差异，下庭平衡可能显得略有不同。",
+        "noticeable": "下颌线左右轮廓差异明显，可能使下庭不对称感更加突出。"
+      }
+    },
+    "dynamic": {
+      "overall": {
+        "excellent": "整体面部平衡非常稳定，呈现出和谐的结构。",
+        "good": "整体面部平衡处于稳定范围内。",
+        "fair": "整体面部平衡比较稳定，但在部分区域可能观察到差异。",
+        "noticeable": "面部部分区域的左右平衡差异可能显得比较明显。",
+        "multiple": "在多个区域观察到左右平衡差异。"
+      },
+      "deviation": {
+        "slight": "细微差异",
+        "minor": "轻微偏差",
+        "noticeable": "较大偏差",
+        "significant": "明显偏差"
+      },
+      "observation": "在 {{area}}（{{detail}}）观察到 {{desc}}。",
+      "influence": "这些差异可能受到表情习惯、肌肉使用模式或姿势因素的影响。",
+      "insight": {
+        "andDetail": " 和 {{detail}}",
+        "imbalance": "在面部 {{area}} 区域观察到最大的左右平衡差异。\n在 {{detail}} 部位发现了相对较高的偏差。\n这种差异可能是由于表情习惯或肌肉使用模式造成的。",
+        "stable": "观察到整体面部对称性处于非常稳定的状态。\n所有测量部位都维持着和谐的平衡，状态优秀。\n请保持目前的生活习惯，并定期检查状态。"
+      }
+    },
+    "care": {
+      "title": "#### 🎯 优先推荐管理",
+      "secondaryTitle": "\n#### 🧘 辅助习惯管理",
+      "tips": {
+        "eyes": "**眼轮匝肌 (Orbicularis Oculi)** 包围着眼睛，负责表情。\n用指尖轻轻按压眼角周围进行按摩会有所帮助。",
+        "brows": "**额肌 (Frontalis)** 覆盖额头，调节眉毛高低。\n从额头中央向太阳穴方向轻轻推拿按摩效果较好。",
+        "mouth": "**提口角肌 (Levator Anguli Oris)** 负责提升嘴角。\n对着镜子练习对称提升双侧嘴角的微笑会有所帮助。",
+        "jaw": "**咬肌 (Masseter)** 主导下颌运动并形成下部轮廓。\n轻轻按压并放松耳下下颌肌肉部位有助于提升对称性。"
+      },
+      "general": [
+        "**胸锁乳突肌 (SCM)** 负责颈部排列并参与面部对称。\n左右缓慢拉伸颈部以缓解紧张感有助于平衡。",
+        "**健康生活习惯**: 避免只用一侧咀嚼或托腮。\n保持正确的姿势有助于长期维持面部对称。"
+      ],
+      "maintain": "建议进行整体面部拉伸，以维持目前优秀的平衡状态。",
+      "professional": "面部平衡会随着生活习惯和肌肉使用模式自然变化。本报告仅供审美参考，如果您希望进行更系统的平衡管理，建议咨询面部运动专家或相关治疗师。"
+    },
+    "angel": {
+      "1": "观察到面部左右两侧存在自然细微的差异。\n这些差异是大多数人都会出现的特征，可以为面部印象增添立体感。\n本分析仅供参考，自然的平衡可以使面部印象看起来更加和谐。",
+      "2": "面部分析结果显示，左右平衡存在自然的细微偏差。\n这些差异形成了每个人的独特印象，并达成了自然的和谐。\n比起人为的对称，和谐的平衡更能凸显您独特的魅力。",
+      "3": "测得的不对称数值处于日常范围内，维持着和谐的印象。\n细微的差异被分析为增加表情生动感的自然要素。\n请仅将此结果作为审美参考资料使用。",
+      "4": "整体面部排列被分析为维持着稳定的状态。\n观察到的细微左右差异出现在面部肌肉的自然发育过程中。\n平衡的印象是完成整个面部和谐的关键要素之一。"
+    },
+    "potential": {
+      "high": "您已经维持着非常高水平的对称性。通过细微的肌肉紧张缓解，可以维持近乎完美的平衡。",
+      "mid": "保持持续的管理习惯可能会使您的面部平衡分数略有提高。",
+      "low": "如果纠正肌肉使用不平衡并配合集中护理，对称性大幅提升的可能性很高。"
+    },
+    "tiers": {
+      "elite": "精英 (Elite)",
+      "excellent": "优秀 (Excellent)",
+      "balanced": "平衡 (Balanced)",
+      "average": "普通 (Average)"
+    },
+    "areas": {
+      "eyes": "眼睛",
+      "brows": "眉毛",
+      "mouth": "嘴部",
+      "jaw": "下颌",
+      "jawline": "下颌线",
+      "overall": "整体",
+      "eyeArea": "眼周",
+      "browArea": "眉线",
+      "mouthArea": "嘴周",
+      "jawArea": "面部下部"
+    },
+    "labels": {
+      "eyeAsymmetry": "眼睛不对称",
+      "browAsymmetry": "眉毛不对称",
+      "oralAsymmetry": "嘴角不对称",
+      "jawAsymmetry": "下颌线不对称"
+    },
+    "steps": {
+      "initializing": "正在初始化 AI...",
+      "initializingEngine": "正在初始化 AI 引擎...",
+      "detecting": "正在检测面部特征点...",
+      "calculating": "正在计算对称指标...",
+      "generating": "正在生成报告...",
+      "analyzingFeatures": "正在分析面部特征...",
+      "calculatingScore": "正在计算平衡分数...",
+      "generatingPersonalized": "正在生成个性化报告...",
+      "enhancing": "正在优化图像质量...",
+      "retrying": "无法检测到特征点。正在重试..."
+    },
+    "details": {
+      "eyeHeight": "左右眼高度",
+      "browSlant": "眉毛倾斜度",
+      "mouthPos": "嘴角位置",
+      "jawSym": "下颌线对称性"
+    },
+    "advanced": {
+      "eyeSpacing": {
+        "good": "平衡良好",
+        "goodFeedback": "双眼间距与眼宽比例相似，显示出稳定的面部平衡。",
+        "narrow": "间距较窄",
+        "narrowFeedback": "与眼宽相比，双眼间距显得略窄。",
+        "wide": "间距较宽",
+        "wideFeedback": "与眼宽相比，双眼间距显得略宽。"
+      },
+      "proportion": {
+        "ideal": "理想比例",
+        "idealFeedback": "面部垂直比例接近 1:1:1，达到了非常稳定的和谐。",
+        "longMid": "中庭较长",
+        "longMidFeedback": "与其他区域相比，中庭比例显得略长。",
+        "longLower": "下庭较长",
+        "longLowerFeedback": "与其他区域相比，下庭比例显得略长。",
+        "longUpper": "上庭较长",
+        "longUpperFeedback": "与其他区域相比，上庭比例显得略长。"
+      },
+      "ratio": {
+        "balanced": "平衡范围",
+        "balancedFeedback": "您的面部宽高比处于相对平衡的范围。",
+        "slim": "苗条比例",
+        "slimFeedback": "您的面部呈现出苗条的比例，与宽度相比，垂直方向更长。",
+        "wide": "宽阔比例",
+        "wideFeedback": "与垂直长度相比，面部的水平宽度相对较宽。"
+      }
+    },
+    "fact": {
+      "excellent": "精密分析结果显示，您的面部对称指数处于非常高的水平。骨骼排列和软组织分布和谐，仅维持目前的生活习惯似乎就已足够。",
+      "ideal": "目前测得的数值显示出非常理想的平衡状态。这是面部可能呈现的最和谐的状态之一，细微的差异似乎是由于肌肉实时运动产生的自然现象。",
+      "observation": "分析结果显示，面部的水平排列和下颌角平衡存在一些差异。这似乎是由于 {{recommendation}} {{severity}} 造成的。",
+      "recommendation": {
+        "professional": "专业护理可能有所帮助的",
+        "homecare": "通过持续的居家护理和习惯纠正可以充分改善的"
+      },
+      "severity": {
+        "tension": "肌肉强力紧张和排列差异",
+        "softTissue": "软组织的不对称发育"
+      }
+    }
+  },
+  "quality": {
+    "good": "良好",
+    "fair": "一般",
+    "poor": "较差",
+    "lowlight": "低光照",
+    "overexposed": "曝光过度",
+    "uneven": "不均匀",
+    "high": "高",
+    "medium": "中",
+    "low": "低"
+  },
+  "report": {
+    "title": "分析报告",
+    "subtitle": "AI 生物识别评估",
+    "liveAi": "实时 AI",
+    "assessment": "AI 生物识别评估",
+    "overallScore": "整体平衡分数",
+    "topPercentile": "前 {{percentile}}%",
+    "globalDatabase": "全球数据库对比",
+    "summaryTitle": "AI 分析摘要",
+    "visualAnalysis": "视觉分析",
+    "midline": "中线",
+    "asymmetry": "不对称",
+    "symmetryTwins": "对称双生",
+    "original": "原始",
+    "leftSymmetry": "左侧对称性",
+    "rightSymmetry": "右侧对称性",
+    "symmetryStrength": "对称强度",
+    "advancedMetrics": "精密测量指标",
+    "faceShape": "脸型",
+    "potential": "改善潜力",
+    "balancedSimulation": "平衡模拟",
+    "generatingSimulation": "模拟生成中...",
+    "balancedSimulationDesc": "此模拟显示了当您拥有完美平衡的五官时的样子。请将其作为您护理方案的指南。",
+    "careGuide": "个性化护理指南",
+    "focusArea": "最优先管理部位",
+    "habitAdvice": "居家护理与生活习惯",
+    "saveReport": "保存报告",
+    "saved": "已保存！",
+    "saveCard": "保存结果卡",
+    "shareReport": "分享报告",
+    "shareToApps": "分享到应用",
+    "copyLink": "复制链接",
+    "backToHome": "返回主页",
+    "scanAgain": "重新扫描",
+    "nextStep": "下一步",
+    "prevStep": "上一步",
+    "steps": {
+      "analysis": "分析",
+      "twins": "双生",
+      "metrics": "指标",
+      "care": "护理"
+    }
+  },
+  "pages": {
+    "privacy": {
+      "title": "隐私政策",
+      "lastUpdated": "最后更新：2026年3月17日",
+      "zeroStorageTitle": "零服务器存储",
+      "zeroStorageDesc": "Face Symmetry Pro 采用 \"Privacy by Design\"（隐私设计）理念。与将照片上传到远程服务器进行处理的传统面部分析工具不同，我们的应用程序在您的设备上本地执行所有计算。当您授予相机访问权限或上传照片时，图像数据保留在您的浏览器内存中。我们没有存储您图像的后端数据库，也从不通过互联网传输您的生物识别数据。",
+      "noCollectTitle": "1. 我们不收集的信息",
+      "noCollectDesc": "我们相信您的面部是您最私密的数据。因此，我们构建了这个工具，使其在不收集以下任何信息的情况下运行：",
+      "noImages": "无面部图像",
+      "noBiometrics": "无生物识别标识符",
+      "noIdentity": "无个人身份信息",
+      "noAccount": "无账户信息",
+      "localProcessingTitle": "2. 本地处理说明",
+      "localProcessingDesc": "当您使用我们的 AI 分析时，您的浏览器使用名为 WebGL 和 TensorFlow.js 的技术，直接在您的显卡或处理器上运行机器学习模型。这意味着 \"智能\" 发生在您的手机或电脑上，而不是我们的服务器上。一旦您关闭标签页或刷新页面，所有临时图像数据都会从设备的 RAM 中清除。除非您明确选择将结果卡 \"保存\" 或 \"下载\" 到您自己的设备，否则不会持久存储您的面部网格或分析结果。",
+      "analyticsTitle": "3. 分析和 Cookie",
+      "analyticsDesc": "为了改善用户体验并监控应用程序的技术健康状况，我们可能会使用基本的匿名分析（如 Google Analytics）。这些工具收集不可识别的信息，如浏览器类型、设备类别以及最常使用的功能。我们不将跟踪 Cookie 用于广告目的，也不向第三方出售任何数据。我们的目标是构建一个伟大的工具，而不是数据档案。",
+      "thirdPartyTitle": "4. 第三方服务",
+      "thirdPartyDesc": "我们的应用程序使用 MediaPipe 和 TensorFlow.js 库来执行面部关键点检测。这些库从内容分发网络 (CDN) 加载。虽然这些服务可能会记录基本的请求数据（如您的 IP 地址）以提供文件，但它们不会从我们的应用程序接收您的相机流或任何图像数据。",
+      "userControlTitle": "5. 用户控制和同意",
+      "userControlDesc": "通过使用 Face Symmetry Pro，您同意为了对称性分析的目的对您的图像进行本地处理。您可以随时通过浏览器设置撤销相机权限。由于我们不存储任何数据，因此没有可以删除的 \"账户\" 或可以请求的 \"数据\"——您的隐私自然受到应用程序架构的保护。",
+      "footerNote": "如果您对本隐私政策或我们处理您数据的方式有任何疑问，请随时通过我们的官方渠道与我们联系。我们致力于透明度和用户安全。"
+    }
+  }
+}

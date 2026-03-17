@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Trophy, Zap, Sparkles, Lock, Check, CreditCard, Scan, Download, RotateCcw, TrendingUp, Maximize2, BarChart3, Share2 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
@@ -67,13 +68,14 @@ export const ReportView: React.FC<ReportViewProps> = ({
   history,
   weeklyScans
 }) => {
+  const { t } = useTranslation();
   const imageRef = React.useRef<HTMLImageElement>(null);
 
   const steps = [
-    { id: 0, label: 'Analysis' },
-    { id: 1, label: 'Twins' },
-    { id: 2, label: 'Metrics' },
-    { id: 3, label: 'Care' }
+    { id: 0, label: t('report.steps.analysis') },
+    { id: 1, label: t('report.steps.twins') },
+    { id: 2, label: t('report.steps.metrics') },
+    { id: 3, label: t('report.steps.care') }
   ];
 
   return (
@@ -106,12 +108,12 @@ export const ReportView: React.FC<ReportViewProps> = ({
                 {/* Header */}
                 <div className="px-2">
                   <div className="flex items-center justify-between mb-1">
-                    <h2 className="text-2xl font-black italic tracking-tighter uppercase">Analysis Report</h2>
+                    <h2 className="text-2xl font-black italic tracking-tighter uppercase">{t('report.title')}</h2>
                     <div className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
-                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Live AI</span>
+                      <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{t('report.liveAi')}</span>
                     </div>
                   </div>
-                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">Facial Symmetry & Balance Assessment</p>
+                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">{t('report.assessment')}</p>
                 </div>
 
                 {/* Score Section */}
@@ -121,15 +123,15 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     
                     <div className="flex items-center justify-between mb-6 relative">
                       <div className="space-y-1">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">Overall Balance Score</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">{t('report.overallScore')}</h3>
                         <div className="flex items-baseline gap-2">
                           <span className="text-5xl font-black italic tracking-tighter text-white">{result.overallScore}</span>
                           <span className="text-xl font-black text-emerald-400 italic">/100</span>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Top {result.percentile}%</div>
-                        <div className="text-[8px] font-bold text-white/30 uppercase tracking-tighter">Global Database</div>
+                        <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">{t('report.topPercentile', { percentile: result.percentile })}</div>
+                        <div className="text-[8px] font-bold text-white/30 uppercase tracking-tighter">{t('report.globalDatabase')}</div>
                       </div>
                     </div>
 
@@ -145,7 +147,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     <div className="grid grid-cols-4 gap-2">
                       {Object.entries(result.landmarks || {}).map(([key, data]: [string, any]) => (
                         <div key={key} className="bg-white/5 rounded-2xl p-3 border border-white/5 text-center">
-                          <div className="text-[8px] font-black text-white/40 uppercase tracking-tighter mb-1">{key}</div>
+                          <div className="text-[8px] font-black text-white/40 uppercase tracking-tighter mb-1">{t(`analysis.areas.${key}`)}</div>
                           <div className="text-xs font-black text-white italic">{data.score}</div>
                         </div>
                       ))}
@@ -168,7 +170,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   <div className="bg-white/5 rounded-3xl border border-white/10 p-5 shadow-xl backdrop-blur-sm">
                     <div className="flex items-center gap-2 mb-4">
                       <Sparkles size={14} className="text-emerald-400" />
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">AI Analysis Summary</h3>
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">{t('report.summaryTitle')}</h3>
                     </div>
                     <div className="space-y-4">
                       <div className="p-4 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
@@ -190,7 +192,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2">
                         <Scan size={14} className="text-emerald-400" />
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">Visual Mesh Analysis</h3>
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">{t('report.visualAnalysis')}</h3>
                       </div>
                       <div className="flex gap-1">
                         <button type="button" onClick={() => setAutoCorrectEnabled(!autoCorrectEnabled)} className={cn("p-2 rounded-xl transition-all border", autoCorrectEnabled ? "bg-indigo-500/20 border-indigo-500/50 text-indigo-400" : "bg-white/5 border-white/10 text-white/40")}>
@@ -246,11 +248,11 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     <div className="mt-4 flex items-center justify-center gap-4">
                       <div className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-                        <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Midline</span>
+                        <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{t('report.midline')}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                        <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Asymmetry</span>
+                        <span className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{t('report.asymmetry')}</span>
                       </div>
                     </div>
                   </div>
@@ -264,7 +266,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                 <div className="bg-white/5 rounded-3xl border border-white/10 p-5 shadow-xl backdrop-blur-sm">
                   <div className="flex items-center gap-2 mb-4">
                     <Scan size={14} className="text-indigo-400" />
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 font-mono">Symmetry Twin Analysis</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400 font-mono">{t('report.symmetryTwins')}</h3>
                   </div>
                   
                   <div className="space-y-3">
@@ -272,7 +274,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     <div className="relative aspect-[4/5] w-2/3 mx-auto rounded-2xl overflow-hidden border border-white/10 bg-black/20 shadow-lg">
                       <img src={image || ''} alt="Original" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 bg-emerald-500/80 backdrop-blur-sm rounded-full">
-                        <span className="text-[7px] font-black text-black uppercase tracking-widest">Original</span>
+                        <span className="text-[7px] font-black text-black uppercase tracking-widest">{t('report.original')}</span>
                       </div>
                     </div>
 
@@ -286,7 +288,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                             <div className="w-full h-full flex items-center justify-center text-[8px] text-white/20">...</div>
                           )}
                           <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full border border-white/5">
-                            <span className="text-[6px] font-bold text-white/60 uppercase tracking-tighter">Left Symmetry</span>
+                            <span className="text-[6px] font-bold text-white/60 uppercase tracking-tighter">{t('report.leftSymmetry')}</span>
                           </div>
                         </div>
                       </div>
@@ -299,7 +301,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                             <div className="w-full h-full flex items-center justify-center text-[8px] text-white/20">...</div>
                           )}
                           <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-white/10 backdrop-blur-md rounded-full border border-white/5">
-                            <span className="text-[6px] font-bold text-white/60 uppercase tracking-tighter">Right Symmetry</span>
+                            <span className="text-[6px] font-bold text-white/60 uppercase tracking-tighter">{t('report.rightSymmetry')}</span>
                           </div>
                         </div>
                       </div>
@@ -309,7 +311,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   {/* Symmetry Strength Slider */}
                   <div className="mt-5 px-2 space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest">Symmetry Strength</span>
+                      <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest">{t('report.symmetryStrength')}</span>
                       <span className="text-[10px] font-mono font-bold text-indigo-400">{Math.round(symmetryStrength * 100)}%</span>
                     </div>
                     <input 
@@ -337,7 +339,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
                       <BarChart3 size={14} className="text-emerald-400" />
-                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">Advanced Metrics</h3>
+                      <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">{t('report.advancedMetrics')}</h3>
                     </div>
                   </div>
 
@@ -346,11 +348,11 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     <div className="aspect-square w-full max-w-[280px] mx-auto relative">
                       <ResponsiveContainer width="100%" height="100%">
                         <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                          { subject: 'Eyes', A: result.landmarks?.eyes.score || 0, fullMark: 100 },
-                          { subject: 'Brows', A: result.landmarks?.brows.score || 0, fullMark: 100 },
-                          { subject: 'Mouth', A: result.landmarks?.mouth.score || 0, fullMark: 100 },
-                          { subject: 'Jaw', A: result.landmarks?.jawline.score || 0, fullMark: 100 },
-                          { subject: 'Overall', A: result.overallScore, fullMark: 100 },
+                          { subject: t('analysis.areas.eyes'), A: result.landmarks?.eyes.score || 0, fullMark: 100 },
+                          { subject: t('analysis.areas.brows'), A: result.landmarks?.brows.score || 0, fullMark: 100 },
+                          { subject: t('analysis.areas.mouth'), A: result.landmarks?.mouth.score || 0, fullMark: 100 },
+                          { subject: t('analysis.areas.jaw'), A: result.landmarks?.jawline.score || 0, fullMark: 100 },
+                          { subject: t('analysis.areas.overall'), A: result.overallScore, fullMark: 100 },
                         ]}>
                           <PolarGrid stroke="rgba(255,255,255,0.1)" />
                           <PolarAngleAxis dataKey="subject" tick={{ fill: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: 700 }} />
@@ -361,23 +363,23 @@ export const ReportView: React.FC<ReportViewProps> = ({
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="bg-white/5 rounded-2xl p-4 border border-white/5">
-                        <div className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">Face Shape</div>
-                        <div className="text-sm font-black text-white italic">{result.faceShape || "Oval"}</div>
+                        <div className="text-[8px] font-black text-white/40 uppercase tracking-widest mb-1">{t('report.faceShape')}</div>
+                        <div className="text-sm font-black text-white italic">{result.faceShape || t('analysis.faceShapes.oval')}</div>
                       </div>
                       <div className="bg-emerald-500/5 rounded-2xl p-4 border border-emerald-500/10">
-                        <div className="text-[8px] font-black text-emerald-400/60 uppercase tracking-widest mb-1">Potential</div>
+                        <div className="text-[8px] font-black text-emerald-400/60 uppercase tracking-widest mb-1">{t('report.potential')}</div>
                         <div className="text-sm font-black text-emerald-400 italic">{result.improvementPotential?.range}</div>
                       </div>
                     </div>
-
+ 
                     {/* Balanced Face Visualization */}
                     <div className="pt-2 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Sparkles size={14} className="text-emerald-400" />
-                          <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">Balanced Face Simulation</h4>
+                          <h4 className="text-[10px] font-black text-white/40 uppercase tracking-widest font-mono">{t('report.balancedSimulation')}</h4>
                         </div>
-                        <span className="text-[9px] text-emerald-400/60 font-mono font-bold">30% Symmetry</span>
+                        <span className="text-[9px] text-emerald-400/60 font-mono font-bold">30% {t('analysis.labels.symmetry')}</span>
                       </div>
                       <div className="relative aspect-[4/5] w-full rounded-3xl overflow-hidden border border-white/10 bg-black/40 group">
                         {result.balancedImage ? (
@@ -389,12 +391,12 @@ export const ReportView: React.FC<ReportViewProps> = ({
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-white/20 text-[11px]">
-                            Generating simulation...
+                            {t('report.generatingSimulation')}
                           </div>
                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
                           <p className="text-[10px] text-white/80 leading-normal font-medium">
-                            AI가 분석한 이상적인 균형 상태를 시뮬레이션한 결과입니다. 자연스러운 개성을 유지하면서 대칭성을 미세하게 조정하였습니다.
+                            {t('report.balancedSimulationDesc')}
                           </p>
                         </div>
                       </div>
@@ -410,13 +412,13 @@ export const ReportView: React.FC<ReportViewProps> = ({
                 <div className="bg-white/5 rounded-3xl border border-white/10 p-6 shadow-xl backdrop-blur-sm relative overflow-hidden">
                   <div className="flex items-center gap-2 mb-6">
                     <Trophy size={14} className="text-emerald-400" />
-                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">Personalized Care Guide</h3>
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">{t('report.careGuide')}</h3>
                   </div>
 
                   <div className="space-y-6">
                     {/* Primary Imbalance Focus */}
                     <div className="p-5 bg-emerald-500/5 rounded-2xl border border-emerald-500/10">
-                      <div className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-2">Recommended Focus Area</div>
+                      <div className="text-[8px] font-black text-emerald-400 uppercase tracking-widest mb-2">{t('report.focusArea')}</div>
                       <p className="text-sm font-bold text-white leading-relaxed">
                         {result.primaryImbalance}
                       </p>
@@ -426,7 +428,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     <div className="space-y-4">
                       <div className="flex items-center gap-2 px-1">
                         <Check size={12} className="text-emerald-400" />
-                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Daily Habit Advice</span>
+                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t('report.habitAdvice')}</span>
                       </div>
                       <div className="bg-white/5 rounded-2xl p-5 border border-white/5">
                         <div className="prose prose-invert prose-sm max-w-none">
@@ -461,7 +463,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                             <Download size={18} className="group-hover:scale-110 transition-transform" />
                           )}
                           <span className="text-[10px] font-black uppercase tracking-widest">
-                            {exportSuccess ? 'Saved' : 'Save Card'}
+                            {exportSuccess ? t('report.saved') : t('report.saveCard')}
                           </span>
                         </button>
                         <button 
@@ -473,7 +475,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                           className="flex items-center justify-center gap-2 p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl hover:bg-indigo-500/20 transition-all group"
                         >
                           <Share2 size={18} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-                          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Share to Apps</span>
+                          <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{t('report.shareToApps')}</span>
                         </button>
                       </div>
                       
@@ -482,7 +484,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                         className="w-full py-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all text-[9px] font-bold text-white/40 uppercase tracking-[0.2em] flex items-center justify-center gap-2"
                       >
                         <Check size={12} className="text-emerald-500" />
-                        Copy Analysis Link
+                        {t('report.copyLink')}
                       </button>
                     </div>
                   </div>
@@ -510,7 +512,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   className="flex-1 py-4 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 text-emerald-400"
                 >
                   <Share2 size={14} className={cn(isExporting && "animate-pulse")} />
-                  {isExporting ? 'Generating...' : 'Share Result'}
+                  {isExporting ? t('common.loading') : t('common.share')}
                 </button>
                 <button
                   type="button"
@@ -520,7 +522,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                   }}
                   className="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
                 >
-                  Next Step
+                  {t('common.nextStep')}
                   <Sparkles size={14} />
                 </button>
               </>
@@ -532,7 +534,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     onClick={() => setReportStep(reportStep - 1)}
                     className="flex-1 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all active:scale-[0.98]"
                   >
-                    Back
+                    {t('common.back')}
                   </button>
                 )}
                 
@@ -542,7 +544,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     onClick={() => setReportStep(reportStep + 1)}
                     className="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
                   >
-                    Next Step
+                    {t('common.nextStep')}
                     <Sparkles size={14} />
                   </button>
                 ) : (
@@ -551,7 +553,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     onClick={onReset}
                     className="flex-[2] bg-emerald-600 hover:bg-emerald-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
                   >
-                    Start New Analysis
+                    {t('common.startNew')}
                     <RotateCcw size={14} />
                   </button>
                 )}
@@ -564,7 +566,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
             onClick={onReset}
             className="w-full py-2 text-[9px] font-bold text-white/30 uppercase tracking-[0.3em] hover:text-white/60 transition-colors"
           >
-            {reportStep === 0 ? "Start New Analysis" : "Retake Photo / Upload Another"}
+            {reportStep === 0 ? t('common.startNew') : t('common.retake')}
           </button>
         </div>
       </div>

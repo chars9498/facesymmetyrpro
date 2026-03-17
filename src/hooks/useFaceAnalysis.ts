@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { analyzeLocally, type AnalysisResult } from "../services/analysisEngine";
 import { calculateSymmetryV2 } from "../services/analysisEngine_v2";
 
@@ -16,6 +17,7 @@ export type ScanQuality = {
 };
 
 export function useFaceAnalysis() {
+  const { t } = useTranslation();
   const [engineStatus, setEngineStatus] = useState<'idle' | 'loading' | 'ready' | 'failed' | 'failed-temporary'>('idle');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isFakeScanning, setIsFakeScanning] = useState(false);
@@ -88,7 +90,7 @@ export function useFaceAnalysis() {
         const FaceMeshConstructor = (window as any).FaceMesh;
 
         if (!FaceMeshConstructor || typeof FaceMeshConstructor !== 'function') {
-          throw new Error("FaceMesh constructor not found on window. Please check if the CDN script is loaded.");
+          throw new Error(t('errors.modelFail'));
         }
 
         console.log("FaceMesh instance creating...");
@@ -157,7 +159,7 @@ export function useFaceAnalysis() {
         // Retry logic only for on-demand calls
         if (err.message === "INITIALIZATION_TIMEOUT" && initRetryCountRef.current < 1 && !isPreload) {
           console.log("FaceMesh initialization timed out. Retrying...");
-          setAnalysisStep("AI engine initialization failed. Retrying...");
+          setAnalysisStep(t('errors.initTimeout'));
           initRetryCountRef.current += 1;
           
           // Wait a bit before retrying
@@ -170,7 +172,7 @@ export function useFaceAnalysis() {
           setEngineStatus('failed-temporary');
         } else {
           setEngineStatus('failed');
-          setError("AI engine initialization failed. Please try again.");
+          setError(t('errors.initFailed'));
         }
         return false;
       }
@@ -272,7 +274,7 @@ export function useFaceAnalysis() {
       initFaceMesh();
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error("이 브라우저는 카메라 기능을 지원하지 않거나 보안 연결(HTTPS)이 필요합니다.");
+        throw new Error(t('errors.browserNotSupported'));
       }
       const mediaStream = await navigator.mediaDevices.getUserMedia({ 
         video: { 
@@ -285,11 +287,11 @@ export function useFaceAnalysis() {
       setIsCameraActive(true);
       setError(null);
     } catch (err: any) {
-      let message = "카메라를 시작할 수 없습니다.";
+      let message = t('errors.cameraStartFailed');
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        message = "카메라 권한이 거부되었습니다. 브라우저 설정에서 권한을 허용해주세요.";
+        message = t('errors.cameraPermissionDenied');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        message = "카메라를 찾을 수 없습니다.";
+        message = t('errors.cameraNotFound');
       }
       setError(message);
     }

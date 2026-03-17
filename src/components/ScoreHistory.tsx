@@ -1,5 +1,6 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { HistoryItem } from '../hooks/useAnalysisHistory';
 import { BarChart3 } from 'lucide-react';
 
@@ -8,17 +9,19 @@ interface ScoreHistoryProps {
 }
 
 export const ScoreHistory: React.FC<ScoreHistoryProps> = ({ history }) => {
+  const { t, i18n } = useTranslation();
+
   // If history.length <= 1, it means we only have the current scan (or none if it hasn't saved yet).
   if (history.length <= 1) {
     return (
       <div className="bg-white/5 rounded-3xl border border-white/10 p-5 shadow-xl backdrop-blur-sm relative overflow-hidden group">
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 size={14} className="text-emerald-400" />
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">Face Score History</h3>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">{t('history.title')}</h3>
         </div>
         <div className="py-8 text-center">
           <p className="text-[11px] text-white/40 font-medium italic">
-            Complete another scan to start tracking your facial balance history.
+            {t('history.completeAnother')}
           </p>
         </div>
       </div>
@@ -29,8 +32,8 @@ export const ScoreHistory: React.FC<ScoreHistoryProps> = ({ history }) => {
   const recentHistory = history.slice(0, 5).reverse(); // Chronological order
   
   const chartData = recentHistory.map((item, index) => ({
-    date: new Date(item.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    label: `Scan ${index + 1}`,
+    date: new Date(item.timestamp).toLocaleDateString(i18n.language, { month: 'short', day: 'numeric' }),
+    label: `${t('history.scan')} ${index + 1}`,
     score: item.overallScore,
     timestamp: item.timestamp
   }));
@@ -44,13 +47,13 @@ export const ScoreHistory: React.FC<ScoreHistoryProps> = ({ history }) => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <BarChart3 size={14} className="text-emerald-400" />
-          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">Face Score History</h3>
+          <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 font-mono">{t('history.title')}</h3>
         </div>
         {trend !== 0 && (
           <div className="flex items-center gap-1.5">
-            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">Trend</span>
+            <span className="text-[8px] font-black text-white/30 uppercase tracking-widest">{t('history.trend')}</span>
             <span className={`text-[10px] font-black italic ${trend > 0 ? 'text-emerald-400' : 'text-white/60'}`}>
-              {trend > 0 ? `+${trend}` : trend} {trend > 0 ? 'improvement' : ''}
+              {trend > 0 ? `+${trend}` : trend} {trend > 0 ? t('history.improvement') : ''}
             </span>
           </div>
         )}

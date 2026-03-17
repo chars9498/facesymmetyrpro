@@ -1,4 +1,5 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { analyzeLocally, type AnalysisResult } from "../services/analysisEngine";
 import { calculateSymmetryV2 } from "../services/analysisEngine_v2";
 import { useFaceAnalysis } from './useFaceAnalysis';
@@ -10,6 +11,7 @@ interface AnalysisFlowOptions {
 }
 
 export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}) {
+  const { t, i18n } = useTranslation();
   const {
     engineStatus,
     initFaceMesh,
@@ -61,7 +63,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
     if (isAnalyzing) return;
     
     if (isLocked) {
-      setError("Analysis limit reached. Please unlock to continue.");
+      setError(t('errors.limitReached'));
       return;
     }
 
@@ -72,7 +74,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
     setCenterOffset(0);
     setRotationAngle(0);
     setAnalysisProgress(0);
-    setAnalysisStatus('Initializing AI...');
+    setAnalysisStatus(t('analysis.steps.initializing'));
     console.log('[DEBUG] ANALYSIS_START', { source });
 
     try {
@@ -80,20 +82,20 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
       
       // Lazy initialize engine if needed
       if (engineStatus !== 'ready') {
-        setAnalysisStatus('Initializing AI engine...');
+        setAnalysisStatus(t('analysis.steps.initializingEngine'));
         const success = await initFaceMesh();
         if (!success) {
-          throw new Error("얼굴 인식 엔진을 초기화하지 못했습니다. 페이지를 새로고침하거나 나중에 다시 시도해주세요.");
+          throw new Error(t('errors.initFailed'));
         }
       }
 
       await new Promise(resolve => setTimeout(resolve, 300));
 
       if (!faceMeshRef.current) {
-        throw new Error("Face detection model is not ready.");
+        throw new Error(t('errors.modelNotReady'));
       }
 
-      setAnalysisStatus('Detecting face landmarks...');
+      setAnalysisStatus(t('analysis.steps.detecting'));
       setAnalysisProgress(25);
 
       const runFaceMesh = async (imgSrc: string, isRetry: boolean = false): Promise<any> => {
@@ -109,7 +111,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
               try {
                 // 2. Validate dimensions before analysis
                 if (image.width === 0 || image.height === 0) {
-                  throw new Error("Invalid image dimensions (0x0)");
+                  throw new Error(t('errors.invalidDimensions'));
                 }
 
                 // 4. Safe resize after image load only
@@ -134,7 +136,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
                 const ctx = canvas.getContext('2d');
 
                 if (!ctx) {
-                  throw new Error("Failed to create canvas context");
+                  throw new Error(t('errors.canvasContext'));
                 }
 
                 // 3. Ensure canvas draw actually completes
@@ -145,7 +147,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
 
                 // Final validation before sending
                 if (canvas.width === 0 || canvas.height === 0) {
-                  throw new Error("Invalid canvas dimensions (0x0)");
+                  throw new Error(t('errors.invalidDimensions'));
                 }
 
                 // Update dimensions for UI scaling
@@ -169,7 +171,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
                 const timeout = setTimeout(() => {
                   faceMeshCallbackRef.current = null;
                   isFaceMeshBusyRef.current = false;
-                  reject(new Error("Face analysis took too long. Please try again."));
+                  reject(new Error(t('errors.timeout')));
                 }, 15000);
 
                 faceMeshCallbackRef.current = (results) => {
@@ -186,7 +188,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
                   if (!faceMeshRef.current) {
                     clearTimeout(timeout);
                     isFaceMeshBusyRef.current = false;
-                    reject(new Error("Face detection model is not ready."));
+                    reject(new Error(t('errors.modelNotReady')));
                     return;
                   }
 
@@ -194,7 +196,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
                     clearTimeout(timeout);
                     faceMeshCallbackRef.current = null;
                     isFaceMeshBusyRef.current = false;
-                    reject(new Error(err.message || "Failed to send image to AI model"));
+                    reject(new Error(err.message || t('errors.sendFailed')));
                   });
                 });
               } catch (err: any) {
@@ -202,7 +204,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
               }
             };
 
-            image.onerror = () => reject(new Error("Failed to load image for analysis"));
+            image.onerror = () => reject(new Error(t('errors.loadFailed')));
             image.src = imgSrc;
           });
         }
@@ -217,7 +219,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
             setImageAspectRatio(img.width / img.height);
             resolve(null);
           };
-          img.onerror = () => reject(new Error("Failed to load image for analysis"));
+          img.onerror = () => reject(new Error(t('errors.loadFailed')));
           img.src = imgSrc;
         });
 
@@ -230,7 +232,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
           const timeout = setTimeout(() => {
             faceMeshCallbackRef.current = null;
             isFaceMeshBusyRef.current = false;
-            reject(new Error("Face analysis took too long. Please try again."));
+            reject(new Error(t('errors.timeout')));
           }, 15000);
 
           faceMeshCallbackRef.current = (results) => {
@@ -251,7 +253,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
           if (img.width === 0 || img.height === 0) {
             clearTimeout(timeout);
             isFaceMeshBusyRef.current = false;
-            reject(new Error("Invalid image dimensions for analysis"));
+            reject(new Error(t('errors.invalidDimensions')));
             return;
           }
 
@@ -276,7 +278,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
               // Using requestAnimationFrame or a small timeout to ensure state is settled
               setTimeout(() => {
                 if (!faceMeshRef.current) {
-                  reject(new Error("FaceMesh instance lost during delay"));
+                  reject(new Error(t('errors.modelNotReady')));
                   return;
                 }
                 
@@ -284,13 +286,13 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
                   clearTimeout(timeout);
                   faceMeshCallbackRef.current = null;
                   isFaceMeshBusyRef.current = false;
-                  reject(new Error(err.message || "Failed to send image to AI model"));
+                  reject(new Error(err.message || t('errors.sendFailed')));
                 });
               }, 60); // 60ms is roughly 4 frames at 60fps, very safe
             } else {
               clearTimeout(timeout);
               isFaceMeshBusyRef.current = false;
-              reject(new Error("Failed to render analysis frame"));
+              reject(new Error(t('errors.renderFailed')));
             }
           } else {
             // Fallback if context creation fails
@@ -304,7 +306,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
                 clearTimeout(timeout);
                 faceMeshCallbackRef.current = null;
                 isFaceMeshBusyRef.current = false;
-                reject(new Error(err.message || "Failed to send image to AI model"));
+                reject(new Error(err.message || t('errors.sendFailed')));
               });
             }, 60);
           }
@@ -317,14 +319,14 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
       // 5. Add one retry path for upload only
       if (source === 'upload' && (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0)) {
         console.log('[DEBUG] UPLOAD_RETRY_ENHANCED');
-        setAnalysisStatus('Could not detect landmarks from this image. Retrying...');
+        setAnalysisStatus(t('analysis.steps.retrying'));
         
         // Slightly increase contrast/brightness before retry
         const enhancedImage = await enhanceImage(base64Image);
         faceResults = await runFaceMesh(enhancedImage, true);
         
         if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
-          throw new Error("Face analysis failed on this image. Please try another photo.");
+          throw new Error(t('errors.analysisFailed'));
         }
       }
 
@@ -332,7 +334,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
       if (source === 'camera') {
         if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
           console.log('[DEBUG] FACEMESH_RETRY_ENHANCED');
-          setAnalysisStatus('Enhancing image quality...');
+          setAnalysisStatus(t('analysis.steps.enhancing'));
           const enhancedImage = await enhanceImage(base64Image);
           faceResults = await runFaceMesh(enhancedImage);
         }
@@ -344,19 +346,19 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
         }
 
         if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
-          throw new Error("No face detected. Please ensure your face is clearly visible and well-lit.");
+          throw new Error(t('errors.noFace'));
         }
       }
 
       setAnalysisProgress(50);
-      setAnalysisStatus('Calculating symmetry metrics...');
+      setAnalysisStatus(t('analysis.steps.calculating'));
       const rawLandmarks = faceResults.multiFaceLandmarks[0];
       setScanningLandmarks(rawLandmarks);
       
       const v2Metrics = await calculateSymmetryV2(rawLandmarks);
       
       setAnalysisProgress(75);
-      setAnalysisStatus('Generating report...');
+      setAnalysisStatus(t('analysis.steps.generating'));
       
       const dist2D = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
       
@@ -426,9 +428,9 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
       
       setIsFakeScanning(true);
       const scanningSteps = [
-        { text: "Analyzing facial features...", timeout: 800, progress: 85 },
-        { text: "Calculating balance score...", timeout: 1200, progress: 95 },
-        { text: "Generating personalized report...", timeout: 600, progress: 100 }
+        { text: t('analysis.steps.analyzingFeatures'), timeout: 800, progress: 85 },
+        { text: t('analysis.steps.calculatingScore'), timeout: 1200, progress: 95 },
+        { text: t('analysis.steps.generatingPersonalized'), timeout: 600, progress: 100 }
       ];
       
       for (let i = 0; i < scanningSteps.length; i++) {
@@ -459,16 +461,16 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
         balancedImage,
         symmetryTwins,
         landmarks: {
-          eyes: { score: v2Metrics.eyeSymmetry, status: safeLandmarks.eyes?.status || "Analysis Complete", feedback: safeLandmarks.eyes?.feedback || "Analysis Complete" },
-          brows: { score: v2Metrics.browsSymmetry, status: safeLandmarks.brows?.status || "Analysis Complete", feedback: safeLandmarks.brows?.feedback || "Analysis Complete" },
-          mouth: { score: v2Metrics.mouthSymmetry, status: safeLandmarks.mouth?.status || "Analysis Complete", feedback: safeLandmarks.mouth?.feedback || "Analysis Complete" },
-          jawline: { score: v2Metrics.jawSymmetry, status: safeLandmarks.jawline?.status || "Analysis Complete", feedback: safeLandmarks.jawline?.feedback || "Analysis Complete" },
+          eyes: { score: v2Metrics.eyeSymmetry, status: safeLandmarks.eyes?.status || t('analysis.feedback.status.analyzed'), feedback: safeLandmarks.eyes?.feedback || t('analysis.feedback.status.analyzed') },
+          brows: { score: v2Metrics.browsSymmetry, status: safeLandmarks.brows?.status || t('analysis.feedback.status.analyzed'), feedback: safeLandmarks.brows?.feedback || t('analysis.feedback.status.analyzed') },
+          mouth: { score: v2Metrics.mouthSymmetry, status: safeLandmarks.mouth?.status || t('analysis.feedback.status.analyzed'), feedback: safeLandmarks.mouth?.feedback || t('analysis.feedback.status.analyzed') },
+          jawline: { score: v2Metrics.jawSymmetry, status: safeLandmarks.jawline?.status || t('analysis.feedback.status.analyzed'), feedback: safeLandmarks.jawline?.feedback || t('analysis.feedback.status.analyzed') },
         },
         asymmetryZones: [
-          { x: rawLandmarks[33].x * 100, y: rawLandmarks[33].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - v2Metrics.eyeSymmetry) / 20)), label: "EYE ASYMMETRY" },
-          { x: rawLandmarks[70].x * 100, y: rawLandmarks[70].y * 100, radius: 5, intensity: Math.min(1, Math.max(0.7, (96 - v2Metrics.browsSymmetry) / 20)), label: "BROW ASYMMETRY" },
-          { x: rawLandmarks[61].x * 100, y: rawLandmarks[61].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - v2Metrics.mouthSymmetry) / 20)), label: "ORAL ASYMMETRY" },
-          { x: rawLandmarks[234].x * 100, y: rawLandmarks[234].y * 100, radius: 8, intensity: Math.min(1, Math.max(0.6, (96 - v2Metrics.jawSymmetry) / 30)), label: "JAW ASYMMETRY" }
+          { x: rawLandmarks[33].x * 100, y: rawLandmarks[33].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - v2Metrics.eyeSymmetry) / 20)), label: t('analysis.labels.eyeAsymmetry') },
+          { x: rawLandmarks[70].x * 100, y: rawLandmarks[70].y * 100, radius: 5, intensity: Math.min(1, Math.max(0.7, (96 - v2Metrics.browsSymmetry) / 20)), label: t('analysis.labels.browAsymmetry') },
+          { x: rawLandmarks[61].x * 100, y: rawLandmarks[61].y * 100, radius: 6, intensity: Math.min(1, Math.max(0.7, (96 - v2Metrics.mouthSymmetry) / 20)), label: t('analysis.labels.oralAsymmetry') },
+          { x: rawLandmarks[234].x * 100, y: rawLandmarks[234].y * 100, radius: 8, intensity: Math.min(1, Math.max(0.6, (96 - v2Metrics.jawSymmetry) / 30)), label: t('analysis.labels.jawAsymmetry') }
         ],
         rawLandmarks,
         metrics: {
@@ -489,7 +491,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
 
     } catch (err: any) {
       console.error("Analysis Error:", err);
-      setError(err.message || "Face analysis failed. Please ensure your face is clearly visible and try again.");
+      setError(err.message || t('errors.analysisFailed'));
     } finally {
       setIsAnalyzing(false);
       setAnalysisStatus('');
@@ -505,7 +507,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
     
     // 1. Ensure the captured frame is valid.
     if (!video.videoWidth || !video.videoHeight) {
-      setError("Invalid video dimensions. Please wait for the camera to initialize.");
+      setError(t('errors.invalidDimensions'));
       return;
     }
 
@@ -581,6 +583,34 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
     stopCamera();
     setAnalysisProgress(0);
   }, [stopCamera, setError]);
+
+  // Re-run analysis when language changes to prevent mixed-language UI
+  useEffect(() => {
+    if (result && result.metrics) {
+      // Re-run the local analysis with the same metrics but current language
+      const updatedResult = analyzeLocally(result.metrics as any);
+      
+      setResult(prev => {
+        if (!prev) return null;
+        // Merge updated translated strings with existing calculated data (images, etc.)
+        return {
+          ...prev,
+          ...updatedResult,
+          // Preserve fields that are not generated by analyzeLocally but added in analyzeImage
+          balancedImage: prev.balancedImage,
+          symmetryTwins: prev.symmetryTwins,
+          rawLandmarks: prev.rawLandmarks,
+          // Deep merge landmarks to preserve scores if they were added
+          landmarks: {
+            eyes: { ...prev.landmarks.eyes, ...updatedResult.landmarks.eyes },
+            brows: { ...prev.landmarks.brows, ...updatedResult.landmarks.brows },
+            mouth: { ...prev.landmarks.mouth, ...updatedResult.landmarks.mouth },
+            jawline: { ...prev.landmarks.jawline, ...updatedResult.landmarks.jawline },
+          }
+        };
+      });
+    }
+  }, [i18n.language]);
 
   return {
     capturedImage,

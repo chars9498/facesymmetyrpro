@@ -2,6 +2,7 @@ import React from 'react';
 import { AnalysisResult } from "../services/analysisEngine";
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { useTranslation } from 'react-i18next';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -13,15 +14,17 @@ export const ResultShareCard = React.forwardRef<HTMLDivElement, {
   centerOffset: number;
   rotationAngle: number;
 }>(({ result, image, centerOffset, rotationAngle }, ref) => {
+  const { t } = useTranslation();
+  
   const worstImbalance = React.useMemo(() => {
     const scores = [
-      { name: 'Eye alignment', score: result.landmarks.eyes.score },
-      { name: 'Brow symmetry', score: result.landmarks.brows.score },
-      { name: 'Oral symmetry', score: result.landmarks.mouth.score },
-      { name: 'Lower jaw alignment', score: result.landmarks.jawline.score },
+      { name: t('analysis.areas.eyes'), score: result.landmarks.eyes.score },
+      { name: t('analysis.areas.brows'), score: result.landmarks.brows.score },
+      { name: t('analysis.areas.mouth'), score: result.landmarks.mouth.score },
+      { name: t('analysis.areas.jaw'), score: result.landmarks.jawline.score },
     ];
-    return scores.reduce((prev, curr) => (prev.score < curr.score ? prev : curr));
-  }, [result.landmarks]);
+    return scores.reduce((prev, curr) => ((prev.score || 0) < (curr.score || 0) ? prev : curr));
+  }, [result.landmarks, t]);
 
   return (
     <div 
@@ -36,10 +39,10 @@ export const ResultShareCard = React.forwardRef<HTMLDivElement, {
       {/* Header */}
       <div className="w-full flex flex-col items-center z-10">
         <h1 className="text-[80px] font-black italic tracking-tighter uppercase leading-none">
-          Face Symmetry <span className="text-emerald-500">Pro</span>
+          {t('common.appName')}
         </h1>
         <div className="mt-6 px-10 py-3 bg-white/5 border border-white/10 rounded-full">
-          <p className="text-2xl font-mono text-white/40 uppercase tracking-[0.5em]">AI Biometric Analysis</p>
+          <p className="text-2xl font-mono text-white/40 uppercase tracking-[0.5em]">{t('shareCard.biometricAnalysis')}</p>
         </div>
       </div>
 
@@ -61,14 +64,14 @@ export const ResultShareCard = React.forwardRef<HTMLDivElement, {
       <div className="w-full flex flex-col items-center gap-10 z-10">
         <div className="flex flex-col items-center">
           <p className="text-[140px] font-black italic text-emerald-400 leading-none">
-            TOP {result.percentile || 0}%
+            {t('shareCard.top', { percentile: result.percentile || 0 })}
           </p>
           <p className="text-4xl font-bold text-emerald-400/60 uppercase tracking-[0.1em] mt-4">
-            Better than {100 - (result.percentile || 0)}% of people
+            {t('shareCard.betterThan', { percent: 100 - (result.percentile || 0) })}
           </p>
           
           <p className="mt-10 text-3xl font-bold text-red-400/90 uppercase tracking-widest flex items-center gap-3">
-            <span>⚠</span> Main imbalance: {worstImbalance.name}
+            <span>⚠</span> {t('shareCard.mainImbalance')}: {worstImbalance.name}
           </p>
 
           <p className={cn(
@@ -82,7 +85,7 @@ export const ResultShareCard = React.forwardRef<HTMLDivElement, {
         <div className="h-px w-64 bg-white/10" />
 
         <div className="flex flex-col items-center">
-          <p className="text-3xl font-mono text-white/30 uppercase tracking-[0.4em] mb-4">Balance Score</p>
+          <p className="text-3xl font-mono text-white/30 uppercase tracking-[0.4em] mb-4">{t('shareCard.balanceScore')}</p>
           <p className="text-[180px] font-black italic text-white leading-none">
             {result.overallScore}
           </p>
@@ -91,7 +94,7 @@ export const ResultShareCard = React.forwardRef<HTMLDivElement, {
 
       {/* Footer */}
       <div className="w-full flex flex-col items-center z-10">
-        <p className="text-4xl font-black tracking-[0.2em] uppercase text-emerald-500">Check your face symmetry</p>
+        <p className="text-4xl font-black tracking-[0.2em] uppercase text-emerald-500">{t('shareCard.checkSymmetry')}</p>
         <p className="text-3xl font-mono mt-4 text-white/30 tracking-widest">facesymmetrypro.app</p>
       </div>
     </div>
@@ -101,25 +104,27 @@ export const ResultShareCard = React.forwardRef<HTMLDivElement, {
 export const SymmetryShareCard = React.forwardRef<HTMLDivElement, {
   result: AnalysisResult;
 }>(({ result }, ref) => {
+  const { t } = useTranslation();
+  
   return (
     <div 
       ref={ref}
       className="w-[600px] bg-[#0A0A0A] p-10 flex flex-col items-center gap-8 border border-white/10"
     >
       <div className="flex flex-col items-center gap-2">
-        <h1 className="text-2xl font-black text-white uppercase tracking-[0.3em]">Face Symmetry Pro</h1>
-        <p className="text-xs text-white/40 uppercase tracking-widest">AI Facial Balance Analysis</p>
+        <h1 className="text-2xl font-black text-white uppercase tracking-[0.3em]">{t('common.appName')}</h1>
+        <p className="text-xs text-white/40 uppercase tracking-widest">{t('shareCard.biometricAnalysis')}</p>
       </div>
       
       <div className="grid grid-cols-2 gap-4 w-full">
         <div className="space-y-2">
-          <p className="text-[10px] text-white/40 uppercase tracking-widest text-center">Left Symmetry</p>
+          <p className="text-[10px] text-white/40 uppercase tracking-widest text-center">{t('shareCard.leftSymmetry')}</p>
           <div className="aspect-square rounded-xl overflow-hidden border border-white/10">
             <img src={result.symmetryTwins?.left} alt="Left" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
         </div>
         <div className="space-y-2">
-          <p className="text-[10px] text-white/40 uppercase tracking-widest text-center">Right Symmetry</p>
+          <p className="text-[10px] text-white/40 uppercase tracking-widest text-center">{t('shareCard.rightSymmetry')}</p>
           <div className="aspect-square rounded-xl overflow-hidden border border-white/10">
             <img src={result.symmetryTwins?.right} alt="Right" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           </div>
@@ -128,7 +133,7 @@ export const SymmetryShareCard = React.forwardRef<HTMLDivElement, {
 
       <div className="w-full pt-4 border-t border-white/5 flex justify-between items-center">
         <div>
-          <p className="text-[10px] text-white/40 uppercase tracking-widest">Balance Score</p>
+          <p className="text-[10px] text-white/40 uppercase tracking-widest">{t('shareCard.balanceScore')}</p>
           <p className="text-2xl font-black text-emerald-400 italic">{result.overallScore}</p>
         </div>
         <p className="text-[10px] text-white/20 font-mono">facesymmetrypro.app</p>

@@ -1,12 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Download, Share2, Link2, RefreshCw } from 'lucide-react';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { useTranslation } from 'react-i18next';
 
 interface ShareModalProps {
   showExportModal: boolean;
@@ -29,6 +24,8 @@ export function ShareModal({
   exportSymmetryCard,
   copyLink
 }: ShareModalProps) {
+  const { t } = useTranslation();
+
   return (
     <AnimatePresence>
       {showExportModal && (
@@ -50,8 +47,8 @@ export function ShareModal({
             <div className="p-6 space-y-4">
               <div className="flex flex-col items-center gap-1 mb-2">
                 <div className="w-12 h-1 bg-white/10 rounded-full mb-4 sm:hidden" />
-                <h3 className="text-lg font-black text-white uppercase tracking-widest">결과 내보내기</h3>
-                <p className="text-[10px] text-white/40 font-medium">원하시는 방식을 선택해주세요</p>
+                <h3 className="text-lg font-black text-white uppercase tracking-widest">{t('shareModal.title')}</h3>
+                <p className="text-[10px] text-white/40 font-medium">{t('shareModal.subtitle')}</p>
               </div>
 
               <div className="grid gap-2">
@@ -69,8 +66,8 @@ export function ShareModal({
                       <Download size={20} />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-bold text-white">이미지 저장</p>
-                      <p className="text-[10px] text-white/40">갤러리에 결과 카드를 저장합니다</p>
+                      <p className="text-sm font-bold text-white">{t('shareModal.saveImage')}</p>
+                      <p className="text-[10px] text-white/40">{t('shareModal.saveImageDesc')}</p>
                     </div>
                   </div>
                   {(isGeneratingShareImage || isGeneratingSymmetryCard) && <RefreshCw size={16} className="animate-spin text-white/20" />}
@@ -90,8 +87,8 @@ export function ShareModal({
                       <Share2 size={20} />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-bold text-white">다른 앱으로 공유</p>
-                      <p className="text-[10px] text-white/40">인스타그램, 카카오톡 등으로 공유</p>
+                      <p className="text-sm font-bold text-white">{t('shareModal.shareApp')}</p>
+                      <p className="text-[10px] text-white/40">{t('shareModal.shareAppDesc')}</p>
                     </div>
                   </div>
                   {(isGeneratingShareImage || isGeneratingSymmetryCard) && <RefreshCw size={16} className="animate-spin text-white/20" />}
@@ -107,8 +104,8 @@ export function ShareModal({
                       <Link2 size={20} />
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-bold text-white">링크 복사</p>
-                      <p className="text-[10px] text-white/40">앱 주소를 클립보드에 복사합니다</p>
+                      <p className="text-sm font-bold text-white">{t('shareModal.copyLink')}</p>
+                      <p className="text-[10px] text-white/40">{t('shareModal.copyLinkDesc')}</p>
                     </div>
                   </div>
                 </button>
@@ -119,7 +116,7 @@ export function ShareModal({
                 onClick={() => setShowExportModal(false)}
                 className="w-full py-4 text-sm font-bold text-white/40 hover:text-white transition-colors"
               >
-                취소
+                {t('shareModal.cancel')}
               </button>
             </div>
           </motion.div>

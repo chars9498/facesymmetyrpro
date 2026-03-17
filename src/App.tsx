@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Info, AlertCircle, RotateCcw } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -10,6 +11,7 @@ import { ReportView } from './components/ReportView';
 import { ResultShareCard, SymmetryShareCard } from './components/ShareCard';
 import { FaceMeshCanvas } from './components/FaceMeshCanvas';
 import Footer from './components/Footer';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
 
 // Pages
 import PrivacyPolicy from './pages/PrivacyPolicy';
@@ -26,6 +28,7 @@ import { useWeeklyChallenge } from './hooks/useWeeklyChallenge';
 import { cn } from './lib/utils';
 
 function MainApp() {
+  const { t } = useTranslation();
   // State for UI navigation and modals
   const [reportStep, setReportStep] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -101,8 +104,8 @@ function MainApp() {
           try {
             await navigator.share({
               files: [file],
-              title: 'My Face Symmetry Analysis',
-              text: 'Check out my facial balance score! Analyze yours at facesymmetrypro.app',
+              title: t('share.title'),
+              text: t('share.text'),
             });
           } catch (e) {
             console.log('Share failed or cancelled');
@@ -141,12 +144,13 @@ function MainApp() {
             <Shield className="text-black" size={20} strokeWidth={2.5} />
           </div>
           <div className="flex flex-col">
-            <h1 className="text-lg font-black italic tracking-tighter leading-none uppercase">Face Symmetry Pro</h1>
-            <span className="text-[8px] font-bold text-[#3BFF9C] uppercase tracking-[0.3em] mt-1">AI Facial Analysis</span>
+            <h1 className="text-lg font-black italic tracking-tighter leading-none uppercase">{t('common.appName')}</h1>
+            <span className="text-[8px] font-bold text-[#3BFF9C] uppercase tracking-[0.3em] mt-1">{t('common.aiAnalysis')}</span>
           </div>
         </Link>
         
         <div className="flex items-center gap-2">
+          <LanguageSwitcher />
           {analysis.result && (
             <button 
               type="button"
@@ -154,7 +158,7 @@ function MainApp() {
               className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/60 hover:text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
             >
               <RotateCcw size={14} />
-              Reset
+              {t('common.reset')}
             </button>
           )}
           <button 
@@ -277,19 +281,19 @@ function MainApp() {
                 <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
                   <Shield className="text-emerald-400" size={24} />
                 </div>
-                <h3 className="text-xl font-black italic tracking-tighter uppercase">Privacy First</h3>
+                <h3 className="text-xl font-black italic tracking-tighter uppercase">{t('privacy.modalTitle')}</h3>
               </div>
               <div className="space-y-4 text-white/60 text-sm leading-relaxed">
                 <p>
-                  <strong className="text-white">Your privacy is our top priority.</strong> 모든 얼굴 분석은 사용자의 브라우저 내에서 로컬로 처리됩니다.
+                  <strong className="text-white">{t('common.privacyFirst')}</strong> {t('privacy.p1')}
                 </p>
                 <p>
-                  분석에 사용된 이미지는 서버로 전송되거나 저장되지 않으며, 페이지를 새로고침하면 즉시 삭제됩니다.
+                  {t('privacy.p2')}
                 </p>
                 <div className="p-4 bg-white/5 rounded-2xl border border-white/5 flex items-start gap-3">
                   <AlertCircle size={18} className="text-emerald-400 shrink-0 mt-0.5" />
                   <p className="text-[11px] font-medium leading-normal">
-                    AI 분석 결과는 참고용이며 의학적 진단을 대체할 수 없습니다.
+                    {t('privacy.note')}
                   </p>
                 </div>
               </div>
@@ -298,7 +302,7 @@ function MainApp() {
                 onClick={() => setShowPrivacyNote(false)}
                 className="w-full mt-8 py-4 bg-white/10 hover:bg-white/20 rounded-2xl font-black uppercase tracking-widest transition-all"
               >
-                Got it
+                {t('common.gotIt')}
               </button>
             </motion.div>
           </div>

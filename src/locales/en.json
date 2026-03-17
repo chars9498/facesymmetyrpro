@@ -1,0 +1,633 @@
+{
+  "common": {
+    "appName": "Face Symmetry Pro",
+    "aiAnalysis": "AI Facial Analysis",
+    "reset": "Reset",
+    "cancel": "Cancel",
+    "back": "Back",
+    "nextStep": "Next Step",
+    "startNew": "Start New Analysis",
+    "retake": "Retake Photo / Upload Another",
+    "save": "Save",
+    "share": "Share",
+    "copy": "Copy",
+    "loading": "Loading...",
+    "preparing": "Preparing AI model...",
+    "privacyFirst": "Privacy First",
+    "gotIt": "Got it",
+    "generating": "Generating..."
+  },
+  "landing": {
+    "title": "Face Symmetry Pro",
+    "subtitle": "AI Facial Balance Analysis",
+    "cameraStart": "Camera Start",
+    "uploadPhoto": "Upload Photo",
+    "guideText": "Center your face in the guide",
+    "alignment": "Alignment",
+    "lighting": "Lighting",
+    "capture": "Capture",
+    "analyzing": "Analyzing...",
+    "onDeviceAi": "100% On-Device AI Analysis",
+    "backToHome": "Back to Home",
+    "systemError": "System Error"
+  },
+  "report": {
+    "title": "Analysis Report",
+    "liveAi": "Live AI",
+    "assessment": "Facial Symmetry & Balance Assessment",
+    "overallScore": "Overall Balance Score",
+    "globalDatabase": "Global Database",
+    "topPercentile": "Top {{percentile}}%",
+    "summaryTitle": "AI Analysis Summary",
+    "visualAnalysis": "Visual Mesh Analysis",
+    "midline": "Midline",
+    "asymmetry": "Asymmetry",
+    "symmetryTwins": "Symmetry Twin Analysis",
+    "original": "Original",
+    "leftSymmetry": "Left Symmetry",
+    "rightSymmetry": "Right Symmetry",
+    "symmetryStrength": "Symmetry Strength",
+    "advancedMetrics": "Advanced Metrics",
+    "faceShape": "Face Shape",
+    "potential": "Potential",
+    "balancedSimulation": "Balanced Face Simulation",
+    "balancedSimulationDesc": "This is a simulation of the ideal balance state analyzed by AI. The symmetry has been finely adjusted while maintaining natural character.",
+    "generatingSimulation": "Generating simulation...",
+    "careGuide": "Personalized Care Guide",
+    "focusArea": "Recommended Focus Area",
+    "habitAdvice": "Daily Habit Advice",
+    "saveCard": "Save Card",
+    "saved": "Saved",
+    "shareToApps": "Share to Apps",
+    "copyLink": "Copy Analysis Link",
+    "steps": {
+      "analysis": "Analysis",
+      "twins": "Twins",
+      "metrics": "Metrics",
+      "care": "Care"
+    }
+  },
+  "history": {
+    "title": "Face Score History",
+    "noHistory": "No history yet",
+    "lastScan": "Last Scan",
+    "completeAnother": "Complete another scan to start tracking your facial balance history.",
+    "trend": "Trend",
+    "improvement": "improvement",
+    "scan": "Scan"
+  },
+  "challenge": {
+    "title": "Weekly Face Balance Challenge",
+    "scansThisWeek": "Scans this week",
+    "goal": "Goal: 3 scans",
+    "completed": "Challenge Complete 🎉",
+    "completedDesc": "Challenge complete. Great job tracking your facial balance this week.",
+    "keepGoing": "Keep going for better tracking!",
+    "progress": "Progress",
+    "scansCompleted": "{{count}} / 3 scans completed",
+    "moreScans": "{{count}} more scans to complete this week's challenge.",
+    "nextScan": "Next scan recommended in a few days.",
+    "desc": "Complete 3 scans this week to track how your facial balance changes."
+  },
+  "tips": {
+    "title": "AI Improvement Tip",
+    "loading": "Generating tip...",
+    "focusArea": "Focus Area",
+    "rescan": "Re-scan in a few days to track changes",
+    "mapping": {
+      "eyes": {
+        "label": "Eye Symmetry",
+        "tip": "Eye balance can be affected by sleep quality and screen time. Try maintaining a consistent sleep schedule and taking regular breaks from digital devices."
+      },
+      "brows": {
+        "label": "Brow Balance",
+        "tip": "Brow symmetry is often influenced by facial expressions and muscle tension. Gentle facial relaxation exercises can help maintain a balanced brow line."
+      },
+      "mouth": {
+        "label": "Mouth Balance",
+        "tip": "Mouth symmetry can be related to dental habits and speaking patterns. Practice balanced facial expressions and maintain good oral posture."
+      },
+      "jawline": {
+        "label": "Jaw Alignment",
+        "tip": "Jaw balance can be influenced by posture and chewing habits. Try keeping your head aligned and avoid chewing primarily on one side."
+      }
+    }
+  },
+  "progress": {
+    "title": "Progress Tracking",
+    "baselineRecorded": "Your facial baseline has been recorded.",
+    "baselineDesc": "Complete another scan in a few days to see how your facial balance changes over time.",
+    "info": "Small variations in posture, lighting, and muscle tension can influence results. Best results when scanned every few days.",
+    "previousScan": "Previous Scan",
+    "currentScan": "Current Scan",
+    "scoreChange": "Score Change",
+    "improvement": "improvement",
+    "feedback": {
+      "noticeable": "Your facial balance improved noticeably since the last scan.",
+      "slight": "Your facial balance changed slightly since the last scan.",
+      "similar": "Your facial balance is similar to your previous scan."
+    },
+    "tryAgain": "Try scanning again later this week to continue tracking your progress."
+  },
+  "share": {
+    "title": "My Face Symmetry Analysis",
+    "text": "Check out my facial balance score! Analyze yours at facesymmetrypro.app"
+  },
+  "shareCard": {
+    "title": "Face Symmetry",
+    "subtitle": "AI Biometric Report",
+    "testHeadline": "AI FACE SYMMETRY TEST",
+    "top": "TOP {{percentile}}%",
+    "betterThan": "Better than {{percent}}% of people",
+    "balanceScore": "Balance Score",
+    "mainImbalance": "Main imbalance",
+    "curiosity": "How symmetrical is your face?",
+    "cta": "Check your face symmetry",
+    "checkSymmetry": "Check your face symmetry",
+    "biometricAnalysis": "AI Biometric Analysis",
+    "leftSymmetry": "Left Symmetry",
+    "rightSymmetry": "Right Symmetry",
+    "twinComparison": "Symmetry Twin Comparison",
+    "left": "Left",
+    "right": "Right",
+    "score": "Score",
+    "rank": "Rank",
+    "resultText": "According to the symmetry analysis, your face has a balance beauty in the top {{percentile}}%."
+  },
+  "errors": {
+    "cameraFail": "Could not access camera. Please check permissions.",
+    "modelFail": "AI model failed to load. Please refresh.",
+    "noFace": "No face detected. Please try again with better lighting.",
+    "generic": "Something went wrong. Please try again.",
+    "limitReached": "Analysis limit reached. Please unlock to continue.",
+    "initFailed": "Failed to initialize face recognition engine. Please refresh or try again later.",
+    "modelNotReady": "Face detection model is not ready.",
+    "invalidDimensions": "Invalid image dimensions.",
+    "canvasContext": "Failed to create canvas context.",
+    "timeout": "Face analysis took too long. Please try again.",
+    "sendFailed": "Failed to send image to AI model.",
+    "loadFailed": "Failed to load image for analysis.",
+    "renderFailed": "Failed to render analysis frame.",
+    "analysisFailed": "Face analysis failed on this image. Please try another photo.",
+    "initTimeout": "AI engine initialization timed out. Please try again.",
+    "browserNotSupported": "This browser does not support camera features or requires a secure connection (HTTPS).",
+    "cameraStartFailed": "Could not start camera.",
+    "cameraPermissionDenied": "Camera permission was denied. Please allow access in your browser settings.",
+    "cameraNotFound": "Camera not found.",
+    "invalidLandmarks": "Invalid landmarks provided."
+  },
+  "privacy": {
+    "modalTitle": "Privacy First",
+    "p1": "Your privacy is our top priority. All face analysis is processed locally within your browser.",
+    "p2": "Images used for analysis are not sent to or stored on any server, and are deleted immediately when you refresh the page.",
+    "note": "AI analysis results are for reference only and cannot replace medical diagnosis.",
+    "onDevice": "On-Device Processing: Photos never leave your device.",
+    "viewPolicy": "View Privacy Policy & Data Safety"
+  },
+  "privacyPage": {
+    "title": "Privacy Policy",
+    "heroTitle": "Privacy-First Architecture",
+    "heroDesc": "Face Symmetry Pro is designed with a strict privacy-first approach. We believe your biometric data is yours alone. Our app is built to function entirely on your device without ever needing to upload your photos to a server.",
+    "noUploads": "No Server Uploads",
+    "noUploadsDesc": "Your photos are processed locally in your browser/app memory. They are never transmitted to our servers or any third-party cloud.",
+    "noStorage": "No Data Storage",
+    "noStorageDesc": "We do not store your photos. Once you close the app or reset the analysis, the processed image data is cleared from memory.",
+    "noAccounts": "No Accounts",
+    "noAccountsDesc": "You don't need to create an account to use Face Symmetry Pro. We don't collect your name, email, or any personal identifiers.",
+    "onDeviceAi": "On-Device AI",
+    "onDeviceAiDesc": "The facial landmark detection and symmetry analysis are performed using on-device machine learning models (MediaPipe).",
+    "section1Title": "1. Information We Collect",
+    "section1Desc": "Face Symmetry Pro **does not collect, store, or share** any personal information or biometric data. The app requires access to your camera or photo library solely to perform the analysis you request. This access is handled by the system's standard photo picker or camera interface.",
+    "section2Title": "2. How We Use Information",
+    "section2Desc": "Any photo you provide is used **only** for the duration of the analysis session. The mathematical landmarks extracted from your face are used to calculate symmetry scores and are discarded immediately after.",
+    "section3Title": "3. Third-Party Services",
+    "section3Desc": "We use Google's MediaPipe for on-device facial recognition. This library runs locally and does not send your facial data to Google servers during the analysis process in this application.",
+    "section4Title": "4. Not a Medical Tool",
+    "section4Desc": "Face Symmetry Pro is a **reference analysis tool** for aesthetic and educational purposes. It is **not a medical diagnostic app**. The results provided are based on geometric calculations and should not be used for medical or surgical decisions.",
+    "section5Title": "5. Contact Us",
+    "section5Desc": "If you have any questions about our privacy practices, please contact us at chars9498@gmail.com.",
+    "lastUpdated": "Last Updated: March 14, 2026"
+  },
+  "unlock": {
+    "title": "Daily Limit Reached",
+    "description": "You've used your 2 free daily analyses. Unlock unlimited access to continue.",
+    "benefit1": "Unlimited daily analyses",
+    "benefit2": "Full symmetry breakdown",
+    "benefit3": "Symmetry twin simulation",
+    "button": "Unlock Pro – $2.99"
+  },
+  "shareModal": {
+    "title": "Export Result",
+    "subtitle": "Choose how you want to share",
+    "saveImage": "Save Image",
+    "saveImageDesc": "Save the result card to your gallery",
+    "shareApp": "Share to Other Apps",
+    "shareAppDesc": "Share via Instagram, WhatsApp, etc.",
+    "copyLink": "Copy Link",
+    "copyLinkDesc": "Copy the app URL to your clipboard",
+    "cancel": "Cancel"
+  },
+  "howItWorks": {
+    "title": "How AI Face Symmetry Analysis Works",
+    "subtitle": "The Technology Behind the Balance",
+    "whatIsTitle": "What is Face Symmetry?",
+    "whatIsDesc": "Facial symmetry is the measure of how similar the two halves of your face are to each other. While no human face is perfectly symmetrical, researchers have long studied the relationship between facial balance and perceived attractiveness, health, and genetic diversity. Our tool uses advanced computer vision to quantify these subtle differences, providing you with a detailed map of your facial structure.",
+    "step1Title": "1. AI Landmark Detection",
+    "step1Desc": "The process begins with our AI engine, which uses a deep learning model called MediaPipe Face Mesh. This model detects over 468 3D facial landmarks in real-time. These landmarks are specific points on your face, such as the corners of your eyes, the bridge of your nose, and the contours of your jawline.",
+    "step1Note": "Our AI maps these points with sub-pixel accuracy, creating a high-resolution mesh that represents your unique facial geometry. This mesh is used as the foundation for all subsequent calculations.",
+    "step2Title": "2. Calculating the Balance Score",
+    "step2Desc": "Once the landmarks are detected, our algorithm calculates a \"Midline\" for your face. This is the vertical axis that theoretically divides your face into two equal halves. We then measure the distance and angle of corresponding landmarks (e.g., left eye corner vs. right eye corner) relative to this midline.",
+    "step2Note": "The \"Overall Balance Score\" is a weighted average of symmetry across four key zones: Eyes, Brows, Mouth, and Jawline. A score of 100 represents perfect mathematical symmetry, while lower scores indicate varying degrees of natural asymmetry.",
+    "step3Title": "3. Why Results May Vary",
+    "step3Desc": "It's important to understand that facial symmetry analysis is highly sensitive to external factors. To get the most accurate result, you should consider the following:",
+    "lighting": "Lighting",
+    "lightingDesc": "Uneven shadows can make one side of the face appear different to the AI.",
+    "angle": "Angle",
+    "angleDesc": "Even a slight tilt of the head can significantly impact the symmetry score.",
+    "expression": "Expression",
+    "expressionDesc": "A smile or a wink will naturally create asymmetry in the landmarks.",
+    "distance": "Distance",
+    "distanceDesc": "Being too close or too far from the camera can affect the perspective.",
+    "step4Title": "4. Local Browser Processing",
+    "step4PrivacyTitle": "Privacy-First Architecture",
+    "step4PrivacyDesc": "The most critical part of our technology is where it runs. All the AI models and mathematical calculations are executed directly in your browser using your device's hardware. Your camera feed and photos are never uploaded to a server. This ensures that your biometric data remains private and secure at all times.",
+    "footerNote": "Face Symmetry Pro is an educational and entertainment tool designed to help you understand your facial structure. The results provided are based on mathematical analysis of 2D images and should not be used for medical or diagnostic purposes."
+  },
+  "guide": {
+    "title": "Face Symmetry Guide",
+    "subtitle": "Understanding Facial Balance and Symmetry",
+    "whatIsTitle": "What is Facial Symmetry?",
+    "whatIsDesc": "Facial symmetry is the measure of how similar the two halves of your face are to each other. While no human face is perfectly symmetrical, researchers have long studied the relationship between facial balance and perceived attractiveness, health, and genetic diversity. Our tool uses advanced computer vision to quantify these subtle differences, providing you with a detailed map of your facial structure.",
+    "curiosityTitle": "1. Why People are Curious About Symmetry",
+    "curiosityDesc": "Humans are naturally drawn to symmetry. In nature, symmetry often signals health and genetic fitness. In art and architecture, it creates a sense of harmony and balance. When it comes to the human face, symmetry is often associated with perceived beauty and attractiveness. However, it's important to remember that asymmetry is what makes each face unique and full of character.",
+    "curiosityNote": "Many people use symmetry analysis to understand their features better, whether for grooming, makeup application, or simply out of curiosity about their own facial geometry.",
+    "mythsTitle": "2. Common Myths vs. Reality",
+    "mythsDesc": "There are many misconceptions about facial symmetry. Let's clear up some of the most common ones:",
+    "myth1": "Myth: Perfect Symmetry is Normal",
+    "myth1Desc": "Reality: Almost everyone has some degree of asymmetry. It's a natural part of human biology.",
+    "myth2": "Myth: Asymmetry Means Poor Health",
+    "myth2Desc": "Reality: While extreme asymmetry can sometimes be a sign of health issues, minor asymmetry is perfectly normal.",
+    "myth3": "Myth: Symmetry is the Only Key to Beauty",
+    "myth3Desc": "Reality: Beauty is subjective and multifaceted. Many famous and attractive people have noticeable asymmetry.",
+    "myth4": "Myth: Symmetry Can't Change",
+    "myth4Desc": "Reality: Factors like posture, dental work, and even sleeping habits can influence facial balance over time.",
+    "tipsTitle": "3. Practical Tips for Better Scanning",
+    "tipsDesc": "To get the most accurate and consistent results from our AI analysis, follow these practical tips:",
+    "tip1Title": "Maintain Good Posture",
+    "tip1Desc": "Keep your head level and look directly at the camera. Avoid tilting or turning your head.",
+    "tip2Title": "Use Even Lighting",
+    "tip2Desc": "Ensure your face is evenly lit from the front. Avoid harsh side lighting that creates shadows.",
+    "tip3Title": "Keep a Neutral Expression",
+    "tip3Desc": "Try to keep your face relaxed and neutral. Smiling or squinting can introduce artificial asymmetry.",
+    "tip4Title": "Be Consistent",
+    "tip4Desc": "For the best results, try to scan yourself in the same environment and lighting each time.",
+    "uniqueTitle": "4. Embracing Your Unique Balance",
+    "characterTitle": "Character Over Perfection",
+    "characterDesc": "While it's fun to explore your facial symmetry, remember that your unique features are what make you who you are. Asymmetry is often what gives a face its character, charm, and personality. Use this tool as a way to learn more about your facial structure, but don't let it define your sense of self-worth or beauty.",
+    "footerNote": "Face Symmetry Pro is an educational and entertainment tool designed to help you understand your facial structure. The results provided are based on mathematical analysis of 2D images and should not be used for medical or diagnostic purposes."
+  },
+  "footer": {
+    "resources": "Resources",
+    "privacyPolicy": "Privacy Policy",
+    "howItWorks": "How It Works",
+    "guide": "Face Symmetry Guide",
+    "connect": "Connect",
+    "rights": "© 2026 Face Symmetry Pro. All rights reserved.",
+    "home": "Home",
+    "privacy": "Privacy",
+    "technology": "Technology"
+  },
+  "analysis": {
+    "summaries": {
+      "high": "Ideal symmetrical structure close to the golden ratio",
+      "high2": "A case with excellent alignment of the facial skeleton",
+      "high3": "A high-quality mask with outstanding balance",
+      "mid": "A face with overall harmonious symmetry",
+      "mid2": "A structure where subtle asymmetry is sublimated into charm",
+      "mid3": "Maintaining stable skeletal alignment",
+      "low": "A mask where unique asymmetry harmonizes",
+      "low2": "A structure where muscle imbalance in specific areas is observed",
+      "low3": "A state where asymmetrical elements requiring correction exist"
+    },
+    "faceShapes": {
+      "oblong": "Oblong",
+      "square": "Square",
+      "round": "Round",
+      "heart": "Heart",
+      "oval": "Oval"
+    },
+    "features": {
+      "eyeSpacing": "Ideal Eye Spacing",
+      "jawline": "Strong Jawline",
+      "proportions": "Attractive Proportions"
+    },
+    "metrics": {
+      "eyeSpacing": {
+        "good": "Good Balance",
+        "goodDesc": "The spacing between your eyes is similar to your eye width, showing stable facial balance.",
+        "narrow": "Narrow Spacing",
+        "narrowDesc": "The spacing between your eyes appears slightly narrow compared to your eye width.",
+        "wide": "Wide Spacing",
+        "wideDesc": "The spacing between your eyes appears slightly wide compared to your eye width."
+      },
+      "proportion": {
+        "ideal": "Ideal Proportion",
+        "idealDesc": "Your vertical facial proportions are close to 1:1:1, creating a very stable harmony.",
+        "longMid": "Long Mid-face",
+        "longMidDesc": "Your mid-face proportion appears slightly longer compared to other areas.",
+        "longLower": "Long Lower-face",
+        "longLowerDesc": "Your lower-face proportion appears slightly longer compared to other areas.",
+        "longUpper": "Long Upper-face",
+        "longUpperDesc": "Your upper-face proportion appears slightly longer compared to other areas."
+      },
+      "faceRatio": {
+        "balanced": "Balanced Range",
+        "balancedDesc": "Your facial width-to-height ratio is within a relatively balanced range.",
+        "slim": "Slim Proportion",
+        "slimDesc": "Your face shows a slim proportion, being longer vertically compared to its width.",
+        "wide": "Wide Proportion",
+        "wideDesc": "Your facial width is relatively wide compared to its vertical length."
+      }
+    },
+    "summary": {
+      "low": "Your {{area}} symmetry is currently lower than other areas. Focused care in this region could significantly improve your overall balance.",
+      "mid": "You have good overall symmetry, with a slight deviation in the {{area}} area. Minor adjustments can help achieve even better balance.",
+      "high": "Excellent work! Your facial symmetry is highly balanced across all measured areas. Maintain your current healthy habits."
+    },
+    "feedback": {
+      "status": {
+        "excellent": "Excellent Balance",
+        "good": "Good Balance",
+        "slight": "Slight Asymmetry",
+        "noticeable": "Noticeable Asymmetry",
+        "analyzed": "Analysis Complete"
+      },
+      "eyes": {
+        "excellent": "Your eye height and spacing are very stable, maintaining good upper face balance.",
+        "good": "Your eye positions are generally balanced, and the surrounding structures appear stable.",
+        "slight": "There is a slight difference in eye height, and the upper face balance may not be perfectly identical.",
+        "noticeable": "There is a noticeable difference in eye height or tilt, and the upper face balance may appear different."
+      },
+      "brows": {
+        "excellent": "Your brow height and curves are stably aligned, maintaining very natural upper face balance.",
+        "good": "Your brow heights are generally balanced, and expression muscle usage appears stable.",
+        "slight": "There is a slight difference in brow height, which may make the upper face balance look different during expressions.",
+        "noticeable": "There is a noticeable difference in brow height or angle, and the upper face balance may appear different."
+      },
+      "mouth": {
+        "excellent": "Your mouth corner height and surrounding muscle balance are stable, with natural lower face harmony.",
+        "good": "Your mouth corner heights are generally balanced, and expression muscle movement appears stable.",
+        "slight": "There is a slight difference in mouth corner height, and expression muscle usage patterns may differ.",
+        "noticeable": "There is a noticeable difference in mouth corner position or line tilt, making the lower face balance appear different."
+      },
+      "jaw": {
+        "excellent": "Your jawline volume and contours are stably maintained, showing very natural lower face balance.",
+        "good": "Your jawline balance appears relatively stable, and the lower face structure is naturally aligned.",
+        "slight": "There is a slight difference in jawline volume or angle, which may make the lower face balance look different.",
+        "noticeable": "There is a noticeable difference in jawline contours, which may emphasize lower face asymmetry."
+      },
+      "care": {
+        "eyes": {
+          "low": "Significant asymmetry in the eye area often relates to sleeping positions or unconscious squinting. Focus on relaxing the eye muscles and ensure even lighting when working.",
+          "mid": "Slight eye level differences are common. Gentle massage around the orbital bone can help release tension and improve symmetry.",
+          "high": "Your eye area shows excellent symmetry. Keep maintaining good posture and avoid straining your eyes for long periods."
+        },
+        "brows": {
+          "low": "Brow asymmetry is frequently caused by dominant expression habits. Practice neutral expressions and massage the forehead to balance muscle tone.",
+          "mid": "Minor brow height differences are normal. Consistent facial relaxation exercises can help stabilize the brow line.",
+          "high": "Your brows are very well-aligned. This contributes significantly to a balanced upper face impression."
+        },
+        "mouth": {
+          "low": "Mouth asymmetry often stems from chewing on one side or unilateral expression habits. Try to chew evenly and practice symmetrical smile exercises.",
+          "mid": "Small differences in mouth corners are very common. Conscious effort to use both sides of the mouth equally can improve balance.",
+          "high": "Your mouth area is highly symmetrical. This indicates balanced muscle usage in the lower face."
+        },
+        "jawline": {
+          "low": "Jawline asymmetry can be influenced by dental alignment or sleeping on one side. Consult a professional if you experience tension, and practice jaw relaxation.",
+          "mid": "Slight jawline deviations are natural. Avoid resting your chin on your hand and maintain upright posture to support lower face balance.",
+          "high": "Your jawline shows great symmetry and definition. This provides a strong, balanced foundation for your facial structure."
+        }
+      }
+    },
+    "dynamic": {
+      "overall": {
+        "excellent": "Your overall facial balance is very stable and shows a harmonious structure.",
+        "good": "Your overall facial balance is within a stable range.",
+        "fair": "Your overall facial balance is relatively stable, but differences may be observed in some areas.",
+        "noticeable": "Differences in left-right balance may appear noticeably in some facial areas.",
+        "multiple": "Differences in left-right balance are observed in several areas."
+      },
+      "deviation": {
+        "slight": "slight difference",
+        "minor": "minor deviation",
+        "noticeable": "noticeable deviation",
+        "significant": "significant deviation"
+      },
+      "observation": "{{area}} ({{detail}}) shows {{desc}}.",
+      "influence": "These differences can be influenced by expression habits, muscle usage patterns, or postural factors.",
+      "insight": {
+        "andDetail": " and {{detail}}",
+        "imbalance": "The largest balance difference is observed in the {{area}} area.\nA relatively high deviation was found in the {{detail}} part.\nThis difference may be due to expression habits or muscle usage patterns.",
+        "stable": "Your overall facial symmetry is observed to be in a very stable state.\nAll measured areas maintain a harmonious balance and are in excellent condition.\nMaintain your current lifestyle habits and check your status regularly."
+      }
+    },
+    "care": {
+      "title": "#### 🎯 Recommended Focus",
+      "secondaryTitle": "\n#### 🧘 Supplementary Habit Management",
+      "tips": {
+        "eyes": "**Orbicularis Oculi** surrounds the eyes and is responsible for expressions.\nMassaging gently with fingertips around the corners of the eyes can be helpful.",
+        "brows": "**Frontalis** covers the forehead and adjusts brow height.\nIt's good to massage gently pushing from the center of the forehead towards the temples.",
+        "mouth": "**Levator Anguli Oris** is responsible for lifting the corners of the mouth.\nPracticing smiles that lift both corners symmetrically while looking in the mirror helps.",
+        "jaw": "**Masseter** leads jaw movement and forms the lower contour.\nRelaxing the jaw muscle area below the ears by pressing gently helps with symmetry."
+      },
+      "general": [
+        "**SCM (Sternocleidomastoid)** is responsible for neck alignment and involved in facial symmetry.\nStretching the neck slowly left and right to release tension helps with balance.",
+        "**Healthy Habits**: Avoid chewing on only one side or resting your chin on your hand.\nMaintaining good posture helps maintain long-term facial symmetry."
+      ],
+      "maintain": "We recommend overall facial stretching to maintain your current excellent balance.",
+      "professional": "Facial balance can change naturally depending on lifestyle habits and muscle usage patterns. This report is provided for aesthetic reference, and if you want more systematic balance management, it may be helpful to consult a facial exercise expert or related therapist."
+    },
+    "angel": {
+      "1": "Natural subtle differences are observed between the left and right sides of the face.\nThese differences are features that appear in most people and can add depth to facial impressions.\nThis analysis is for reference, and natural balance can make facial impressions look more harmonious.",
+      "2": "As a result of facial analysis, natural subtle deviations are observed in left-right balance.\nThese differences form each individual's unique impression and achieve natural harmony.\nHarmonious balance rather than artificial symmetry makes your unique charm stand out more.",
+      "3": "The measured asymmetry values are within the daily range and maintain a harmonious impression.\nSubtle differences are analyzed as natural elements that add vitality to expressions.\nPlease use this result only as an aesthetic reference.",
+      "4": "Overall facial alignment is analyzed to be maintaining a stable state.\nObserved subtle left-right differences appear during the natural development of facial muscles.\nBalanced impression is one of the key elements that complete the harmony of the entire face."
+    },
+    "potential": {
+      "high": "You are already maintaining a very high level of symmetry. You can maintain near-perfect balance with subtle muscle tension relief.",
+      "mid": "Maintaining consistent care habits may lead to a slight improvement in your facial balance score.",
+      "low": "If you correct muscle usage imbalance and combine it with intensive care, there is a high possibility that symmetry will improve significantly."
+    },
+    "tiers": {
+      "elite": "Elite",
+      "excellent": "Excellent",
+      "balanced": "Balanced",
+      "average": "Average"
+    },
+    "areas": {
+      "eyes": "Eyes",
+      "brows": "Brows",
+      "mouth": "Mouth",
+      "jaw": "Jaw",
+      "jawline": "Jawline",
+      "overall": "Overall",
+      "eyeArea": "around the eyes",
+      "browArea": "brow line",
+      "mouthArea": "around the mouth",
+      "jawArea": "lower face"
+    },
+    "labels": {
+      "symmetry": "Symmetry",
+      "area": "Area",
+      "status": "Status",
+      "feedback": "Feedback",
+      "potential": "Improvement Potential",
+      "target": "Target Range",
+      "faceShape": "Face Shape",
+      "tier": "Tier",
+      "strongestFeatures": "Strongest Features",
+      "angelFeedback": "AI Angel Feedback",
+      "factFeedback": "AI Fact-Based Feedback",
+      "eyeAsymmetry": "EYE ASYMMETRY",
+      "browAsymmetry": "BROW ASYMMETRY",
+      "oralAsymmetry": "ORAL ASYMMETRY",
+      "jawAsymmetry": "JAW ASYMMETRY"
+    },
+    "steps": {
+      "initializing": "Initializing AI...",
+      "initializingEngine": "Initializing AI engine...",
+      "detecting": "Detecting face landmarks...",
+      "calculating": "Calculating symmetry metrics...",
+      "generating": "Generating report...",
+      "analyzingFeatures": "Analyzing facial features...",
+      "calculatingScore": "Calculating balance score...",
+      "generatingPersonalized": "Generating personalized report...",
+      "enhancing": "Enhancing image quality...",
+      "retrying": "Could not detect landmarks from this image. Retrying..."
+    },
+    "details": {
+      "eyeHeight": "left-right eye height",
+      "browSlant": "brow slant",
+      "mouthPos": "mouth corner position",
+      "jawSym": "jawline symmetry"
+    },
+    "advanced": {
+      "eyeSpacing": {
+        "good": "Good balance",
+        "goodFeedback": "The distance between your eyes is similar to your eye width, showing a stable facial balance.",
+        "narrow": "Narrow spacing",
+        "narrowFeedback": "The distance between your eyes appears slightly narrow compared to your eye width.",
+        "wide": "Wide spacing",
+        "wideFeedback": "The distance between your eyes appears slightly wide compared to your eye width."
+      },
+      "proportion": {
+        "ideal": "Ideal proportion",
+        "idealFeedback": "The vertical proportions of your face are close to 1:1:1, achieving a very stable harmony.",
+        "longMid": "Long mid-face",
+        "longMidFeedback": "The mid-face proportion appears slightly long compared to other areas.",
+        "longLower": "Long lower-face",
+        "longLowerFeedback": "The lower-face proportion appears slightly long compared to other areas.",
+        "longUpper": "Long upper-face",
+        "longUpperFeedback": "The upper-face proportion appears slightly long compared to other areas."
+      },
+      "ratio": {
+        "balanced": "Balanced ratio",
+        "balancedFeedback": "Your face width-to-height ratio is within a relatively balanced range.",
+        "slim": "Slim ratio",
+        "slimFeedback": "Your face shows a slim ratio, being longer vertically compared to its width.",
+        "wide": "Wide ratio",
+        "wideFeedback": "The horizontal width of your face is relatively wide compared to its vertical length."
+      }
+    },
+    "fact": {
+      "excellent": "According to the detailed analysis, your facial symmetry index is at a very high level. The skeletal alignment and soft tissue distribution are harmonious, and maintaining your current lifestyle habits seems sufficient.",
+      "ideal": "The currently measured values show a very ideal state of balance. It is one of the most harmonious states that can appear on a face, and subtle differences appear to be natural phenomena due to real-time muscle movement.",
+      "observation": "According to the analysis results, some differences are observed in the horizontal alignment of the face and the balance of the mandibular angle. This appears to be a result of {{recommendation}} {{severity}}.",
+      "recommendation": {
+        "professional": "professional care may be helpful for",
+        "homecare": "sufficiently improvable with consistent home care and habit correction"
+      },
+      "severity": {
+        "tension": "strong muscle tension and alignment differences",
+        "softTissue": "asymmetrical development of soft tissues"
+      }
+    }
+  },
+  "quality": {
+    "good": "Good",
+    "fair": "Fair",
+    "poor": "Poor",
+    "lowlight": "Low Light",
+    "overexposed": "Overexposed",
+    "uneven": "Uneven",
+    "high": "High",
+    "medium": "Medium",
+    "low": "Low"
+  },
+  "report": {
+    "title": "Analysis Report",
+    "subtitle": "AI Biometric Evaluation",
+    "liveAi": "Live AI",
+    "assessment": "AI Biometric Assessment",
+    "overallScore": "Overall Balance Score",
+    "topPercentile": "Top {{percentile}}%",
+    "globalDatabase": "Global Database Comparison",
+    "summaryTitle": "AI Analysis Summary",
+    "visualAnalysis": "Visual Analysis",
+    "midline": "Midline",
+    "asymmetry": "Asymmetry",
+    "symmetryTwins": "Symmetry Twins",
+    "original": "Original",
+    "leftSymmetry": "Left Symmetry",
+    "rightSymmetry": "Right Symmetry",
+    "symmetryStrength": "Symmetry Strength",
+    "advancedMetrics": "Advanced Metrics",
+    "faceShape": "Face Shape",
+    "potential": "Improvement Potential",
+    "balancedSimulation": "Balanced Simulation",
+    "generatingSimulation": "Generating Simulation...",
+    "balancedSimulationDesc": "This simulation shows what your face would look like with perfectly balanced features. Use this as a guide for your care routine.",
+    "careGuide": "Personalized Care Guide",
+    "focusArea": "Primary Imbalance Focus",
+    "habitAdvice": "Home Care & Habits",
+    "saveReport": "Save Report",
+    "saved": "Saved!",
+    "saveCard": "Save Result Card",
+    "shareReport": "Share Report",
+    "shareToApps": "Share to Apps",
+    "copyLink": "Copy Link",
+    "backToHome": "Back to Home",
+    "scanAgain": "Scan Again",
+    "nextStep": "Next Step",
+    "prevStep": "Previous Step",
+    "steps": {
+      "analysis": "Analysis",
+      "twins": "Twins",
+      "metrics": "Metrics",
+      "care": "Care"
+    }
+  },
+  "pages": {
+    "privacy": {
+      "title": "Privacy Policy",
+      "lastUpdated": "Last Updated: March 17, 2026",
+      "zeroStorageTitle": "Zero Server Storage",
+      "zeroStorageDesc": "Face Symmetry Pro is designed with a \"Privacy by Design\" philosophy. Unlike traditional facial analysis tools that upload your photos to a remote server for processing, our application performs all calculations locally on your device. When you grant camera access or upload a photo, the image data stays within your browser's memory. We do not have a backend database that stores your images, and we never transmit your biometric data over the internet.",
+      "noCollectTitle": "1. Information We Do Not Collect",
+      "noCollectDesc": "We believe that your face is your most private data. Therefore, we have built this tool to function without collecting any of the following:",
+      "noImages": "No Facial Images",
+      "noBiometrics": "No Biometric Identifiers",
+      "noIdentity": "No Personal Identity",
+      "noAccount": "No Account Information",
+      "localProcessingTitle": "2. Local Processing Explained",
+      "localProcessingDesc": "When you use our AI analysis, your browser uses a technology called WebGL and TensorFlow.js to run the machine learning models directly on your graphics card or processor. This means the \"intelligence\" happens on your phone or computer, not on our servers. Once you close the tab or refresh the page, all temporary image data is wiped from your device's RAM. There is no persistent storage of your face mesh or analysis results unless you explicitly choose to \"Save\" or \"Download\" the result card to your own device.",
+      "analyticsTitle": "3. Analytics and Cookies",
+      "analyticsDesc": "To improve the user experience and monitor the technical health of the application, we may use basic, anonymized analytics (such as Google Analytics). These tools collect non-identifiable information like browser type, device category, and which features are most used. We do not use tracking cookies for advertising purposes, and we do not sell any data to third parties. Our goal is to build a great tool, not a data profile.",
+      "thirdPartyTitle": "4. Third-Party Services",
+      "thirdPartyDesc": "Our application uses MediaPipe and TensorFlow.js libraries to perform the facial landmark detection. These libraries are loaded from content delivery networks (CDNs). While these services may log basic request data (like your IP address) to serve the files, they do not receive your camera feed or any image data from our application.",
+      "userControlTitle": "5. User Control and Consent",
+      "userControlDesc": "By using Face Symmetry Pro, you consent to the local processing of your images for the purpose of symmetry analysis. You can revoke camera permissions at any time through your browser settings. Since we do not store any data, there is no \"account\" to delete or \"data\" to request—your privacy is naturally protected by the architecture of the app.",
+      "footerNote": "If you have any questions about this Privacy Policy or how we handle your data, please feel free to contact us through our official channels. We are committed to transparency and user security."
+    }
+  }
+}

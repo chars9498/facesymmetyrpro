@@ -1,4 +1,6 @@
 
+import i18n from '../i18n';
+
 export interface AnalysisMetricsV2 {
   eyeSymmetry: number;
   browsSymmetry: number;
@@ -48,7 +50,7 @@ export const calculateSymmetryV2 = (landmarks: Landmark[]): AnalysisMetricsV2 =>
   console.time('Symmetry-Engine-V2');
   
   if (!landmarks || landmarks.length < 468) {
-    throw new Error("Invalid landmarks provided");
+    throw new Error(i18n.t('errors.invalidLandmarks'));
   }
 
   // 1. Face Alignment (Roll Correction)

@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Camera, Upload, RefreshCw, Maximize2, AlertCircle, Info } from 'lucide-react';
 import { motion } from 'motion/react';
 import { FaceMeshCanvas } from './FaceMeshCanvas';
@@ -55,6 +56,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   engineStatus = 'idle',
   onUnlock
 }) => {
+  const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPaywall, setShowPaywall] = React.useState(false);
 
@@ -98,7 +100,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
               onClick={() => setShowPaywall(false)}
               className="mt-4 text-white/40 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors"
             >
-              Back to Home
+              {t('landing.backToHome')}
             </button>
           </div>
         ) : !image && !isCameraReady ? (
@@ -107,14 +109,14 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <Camera size={40} />
             </div>
             <div className="space-y-3">
-              <h2 className="text-3xl font-black tracking-tighter uppercase italic">Face Symmetry Pro</h2>
+              <h2 className="text-3xl font-black tracking-tighter uppercase italic">{t('landing.title')}</h2>
               <p className="text-white/60 max-w-xs mx-auto text-sm font-medium">
-                AI Facial Balance Analysis
+                {t('landing.subtitle')}
               </p>
               {engineStatus === 'loading' && (
                 <div className="flex items-center justify-center gap-2 mt-2">
                   <RefreshCw size={12} className="animate-spin text-emerald-500" />
-                  <span className="text-[10px] text-emerald-500/80 font-bold uppercase tracking-widest">Preparing AI model...</span>
+                  <span className="text-[10px] text-emerald-500/80 font-bold uppercase tracking-widest">{t('common.preparing')}</span>
                 </div>
               )}
             </div>
@@ -125,7 +127,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 className="w-full bg-emerald-500 text-black px-6 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 hover:bg-emerald-400 transition-all active:scale-95 shadow-[0_0_30px_rgba(16,185,129,0.3)]"
               >
                 <Camera size={18} />
-                Camera Start
+                {t('landing.cameraStart')}
               </button>
               <button 
                 type="button"
@@ -133,7 +135,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 className="w-full bg-white/5 border border-white/10 text-white px-6 py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 hover:bg-white/10 transition-all active:scale-95"
               >
                 <Upload size={18} />
-                Upload Photo
+                {t('landing.uploadPhoto')}
               </button>
               <input 
                 type="file" 
@@ -174,7 +176,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
               
               <div className="absolute top-1/4 text-center">
                 <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
-                  Center your face in the guide
+                  {t('landing.guideText')}
                 </p>
               </div>
 
@@ -182,13 +184,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <div className="absolute top-6 left-6 flex flex-col gap-2">
                 <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-3 space-y-2 min-w-[120px]">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Alignment</span>
+                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">{t('landing.alignment')}</span>
                     <div className="flex items-center gap-1.5">
                       <span className={cn(
                         "text-[7px] font-bold uppercase",
                         scanQuality.alignment === 'Good' ? "text-emerald-400" : 
                         scanQuality.alignment === 'Fair' ? "text-yellow-400" : "text-red-400"
-                      )}>{scanQuality.alignment}</span>
+                      )}>{t(`quality.${scanQuality.alignment.toLowerCase()}`)}</span>
                       <div className={cn(
                         "w-2 h-2 rounded-full",
                         scanQuality.alignment === 'Good' ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : 
@@ -197,12 +199,12 @@ export const LandingView: React.FC<LandingViewProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Lighting</span>
+                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">{t('landing.lighting')}</span>
                     <div className="flex items-center gap-1.5">
                       <span className={cn(
                         "text-[7px] font-bold uppercase",
                         scanQuality.lighting === 'Good' ? "text-emerald-400" : "text-red-400"
-                      )}>{scanQuality.lighting}</span>
+                      )}>{t(`quality.${scanQuality.lighting.toLowerCase().replace(' ', '')}`)}</span>
                       <div className={cn(
                         "w-2 h-2 rounded-full",
                         scanQuality.lighting === 'Good' ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : "bg-red-500 shadow-[0_0_8px_#ef4444]"
@@ -219,7 +221,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 onClick={stopCamera}
                 className="bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-xl font-medium hover:bg-white/30 transition-all"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button 
                 type="button"
@@ -227,7 +229,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 className="bg-emerald-500 text-white px-8 py-3 rounded-xl font-medium shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95 flex items-center gap-2"
               >
                 <Camera size={20} />
-                Capture
+                {t('landing.capture')}
               </button>
             </div>
           </div>
@@ -252,9 +254,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </div>
                 
                 <div className="text-center space-y-2">
-                  <p className="text-xl font-bold tracking-tight text-emerald-400">{analysisStatus || "Analyzing..."}</p>
+                  <p className="text-xl font-bold tracking-tight text-emerald-400">{analysisStatus || t('landing.analyzing')}</p>
                   <div className="flex flex-col gap-1">
-                    <p className="text-[10px] text-white/40 uppercase tracking-widest">100% On-Device AI Analysis</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-widest">{t('landing.onDeviceAi')}</p>
                   </div>
                 </div>
                 
@@ -275,7 +277,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <div className="flex items-start gap-3">
             <AlertCircle className="shrink-0 mt-0.5" size={18} />
             <div className="space-y-1 w-full">
-              <p className="text-[10px] font-bold uppercase tracking-widest">System Error</p>
+              <p className="text-[10px] font-bold uppercase tracking-widest">{t('landing.systemError')}</p>
               <p className="text-sm font-mono break-all">{error}</p>
             </div>
           </div>
