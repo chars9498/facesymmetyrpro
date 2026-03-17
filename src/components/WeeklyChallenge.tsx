@@ -5,11 +5,14 @@ import { useTranslation } from 'react-i18next';
 
 interface WeeklyChallengeProps {
   scans: number;
+  lastScanDate: string;
 }
 
-export const WeeklyChallenge: React.FC<WeeklyChallengeProps> = ({ scans }) => {
+export const WeeklyChallenge: React.FC<WeeklyChallengeProps> = ({ scans, lastScanDate }) => {
   const { t } = useTranslation();
   const isComplete = scans >= 3;
+  const today = new Date().toISOString().split('T')[0];
+  const isAlreadyScannedToday = lastScanDate === today;
 
   return (
     <div className="bg-white/5 rounded-3xl border border-white/10 p-5 shadow-xl backdrop-blur-sm relative overflow-hidden group">
@@ -52,10 +55,17 @@ export const WeeklyChallenge: React.FC<WeeklyChallengeProps> = ({ scans }) => {
               />
             </div>
             
-            <p className="text-[9px] font-bold text-emerald-400/60 uppercase tracking-wider">
-              {scans === 1 ? t('challenge.moreScans', { count: 2 }) : 
-               scans === 2 ? t('challenge.moreScans', { count: 1 }) : ""}
-            </p>
+            <div className="space-y-1">
+              <p className="text-[9px] font-bold text-emerald-400/60 uppercase tracking-wider">
+                {scans === 1 ? t('challenge.moreScans', { count: 2 }) : 
+                 scans === 2 ? t('challenge.moreScans', { count: 1 }) : ""}
+              </p>
+              {isAlreadyScannedToday && !isComplete && (
+                <p className="text-[9px] font-medium text-white/30 italic leading-tight">
+                  {t('challenge.alreadyScanned')}
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-2 px-1">

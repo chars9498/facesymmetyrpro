@@ -23,6 +23,7 @@ import { useAnalysisFlow } from './hooks/useAnalysisFlow';
 import { useAnalysisLimit } from './hooks/useAnalysisLimit';
 import { useAnalysisHistory } from './hooks/useAnalysisHistory';
 import { useWeeklyChallenge } from './hooks/useWeeklyChallenge';
+import { useDailyStreak } from './hooks/useDailyStreak';
 
 // Utils
 import { cn } from './lib/utils';
@@ -46,6 +47,7 @@ function MainApp() {
   const { isLocked, incrementCount, unlock } = useAnalysisLimit();
   const { history: analysisHistory, saveToHistory, getPreviousScan } = useAnalysisHistory();
   const { challenge, incrementWeeklyScan } = useWeeklyChallenge();
+  const { streakData, incrementStreak } = useDailyStreak();
   const [previousScan, setPreviousScan] = useState<any>(null);
 
   const analysis = useAnalysisFlow({
@@ -57,6 +59,7 @@ function MainApp() {
       incrementCount();
       saveToHistory(result.overallScore);
       incrementWeeklyScan();
+      incrementStreak();
     }
   });
   
@@ -230,6 +233,9 @@ function MainApp() {
                   previousScan={previousScan}
                   history={analysisHistory}
                   weeklyScans={challenge.scans}
+                  lastScanDate={challenge.lastScanDate}
+                  streak={streakData.streak}
+                  streakLastScanDate={streakData.lastScanDate}
                 />
               )}
             </AnimatePresence>

@@ -86,8 +86,15 @@
     "progress": "进度",
     "scansCompleted": "{{count}} / 3次扫描已完成",
     "moreScans": "本周挑战还需完成{{count}}次扫描。",
+    "alreadyScanned": "今天的扫描已记录。请明天再试。",
     "nextScan": "建议几天后进行下一次扫描。",
     "desc": "本周完成3次扫描，以跟踪您的面部平衡如何变化。"
+  },
+  "streak": {
+    "title": "每日连续记录",
+    "days": "已连续分析天",
+    "completed": "今日扫描已完成",
+    "comeBack": "明天继续保持连续记录"
   },
   "tips": {
     "title": "AI改善建议",

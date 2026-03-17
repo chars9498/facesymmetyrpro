@@ -86,8 +86,15 @@
     "progress": "진행 상황",
     "scansCompleted": "{{count}} / 3회 스캔 완료",
     "moreScans": "이번 주 챌린지를 완료하려면 {{count}}번 더 스캔하세요.",
+    "alreadyScanned": "오늘 스캔은 이미 완료되었습니다. 내일 다시 진행해 주세요.",
     "nextScan": "며칠 후에 다음 스캔을 권장합니다.",
     "desc": "이번 주에 3번의 스캔을 완료하여 얼굴 균형이 어떻게 변하는지 확인하세요."
+  },
+  "streak": {
+    "title": "일일 스트릭",
+    "days": "일 연속 분석 중",
+    "completed": "오늘 스캔 완료",
+    "comeBack": "내일 다시 방문하면 기록이 이어집니다"
   },
   "tips": {
     "title": "AI 개선 팁",

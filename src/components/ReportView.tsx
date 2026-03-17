@@ -9,6 +9,7 @@ import { ProgressTracking } from './ProgressTracking';
 import { AIImprovementTips } from './AIImprovementTips';
 import { ScoreHistory } from './ScoreHistory';
 import { WeeklyChallenge } from './WeeklyChallenge';
+import { DailyStreak } from './DailyStreak';
 import { HistoryItem } from '../hooks/useAnalysisHistory';
 
 interface ReportViewProps {
@@ -38,6 +39,9 @@ interface ReportViewProps {
   previousScan: HistoryItem | null;
   history: HistoryItem[];
   weeklyScans: number;
+  lastScanDate: string;
+  streak: number;
+  streakLastScanDate: string;
 }
 
 export const ReportView: React.FC<ReportViewProps> = ({
@@ -66,7 +70,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
   exportSuccess,
   previousScan,
   history,
-  weeklyScans
+  weeklyScans,
+  lastScanDate,
+  streak,
+  streakLastScanDate
 }) => {
   const { t } = useTranslation();
   const imageRef = React.useRef<HTMLImageElement>(null);
@@ -184,8 +191,11 @@ export const ReportView: React.FC<ReportViewProps> = ({
                     </div>
                   </div>
 
+                  {/* Daily Streak Section */}
+                  <DailyStreak streak={streak} lastScanDate={streakLastScanDate} />
+
                   {/* Weekly Challenge Section */}
-                  <WeeklyChallenge scans={weeklyScans} />
+                  <WeeklyChallenge scans={weeklyScans} lastScanDate={lastScanDate} />
 
                   {/* Visual Analysis (Mesh) */}
                   <div className="bg-white/5 rounded-3xl border border-white/10 p-5 shadow-xl backdrop-blur-sm overflow-hidden">
