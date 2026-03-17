@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Info, AlertCircle, RotateCcw } from 'lucide-react';
 import { toPng } from 'html-to-image';
@@ -8,6 +9,12 @@ import { LandingView } from './components/LandingView';
 import { ReportView } from './components/ReportView';
 import { ResultShareCard, SymmetryShareCard } from './components/ShareCard';
 import { FaceMeshCanvas } from './components/FaceMeshCanvas';
+import Footer from './components/Footer';
+
+// Pages
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import HowItWorks from './pages/HowItWorks';
+import FaceSymmetryGuide from './pages/FaceSymmetryGuide';
 
 // Hooks
 import { useAnalysisFlow } from './hooks/useAnalysisFlow';
@@ -18,7 +25,7 @@ import { useWeeklyChallenge } from './hooks/useWeeklyChallenge';
 // Utils
 import { cn } from './lib/utils';
 
-export default function App() {
+function MainApp() {
   // State for UI navigation and modals
   const [reportStep, setReportStep] = useState(0);
   const [isUnlocked, setIsUnlocked] = useState(false);
@@ -115,11 +122,18 @@ export default function App() {
     }
   }, [exportType]);
 
+  const location = useLocation();
+
+  // Scroll to top on route change
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#3BFF9C]/30 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#3BFF9C]/30 flex flex-col overflow-x-hidden">
       {/* Header */}
       <header className="shrink-0 p-4 sm:p-6 flex items-center justify-between z-50">
-        <div className="flex items-center gap-3 group cursor-pointer" onClick={() => {
+        <Link to="/" className="flex items-center gap-3 group cursor-pointer" onClick={() => {
           console.log('[DEBUG] NAVIGATE_HOME_CALLED');
           resetApp();
         }}>
@@ -130,7 +144,7 @@ export default function App() {
             <h1 className="text-lg font-black italic tracking-tighter leading-none uppercase">Face Symmetry Pro</h1>
             <span className="text-[8px] font-bold text-[#3BFF9C] uppercase tracking-[0.3em] mt-1">AI Facial Analysis</span>
           </div>
-        </div>
+        </Link>
         
         <div className="flex items-center gap-2">
           {analysis.result && (
@@ -153,68 +167,76 @@ export default function App() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 relative flex flex-col min-h-0 w-full max-w-2xl mx-auto px-4 sm:px-6 pb-6">
-        <AnimatePresence mode="wait">
-          {!analysis.result ? (
-            <LandingView 
-              key="landing"
-              isAnalyzing={analysis.isAnalyzing}
-              analysisProgress={analysis.analysisProgress}
-              analysisStatus={analysis.analysisStatus}
-              scanQuality={analysis.scanQuality}
-              isCameraReady={analysis.isCameraReady}
-              videoRef={analysis.videoRef}
-              canvasRef={analysis.canvasRef}
-              onAnalyze={analysis.analyzeImage}
-              onFileUpload={analysis.handleFileUpload}
-              isLocked={isLocked}
-              image={analysis.capturedImage}
-              capturePhoto={analysis.capturePhoto}
-              startCamera={analysis.startCamera}
-              stopCamera={analysis.stopCamera}
-              centerOffset={analysis.centerOffset}
-              rotationAngle={analysis.rotationAngle}
-              imageAspectRatio={analysis.imageAspectRatio}
-              imageDimensions={analysis.imageDimensions}
-              scanningLandmarks={analysis.scanningLandmarks}
-              error={analysis.error}
-              engineStatus={analysis.engineStatus}
-              onUnlock={unlock}
-            />
-          ) : (
-            <ReportView 
-              key="report"
-              result={analysis.result}
-              reportStep={reportStep}
-              setReportStep={setReportStep}
-              isUnlocked={isUnlocked}
-              setIsUnlocked={setIsUnlocked}
-              image={analysis.capturedImage}
-              symmetryStrength={analysis.symmetryStrength}
-              setSymmetryStrength={analysis.setSymmetryStrength}
-              updateSymmetryTwins={analysis.updateSymmetryTwins}
-              setExportType={setExportType}
-              autoCorrectEnabled={autoCorrectEnabled}
-              setAutoCorrectEnabled={setAutoCorrectEnabled}
-              showOverlay={showOverlay}
-              setShowOverlay={setShowOverlay}
-              centerOffset={analysis.centerOffset}
-              rotationAngle={analysis.rotationAngle}
-              imageAspectRatio={analysis.imageAspectRatio}
-              imageDimensions={analysis.imageDimensions}
-              FaceMeshCanvas={FaceMeshCanvas}
-              onReset={resetApp}
-              onAction={handleAction}
-              isExporting={isExporting}
-              exportSuccess={exportSuccess}
-              previousScan={previousScan}
-              history={analysisHistory}
-              weeklyScans={challenge.scans}
-            />
-          )}
-        </AnimatePresence>
-      </main>
+      <Routes>
+        <Route path="/" element={
+          <main className="flex-1 relative flex flex-col min-h-0 w-full max-w-2xl mx-auto px-4 sm:px-6 pb-6">
+            <AnimatePresence mode="wait">
+              {!analysis.result ? (
+                <LandingView 
+                  key="landing"
+                  isAnalyzing={analysis.isAnalyzing}
+                  analysisProgress={analysis.analysisProgress}
+                  analysisStatus={analysis.analysisStatus}
+                  scanQuality={analysis.scanQuality}
+                  isCameraReady={analysis.isCameraReady}
+                  videoRef={analysis.videoRef}
+                  canvasRef={analysis.canvasRef}
+                  onAnalyze={analysis.analyzeImage}
+                  onFileUpload={analysis.handleFileUpload}
+                  isLocked={isLocked}
+                  image={analysis.capturedImage}
+                  capturePhoto={analysis.capturePhoto}
+                  startCamera={analysis.startCamera}
+                  stopCamera={analysis.stopCamera}
+                  centerOffset={analysis.centerOffset}
+                  rotationAngle={analysis.rotationAngle}
+                  imageAspectRatio={analysis.imageAspectRatio}
+                  imageDimensions={analysis.imageDimensions}
+                  scanningLandmarks={analysis.scanningLandmarks}
+                  error={analysis.error}
+                  engineStatus={analysis.engineStatus}
+                  onUnlock={unlock}
+                />
+              ) : (
+                <ReportView 
+                  key="report"
+                  result={analysis.result}
+                  reportStep={reportStep}
+                  setReportStep={setReportStep}
+                  isUnlocked={isUnlocked}
+                  setIsUnlocked={setIsUnlocked}
+                  image={analysis.capturedImage}
+                  symmetryStrength={analysis.symmetryStrength}
+                  setSymmetryStrength={analysis.setSymmetryStrength}
+                  updateSymmetryTwins={analysis.updateSymmetryTwins}
+                  setExportType={setExportType}
+                  autoCorrectEnabled={autoCorrectEnabled}
+                  setAutoCorrectEnabled={setAutoCorrectEnabled}
+                  showOverlay={showOverlay}
+                  setShowOverlay={setShowOverlay}
+                  centerOffset={analysis.centerOffset}
+                  rotationAngle={analysis.rotationAngle}
+                  imageAspectRatio={analysis.imageAspectRatio}
+                  imageDimensions={analysis.imageDimensions}
+                  FaceMeshCanvas={FaceMeshCanvas}
+                  onReset={resetApp}
+                  onAction={handleAction}
+                  isExporting={isExporting}
+                  exportSuccess={exportSuccess}
+                  previousScan={previousScan}
+                  history={analysisHistory}
+                  weeklyScans={challenge.scans}
+                />
+              )}
+            </AnimatePresence>
+          </main>
+        } />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/how-it-works" element={<HowItWorks />} />
+        <Route path="/guide" element={<FaceSymmetryGuide />} />
+      </Routes>
+
+      <Footer />
 
       {/* Hidden container for image capture */}
       <div className="fixed -left-[9999px] top-0 pointer-events-none" aria-hidden="true">
@@ -233,9 +255,6 @@ export default function App() {
           )}
         </div>
       </div>
-
-      {/* Modals */}
-      {/* ExportModal is removed as per request for direct actions */}
 
       {/* Privacy Note Modal */}
       <AnimatePresence>
@@ -312,5 +331,13 @@ export default function App() {
         }
       `}} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <MainApp />
+    </Router>
   );
 }
