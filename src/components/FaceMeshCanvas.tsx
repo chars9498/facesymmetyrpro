@@ -22,6 +22,11 @@ export const FaceMeshCanvas: React.FC<FaceMeshCanvasProps> = ({ landmarks, image
       const width = image.clientWidth;
       const height = image.clientHeight;
       
+      if (width === 0 || height === 0) {
+        console.warn('[FaceMeshCanvas] Image has zero client dimensions');
+        return;
+      }
+
       // 3. Ensure the canvas overlay matches the image exactly
       canvas.width = width;
       canvas.height = height;
@@ -31,6 +36,12 @@ export const FaceMeshCanvas: React.FC<FaceMeshCanvasProps> = ({ landmarks, image
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
+      // Safety: Prevent division by zero
+      if (!rawWidth || !rawHeight) {
+        console.warn('[FaceMeshCanvas] Invalid raw dimensions', { rawWidth, rawHeight });
+        return;
+      }
+
       // Calculate object-fit: cover scaling and offsets
       const scale = Math.max(width / rawWidth, height / rawHeight);
       const renderedWidth = rawWidth * scale;

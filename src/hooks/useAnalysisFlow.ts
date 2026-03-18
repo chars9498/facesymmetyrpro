@@ -62,11 +62,6 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
   const analyzeImage = useCallback(async (base64Image: string, source: 'camera' | 'upload' = 'camera') => {
     if (isAnalyzing) return;
     
-    if (isLocked) {
-      setError(t('errors.limitReached'));
-      return;
-    }
-
     setIsAnalyzing(true);
     setError(null);
     setResult(null);
@@ -98,223 +93,97 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
       setAnalysisStatus(t('analysis.steps.detecting'));
       setAnalysisProgress(25);
 
-      const runFaceMesh = async (imgSrc: string, isRetry: boolean = false): Promise<any> => {
-        // ---------------------------------------------------------
-        // UPLOAD PIPELINE (Instruction 1-6)
-        // ---------------------------------------------------------
-        if (source === 'upload') {
-          return new Promise((resolve, reject) => {
-            const image = new Image();
-            
-            // 1. Ensure the uploaded image is fully loaded before analysis.
-            image.onload = async () => {
-              try {
-                // 2. Validate dimensions before analysis
-                if (image.width === 0 || image.height === 0) {
-                  throw new Error(t('errors.invalidDimensions'));
-                }
-
-                // 4. Safe resize after image load only
-                const maxDim = 640;
-                let targetWidth = image.width;
-                let targetHeight = image.height;
-                if (targetWidth > targetHeight) {
-                  if (targetWidth > maxDim) {
-                    targetHeight *= maxDim / targetWidth;
-                    targetWidth = maxDim;
-                  }
-                } else {
-                  if (targetHeight > maxDim) {
-                    targetWidth *= maxDim / targetHeight;
-                    targetHeight = maxDim;
-                  }
-                }
-
-                const canvas = document.createElement('canvas');
-                canvas.width = targetWidth;
-                canvas.height = targetHeight;
-                const ctx = canvas.getContext('2d');
-
-                if (!ctx) {
-                  throw new Error(t('errors.canvasContext'));
-                }
-
-                // 3. Ensure canvas draw actually completes
-                ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
-                
-                // Wait one animation frame to ensure draw completes
-                await new Promise(requestAnimationFrame);
-
-                // Final validation before sending
-                if (canvas.width === 0 || canvas.height === 0) {
-                  throw new Error(t('errors.invalidDimensions'));
-                }
-
-                // Update dimensions for UI scaling
-                setImageDimensions({ width: targetWidth, height: targetHeight });
-                setImageAspectRatio(targetWidth / targetHeight);
-
-                // 5. Log debugging values before analysis.
-                console.log('[DEBUG] UPLOAD_PIPELINE_SEND', {
-                  imageWidth: image.width,
-                  imageHeight: image.height,
-                  canvasWidth: canvas.width,
-                  canvasHeight: canvas.height,
-                  isRetry
-                });
-
-                // Handle busy state if needed
-                if (isFaceMeshBusyRef.current) {
-                  await new Promise(r => setTimeout(r, 500));
-                }
-
-                const timeout = setTimeout(() => {
-                  faceMeshCallbackRef.current = null;
-                  isFaceMeshBusyRef.current = false;
-                  reject(new Error(t('errors.timeout')));
-                }, 15000);
-
-                faceMeshCallbackRef.current = (results) => {
-                  clearTimeout(timeout);
-                  faceMeshCallbackRef.current = null;
-                  isFaceMeshBusyRef.current = false;
-                  resolve(results);
-                };
-
-                isFaceMeshBusyRef.current = true;
-
-                // 4. Wait one frame before calling FaceMesh.
-                requestAnimationFrame(() => {
-                  if (!faceMeshRef.current) {
-                    clearTimeout(timeout);
-                    isFaceMeshBusyRef.current = false;
-                    reject(new Error(t('errors.modelNotReady')));
-                    return;
-                  }
-
-                  faceMeshRef.current.send({ image: canvas }).catch((err: any) => {
-                    clearTimeout(timeout);
-                    faceMeshCallbackRef.current = null;
-                    isFaceMeshBusyRef.current = false;
-                    reject(new Error(err.message || t('errors.sendFailed')));
-                  });
-                });
-              } catch (err: any) {
-                reject(err);
-              }
-            };
-
-            image.onerror = () => reject(new Error(t('errors.loadFailed')));
-            image.src = imgSrc;
-          });
-        }
-
-        // ---------------------------------------------------------
-        // CAMERA PIPELINE (Instruction 7: Do not modify)
-        // ---------------------------------------------------------
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = () => {
-            setImageDimensions({ width: img.width, height: img.height });
-            setImageAspectRatio(img.width / img.height);
-            resolve(null);
-          };
-          img.onerror = () => reject(new Error(t('errors.loadFailed')));
-          img.src = imgSrc;
-        });
-
-        if (isFaceMeshBusyRef.current) {
-          // Wait a bit if busy
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-
+      const runFaceMesh = async (imgSrc: string, source: 'camera' | 'upload'): Promise<any> => {
+        console.log(`[useAnalysisFlow] runFaceMesh started: source=${source}`);
         return new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
-            faceMeshCallbackRef.current = null;
-            isFaceMeshBusyRef.current = false;
+            console.error('[useAnalysisFlow] FaceMesh analysis timed out');
             reject(new Error(t('errors.timeout')));
           }, 15000);
 
-          faceMeshCallbackRef.current = (results) => {
+          const image = new Image();
+          image.crossOrigin = "anonymous";
+          
+          image.onload = async () => {
             clearTimeout(timeout);
-            faceMeshCallbackRef.current = null;
-            isFaceMeshBusyRef.current = false;
-            resolve(results);
+            console.log('[useAnalysisFlow] runFaceMesh: image loaded', { w: image.width, h: image.height });
+            
+            if (image.width === 0 || image.height === 0) {
+              reject(new Error(t('errors.invalidDimensions')));
+              return;
+            }
+
+            try {
+              // Ensure canvas is ready
+              const canvas = document.createElement('canvas');
+              
+              // 6. Reduce memory risk: cap analysis dimensions
+              const MAX_ANALYSIS_DIM = 640;
+              let targetWidth = image.width;
+              let targetHeight = image.height;
+              
+              if (targetWidth > MAX_ANALYSIS_DIM || targetHeight > MAX_ANALYSIS_DIM) {
+                const scale = Math.min(MAX_ANALYSIS_DIM / targetWidth, MAX_ANALYSIS_DIM / targetHeight);
+                targetWidth = Math.round(targetWidth * scale);
+                targetHeight = Math.round(targetHeight * scale);
+                console.log('[useAnalysisFlow] runFaceMesh: scaling down for analysis', { targetWidth, targetHeight });
+              }
+              
+              canvas.width = targetWidth;
+              canvas.height = targetHeight;
+              const ctx = canvas.getContext('2d');
+              if (!ctx) throw new Error(t('errors.canvasContext'));
+              
+              ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+              
+              // 3. Ensure canvas draw actually completes
+              await new Promise(requestAnimationFrame);
+
+              // Update dimensions for UI scaling
+              setImageDimensions({ width: targetWidth, height: targetHeight });
+              setImageAspectRatio(targetWidth / targetHeight);
+
+              console.log('[useAnalysisFlow] runFaceMesh: sending to FaceMesh');
+              
+              if (isFaceMeshBusyRef.current) {
+                await new Promise(r => setTimeout(r, 500));
+              }
+
+              faceMeshCallbackRef.current = (results) => {
+                isFaceMeshBusyRef.current = false;
+                faceMeshCallbackRef.current = null;
+                resolve(results);
+              };
+
+              isFaceMeshBusyRef.current = true;
+              
+              // 5. Ensure FaceMesh receives the canvas correctly
+              await faceMeshRef.current?.send({ image: canvas });
+            } catch (err) {
+              console.error('[useAnalysisFlow] runFaceMesh error:', err);
+              isFaceMeshBusyRef.current = false;
+              faceMeshCallbackRef.current = null;
+              reject(err);
+            }
           };
 
-          isFaceMeshBusyRef.current = true;
-          
-          // 4. Add debug validation before faceMesh.send()
-          console.log('[DEBUG] FACEMESH_SEND', {
-            width: img.width,
-            height: img.height
-          });
-
-          if (img.width === 0 || img.height === 0) {
+          image.onerror = (e) => {
             clearTimeout(timeout);
-            isFaceMeshBusyRef.current = false;
-            reject(new Error(t('errors.invalidDimensions')));
-            return;
-          }
+            console.error('[useAnalysisFlow] runFaceMesh: image load error', e);
+            reject(new Error(t('errors.loadFailed')));
+          };
 
-          // 5. Ensure FaceMesh receives the canvas correctly
-          const analysisCanvas = document.createElement('canvas');
-          analysisCanvas.width = img.width;
-          analysisCanvas.height = img.height;
-          const analysisCtx = analysisCanvas.getContext('2d');
-          
-          if (analysisCtx) {
-            analysisCtx.drawImage(img, 0, 0);
-            
-            // 3. Ensure the canvas frame is fully rendered before analysis.
-            if (analysisCanvas.width > 0 && analysisCanvas.height > 0) {
-              // 5. Add debug logging before send():
-              console.log("FaceMesh analysis starting", {
-                width: analysisCanvas.width,
-                height: analysisCanvas.height
-              });
-
-              // 1. Delay FaceMesh analysis by one frame after capture.
-              // Using requestAnimationFrame or a small timeout to ensure state is settled
-              setTimeout(() => {
-                if (!faceMeshRef.current) {
-                  reject(new Error(t('errors.modelNotReady')));
-                  return;
-                }
-                
-                faceMeshRef.current.send({ image: analysisCanvas }).catch((err: any) => {
-                  clearTimeout(timeout);
-                  faceMeshCallbackRef.current = null;
-                  isFaceMeshBusyRef.current = false;
-                  reject(new Error(err.message || t('errors.sendFailed')));
-                });
-              }, 60); // 60ms is roughly 4 frames at 60fps, very safe
-            } else {
-              clearTimeout(timeout);
-              isFaceMeshBusyRef.current = false;
-              reject(new Error(t('errors.renderFailed')));
-            }
-          } else {
-            // Fallback if context creation fails
-            console.log("FaceMesh analysis starting (fallback)", {
-              width: img.width,
-              height: img.height
-            });
-            
-            setTimeout(() => {
-              faceMeshRef.current!.send({ image: img }).catch((err) => {
-                clearTimeout(timeout);
-                faceMeshCallbackRef.current = null;
-                isFaceMeshBusyRef.current = false;
-                reject(new Error(err.message || t('errors.sendFailed')));
-              });
-            }, 60);
-          }
+          image.src = imgSrc;
         });
       };
 
       // Initial analysis attempt
-      let faceResults = await runFaceMesh(base64Image);
+      let faceResults;
+      try {
+        faceResults = await runFaceMesh(base64Image, source);
+      } catch (err) {
+        console.warn('[useAnalysisFlow] Initial analysis failed', err);
+      }
 
       // 5. Add one retry path for upload only
       if (source === 'upload' && (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0)) {
@@ -323,31 +192,15 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
         
         // Slightly increase contrast/brightness before retry
         const enhancedImage = await enhanceImage(base64Image);
-        faceResults = await runFaceMesh(enhancedImage, true);
-        
-        if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
-          throw new Error(t('errors.analysisFailed'));
+        try {
+          faceResults = await runFaceMesh(enhancedImage, 'upload');
+        } catch (err) {
+          console.error('[useAnalysisFlow] Enhanced retry failed', err);
         }
       }
 
-      // Camera pipeline retry logic (Instruction 7: Do not modify)
-      if (source === 'camera') {
-        if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
-          console.log('[DEBUG] FACEMESH_RETRY_ENHANCED');
-          setAnalysisStatus(t('analysis.steps.enhancing'));
-          const enhancedImage = await enhanceImage(base64Image);
-          faceResults = await runFaceMesh(enhancedImage);
-        }
-
-        if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
-          console.log('[DEBUG] FACEMESH_RETRY_DELAY');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          faceResults = await runFaceMesh(base64Image);
-        }
-
-        if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
-          throw new Error(t('errors.noFace'));
-        }
+      if (!faceResults || !faceResults.multiFaceLandmarks || faceResults.multiFaceLandmarks.length === 0) {
+        throw new Error(t('errors.analysisFailed'));
       }
 
       setAnalysisProgress(50);
@@ -445,10 +298,30 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
       // Use original image for final processing
       const finalImgInfo = new Image();
       finalImgInfo.src = base64Image;
-      await finalImgInfo.decode();
+      try {
+        await finalImgInfo.decode();
+      } catch (e) {
+        await new Promise((resolve) => {
+          finalImgInfo.onload = resolve;
+          finalImgInfo.onerror = resolve;
+        });
+      }
 
-      const balancedImage = await generateSoftSymmetry(base64Image, rawLandmarks, finalImgInfo.width, finalImgInfo.height);
-      const symmetryTwins = await generateSymmetryTwins(base64Image, rawLandmarks, finalImgInfo.width, finalImgInfo.height, symmetryStrength);
+      // 5. Fallback behavior: if processed image generation fails, show original
+      let balancedImage = base64Image;
+      let symmetryTwins = { left: base64Image, right: base64Image };
+
+      try {
+        console.log('[useAnalysisFlow] Generating final images');
+        const [softSym, twins] = await Promise.all([
+          generateSoftSymmetry(base64Image, rawLandmarks, finalImgInfo.width || imageDimensions.width, finalImgInfo.height || imageDimensions.height),
+          generateSymmetryTwins(base64Image, rawLandmarks, finalImgInfo.width || imageDimensions.width, finalImgInfo.height || imageDimensions.height, symmetryStrength)
+        ]);
+        balancedImage = softSym;
+        symmetryTwins = twins;
+      } catch (imgErr) {
+        console.error('[useAnalysisFlow] Final image generation failed', imgErr);
+      }
 
       const safeLandmarks: any = parsedResult.landmarks || {};
       
@@ -479,6 +352,7 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
         }
       };
 
+      console.log('[DEBUG] SETTING_RESULT', finalResult.overallScore);
       setResult(finalResult);
       console.log('[DEBUG] REPORT_SHOWN');
       setCenterOffset((0.5 - (eyeCenterMid.x + midlineX)) * 100);
@@ -486,13 +360,15 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
       setCapturedImage(base64Image);
 
       if (onAnalysisComplete) {
+        console.log('[DEBUG] CALLING_ON_ANALYSIS_COMPLETE');
         onAnalysisComplete(finalResult);
       }
 
     } catch (err: any) {
-      console.error("Analysis Error:", err);
+      console.error("[DEBUG] ANALYSIS_ERROR", err);
       setError(err.message || t('errors.analysisFailed'));
     } finally {
+      console.log('[DEBUG] ANALYSIS_FINALLY');
       setIsAnalyzing(false);
       setAnalysisStatus('');
       faceMeshCallbackRef.current = null;

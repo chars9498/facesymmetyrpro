@@ -9,7 +9,8 @@ interface DailyStreakProps {
 
 export const DailyStreak: React.FC<DailyStreakProps> = ({ streak, lastScanDate }) => {
   const { t } = useTranslation();
-  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const isAlreadyScannedToday = lastScanDate === today;
 
   if (streak === 0) return null;

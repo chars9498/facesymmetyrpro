@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getTodayString } from '../utils/dateUtils';
 
 interface StreakData {
   lastScanDate: string;
@@ -26,19 +27,19 @@ export function useDailyStreak() {
   }, []);
 
   const incrementStreak = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const today = getTodayString();
+    
+    const yesterdayDate = new Date();
+    yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+    const yesterdayStr = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, '0')}-${String(yesterdayDate.getDate()).padStart(2, '0')}`;
 
     setStreakData(prev => {
-      let newStreak = prev.streak;
-
       if (prev.lastScanDate === today) {
         // Already counted today
         return prev;
       }
 
+      let newStreak = prev.streak;
       if (prev.lastScanDate === yesterdayStr) {
         // Consecutive day
         newStreak += 1;

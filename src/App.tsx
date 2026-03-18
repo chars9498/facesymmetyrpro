@@ -50,17 +50,25 @@ function MainApp() {
   const { streakData, incrementStreak } = useDailyStreak();
   const [previousScan, setPreviousScan] = useState<any>(null);
 
-  const analysis = useAnalysisFlow({
-    onAnalysisComplete: (result) => {
-      // Get previous scan BEFORE saving current one
-      const prev = getPreviousScan();
-      setPreviousScan(prev);
-      
+  const onAnalysisComplete = useCallback((result: any) => {
+    // Get previous scan BEFORE saving current one
+    const prev = getPreviousScan();
+    setPreviousScan(prev);
+    
+    try {
+      console.log('[DEBUG] ON_ANALYSIS_COMPLETE_START', result.overallScore);
       incrementCount();
       saveToHistory(result.overallScore);
       incrementWeeklyScan();
       incrementStreak();
+      console.log('[DEBUG] ON_ANALYSIS_COMPLETE_END');
+    } catch (err) {
+      console.error('[DEBUG] ON_ANALYSIS_COMPLETE_ERROR', err);
     }
+  }, [getPreviousScan, incrementCount, saveToHistory, incrementWeeklyScan, incrementStreak]);
+
+  const analysis = useAnalysisFlow({
+    onAnalysisComplete
   });
   
   const resetApp = useCallback(() => {

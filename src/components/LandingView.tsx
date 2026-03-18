@@ -61,19 +61,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [showPaywall, setShowPaywall] = React.useState(false);
 
   const handleStartCamera = () => {
-    if (isLocked) {
-      setShowPaywall(true);
-    } else if (startCamera) {
+    if (startCamera) {
       startCamera();
     }
   };
 
   const handleUploadClick = () => {
-    if (isLocked) {
-      setShowPaywall(true);
-    } else {
-      fileInputRef.current?.click();
-    }
+    fileInputRef.current?.click();
   };
 
   const handleUnlock = () => {
@@ -241,6 +235,18 @@ export const LandingView: React.FC<LandingViewProps> = ({
               className="max-h-[70vh] w-full object-contain transition-transform duration-200" 
               style={{ transform: `rotate(${rotationAngle}deg) scale(1.1)` }}
             />
+            
+            {/* Landmarks Overlay during analysis */}
+            {scanningLandmarks && (
+              <div className="absolute inset-0 pointer-events-none z-10">
+                <FaceMeshCanvas 
+                  landmarks={scanningLandmarks} 
+                  imageRef={{ current: document.querySelector('img[alt="Preview"]') as HTMLImageElement }}
+                  rawWidth={imageDimensions.width}
+                  rawHeight={imageDimensions.height}
+                />
+              </div>
+            )}
             
             {isAnalyzing && (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-white space-y-6 z-50 bg-black/60 backdrop-blur-md">

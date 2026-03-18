@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getTodayString, getStartOfWeekString } from '../utils/dateUtils';
 
 interface ChallengeData {
   weekStart: string;
@@ -8,24 +9,16 @@ interface ChallengeData {
 
 const STORAGE_KEY = 'face_weekly_challenge';
 
-function getWeekStart(date: Date): string {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
-  const monday = new Date(d.setDate(diff));
-  return monday.toISOString().split('T')[0];
-}
-
 export function useWeeklyChallenge() {
   const [challenge, setChallenge] = useState<ChallengeData>({
-    weekStart: getWeekStart(new Date()),
+    weekStart: getStartOfWeekString(),
     scans: 0,
     lastScanDate: '',
   });
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    const currentWeekStart = getWeekStart(new Date());
+    const currentWeekStart = getStartOfWeekString();
 
     if (saved) {
       try {
@@ -49,8 +42,8 @@ export function useWeeklyChallenge() {
   }, []);
 
   const incrementWeeklyScan = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const currentWeekStart = getWeekStart(new Date());
+    const today = getTodayString();
+    const currentWeekStart = getStartOfWeekString();
 
     setChallenge(prev => {
       // Check if week changed

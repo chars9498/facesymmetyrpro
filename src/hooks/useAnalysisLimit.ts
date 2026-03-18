@@ -1,19 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { getTodayString } from '../utils/dateUtils';
 
 export const useAnalysisLimit = () => {
   const [analysisCount, setAnalysisCount] = useState(0);
   const [isLocked, setIsLocked] = useState(false);
 
-  const unlock = () => {
+  const unlock = useCallback(() => {
     setIsLocked(false);
-    // For demo purposes, we can reset the count or just set isLocked to false
-    // If we want it to persist, we could use another localStorage key
     localStorage.setItem('face_analysis_pro', 'true');
-  };
+  }, []);
 
   useEffect(() => {
     const isPro = localStorage.getItem('face_analysis_pro') === 'true';
-    const count = parseInt(localStorage.getItem('face_analysis_count') || '0');
+    const lastReset = localStorage.getItem('face_analysis_last_reset');
+    const today = getTodayString();
+
+    let count = parseInt(localStorage.getItem('face_analysis_count') || '0');
+    
+    // Reset count if it's a new day
+    if (lastReset !== today) {
+      count = 0;
+      localStorage.setItem('face_analysis_count', '0');
+      localStorage.setItem('face_analysis_last_reset', today);
+    }
+    
     setAnalysisCount(count);
     
     if (isPro) {
@@ -23,17 +33,23 @@ export const useAnalysisLimit = () => {
     }
   }, []);
 
-  const incrementCount = () => {
+  const incrementCount = useCallback(() => {
     const isPro = localStorage.getItem('face_analysis_pro') === 'true';
     if (isPro) return;
 
-    const newCount = analysisCount + 1;
-    setAnalysisCount(newCount);
-    localStorage.setItem('face_analysis_count', newCount.toString());
-    if (newCount >= 2) {
-      setIsLocked(true);
-    }
-  };
+    setAnalysisCount(prev => {
+      const newCount = prev + 1;
+      localStorage.setItem('face_analysis_count', newCount.toString());
+      
+      // Ensure the reset date is current
+      localStorage.setItem('face_analysis_last_reset', getTodayString());
+
+      if (newCount >= 2) {
+        setIsLocked(true);
+      }
+      return newCount;
+    });
+  }, []);
 
   return { analysisCount, isLocked, incrementCount, unlock };
 };
