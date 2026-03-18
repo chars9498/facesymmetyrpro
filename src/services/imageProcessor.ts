@@ -1,4 +1,3 @@
-
 /**
  * Resizes an image to fit within maxDimension while maintaining aspect ratio.
  */
@@ -119,18 +118,31 @@ export const generateSoftSymmetry = async (
 
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = imgSrc;
     
     try {
+      img.src = imgSrc;
       await img.decode();
-      console.log('[imageProcessor] generateSoftSymmetry: source image decoded');
+      console.log('[imageProcessor] generateSoftSymmetry: source image decoded', {
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight
+      });
     } catch (decodeError) {
       console.error('[imageProcessor] generateSoftSymmetry: decode failed', decodeError);
       // Fallback to onload if decode fails
       await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
+        img.onload = () => {
+          console.log('[imageProcessor] generateSoftSymmetry: fallback onload success');
+          resolve(true);
+        };
+        img.onerror = (e) => {
+          console.error('[imageProcessor] generateSoftSymmetry: fallback onload failed', e);
+          reject(e);
+        };
       });
+    }
+
+    if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+      throw new Error('Decoded image has zero dimensions');
     }
 
     // 1. Face Alignment
@@ -149,6 +161,10 @@ export const generateSoftSymmetry = async (
     ctx.translate(-midlineX, -targetHeight / 2);
     ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
     ctx.restore();
+    
+    // Verify canvas is not empty
+    const testPixel = ctx.getImageData(Math.floor(targetWidth/2), Math.floor(targetHeight/2), 1, 1).data;
+    console.log('[imageProcessor] generateSoftSymmetry: canvas test pixel', { r: testPixel[0], g: testPixel[1], b: testPixel[2], a: testPixel[3] });
     
     const alignedData = ctx.getImageData(0, 0, targetWidth, targetHeight);
     
@@ -288,17 +304,30 @@ export const generateSymmetryTwins = async (
 
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.src = imgSrc;
     
     try {
+      img.src = imgSrc;
       await img.decode();
-      console.log('[imageProcessor] generateSymmetryTwins: source image decoded');
+      console.log('[imageProcessor] generateSymmetryTwins: source image decoded', {
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight
+      });
     } catch (decodeError) {
       console.error('[imageProcessor] generateSymmetryTwins: decode failed', decodeError);
       await new Promise((resolve, reject) => {
-        img.onload = resolve;
-        img.onerror = reject;
+        img.onload = () => {
+          console.log('[imageProcessor] generateSymmetryTwins: fallback onload success');
+          resolve(true);
+        };
+        img.onerror = (e) => {
+          console.error('[imageProcessor] generateSymmetryTwins: fallback onload failed', e);
+          reject(e);
+        };
       });
+    }
+
+    if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+      throw new Error('Decoded image has zero dimensions');
     }
 
     // 1. Face Alignment
@@ -316,6 +345,10 @@ export const generateSymmetryTwins = async (
     ctx.translate(-midlineX, -targetHeight / 2);
     ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
     ctx.restore();
+    
+    // Verify canvas is not empty
+    const testPixel = ctx.getImageData(Math.floor(targetWidth/2), Math.floor(targetHeight/2), 1, 1).data;
+    console.log('[imageProcessor] generateSymmetryTwins: canvas test pixel', { r: testPixel[0], g: testPixel[1], b: testPixel[2], a: testPixel[3] });
     
     const originalData = ctx.getImageData(0, 0, targetWidth, targetHeight);
 
