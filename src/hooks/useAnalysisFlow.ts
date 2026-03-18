@@ -299,11 +299,23 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
       const finalImgInfo = new Image();
       finalImgInfo.src = base64Image;
       try {
+        console.log('[useAnalysisFlow] Decoding final image for processing');
         await finalImgInfo.decode();
+        console.log('[useAnalysisFlow] Final image decoded successfully', {
+          w: finalImgInfo.width,
+          h: finalImgInfo.height
+        });
       } catch (e) {
+        console.warn('[useAnalysisFlow] Final image decode failed, falling back to onload', e);
         await new Promise((resolve) => {
-          finalImgInfo.onload = resolve;
-          finalImgInfo.onerror = resolve;
+          finalImgInfo.onload = () => {
+            console.log('[useAnalysisFlow] Final image fallback onload success');
+            resolve(true);
+          };
+          finalImgInfo.onerror = (err) => {
+            console.error('[useAnalysisFlow] Final image fallback onload failed', err);
+            resolve(false);
+          };
         });
       }
 
@@ -312,15 +324,27 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
       let symmetryTwins = { left: base64Image, right: base64Image };
 
       try {
-        console.log('[useAnalysisFlow] Generating final images');
+        console.log('[useAnalysisFlow] Generating final images: soft symmetry and twins');
         const [softSym, twins] = await Promise.all([
           generateSoftSymmetry(base64Image, rawLandmarks, finalImgInfo.width || imageDimensions.width, finalImgInfo.height || imageDimensions.height),
           generateSymmetryTwins(base64Image, rawLandmarks, finalImgInfo.width || imageDimensions.width, finalImgInfo.height || imageDimensions.height, symmetryStrength)
         ]);
-        balancedImage = softSym;
-        symmetryTwins = twins;
+        
+        if (softSym && softSym !== base64Image) {
+          console.log('[useAnalysisFlow] Soft symmetry generated successfully');
+          balancedImage = softSym;
+        } else {
+          console.warn('[useAnalysisFlow] Soft symmetry generation returned original or empty');
+        }
+
+        if (twins && twins.left && twins.right) {
+          console.log('[useAnalysisFlow] Symmetry twins generated successfully');
+          symmetryTwins = twins;
+        } else {
+          console.warn('[useAnalysisFlow] Symmetry twins generation returned invalid object');
+        }
       } catch (imgErr) {
-        console.error('[useAnalysisFlow] Final image generation failed', imgErr);
+        console.error('[useAnalysisFlow] Final image generation failed critical error', imgErr);
       }
 
       const safeLandmarks: any = parsedResult.landmarks || {};
@@ -518,4 +542,3 @@ export function useAnalysisFlow({ onAnalysisComplete }: AnalysisFlowOptions = {}
     canvasRef
   };
 }
-
