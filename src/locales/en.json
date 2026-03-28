@@ -87,6 +87,7 @@
     "progress": "Progress",
     "scansCompleted": "{{count}} / 3 scans completed",
     "moreScans": "{{count}} more scans to complete this week's challenge.",
+    "lastScan": "Last scan: {{date}}",
     "alreadyScanned": "Today's scan is already recorded. Please come back tomorrow.",
     "nextScan": "Next scan recommended in a few days.",
     "desc": "Complete 3 scans this week to track how your facial balance changes."
@@ -94,6 +95,7 @@
   "streak": {
     "title": "Daily Streak",
     "days": "day streak",
+    "lastScan": "Last scan: {{date}}",
     "completed": "Today's scan completed",
     "comeBack": "Come back tomorrow to continue your streak"
   },

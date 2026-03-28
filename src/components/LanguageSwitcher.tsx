@@ -14,7 +14,7 @@ const LANGUAGES: LanguageItem[] = [
 ];
 
 export const LanguageSwitcher: React.FC = () => {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const current = i18n.language.split('-')[0];
 
   const onChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -23,7 +23,7 @@ export const LanguageSwitcher: React.FC = () => {
 
   return (
     <label className="inline-flex items-center gap-2 text-xs text-white/70">
-      <span className="uppercase tracking-wider">Lang</span>
+      <span className="uppercase tracking-wider">{t('common.language', { defaultValue: 'Lang' })}</span>
       <select
         aria-label="Language selector"
         value={LANGUAGES.some((l) => l.code === current) ? current : 'en'}
