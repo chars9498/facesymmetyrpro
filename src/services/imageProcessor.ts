@@ -28,6 +28,8 @@ export const resizeImage = async (base64Str: string, maxDimension = 1024): Promi
     const ratio = Math.min(1, maxDimension / Math.max(width, height));
     const targetWidth = clampDimension(Math.round(width * ratio));
     const targetHeight = clampDimension(Math.round(height * ratio));
+    const targetWidth = Math.max(1, Math.round(width * ratio));
+    const targetHeight = Math.max(1, Math.round(height * ratio));
 
     const canvas = document.createElement('canvas');
     canvas.width = targetWidth;
@@ -77,6 +79,8 @@ export const generateSoftSymmetry = async (
     const canvas = document.createElement('canvas');
     canvas.width = clampDimension(width || image.width);
     canvas.height = clampDimension(height || image.height);
+    canvas.width = Math.max(1, width || image.width);
+    canvas.height = Math.max(1, height || image.height);
 
     const ctx = canvas.getContext('2d');
     if (!ctx) {
@@ -113,6 +117,8 @@ export const generateSymmetryTwins = async (
     const image = await loadImage(imgSrc);
     const targetWidth = clampDimension(width || image.width);
     const targetHeight = clampDimension(height || image.height);
+    const targetWidth = Math.max(1, width || image.width);
+    const targetHeight = Math.max(1, height || image.height);
 
     const sourceCanvas = document.createElement('canvas');
     sourceCanvas.width = targetWidth;

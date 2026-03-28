@@ -16,7 +16,7 @@ const LANGUAGES: LanguageItem[] = [
 export const LanguageSwitcher: React.FC = () => {
   const { i18n } = useTranslation();
   const current = (i18n.resolvedLanguage || i18n.language).split('-')[0];
-
+  const current = i18n.language.split('-')[0];
   const onChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     void i18n.changeLanguage(event.target.value);
   };

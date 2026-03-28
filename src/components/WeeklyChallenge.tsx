@@ -27,6 +27,7 @@ export const WeeklyChallenge: React.FC<WeeklyChallengeProps> = ({ scans, lastSca
       {lastScanDate ? (
         <p className="mt-1 text-[11px] text-white/40">{t('challenge.lastScan', { date: lastScanDate, defaultValue: `Last scan: ${lastScanDate}` })}</p>
       ) : null}
+      {lastScanDate ? <p className="mt-1 text-[11px] text-white/40">Last scan: {lastScanDate}</p> : null}
     </section>
   );
 };
