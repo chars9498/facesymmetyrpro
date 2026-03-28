@@ -19,6 +19,8 @@ void i18n
     },
     fallbackLng: 'en',
     supportedLngs: ['en', 'ko', 'ja', 'zh'],
+    nonExplicitSupportedLngs: true,
+    load: 'languageOnly',
     interpolation: {
       escapeValue: false,
     },

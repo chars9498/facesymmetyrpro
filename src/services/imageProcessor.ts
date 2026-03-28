@@ -1,4 +1,7 @@
 type Landmark = { x: number; y: number };
+const MAX_CANVAS_DIMENSION = 2048;
+
+const clampDimension = (value: number): number => Math.max(1, Math.min(value, MAX_CANVAS_DIMENSION));
 
 const loadImage = (src: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
@@ -23,6 +26,8 @@ export const resizeImage = async (base64Str: string, maxDimension = 1024): Promi
     }
 
     const ratio = Math.min(1, maxDimension / Math.max(width, height));
+    const targetWidth = clampDimension(Math.round(width * ratio));
+    const targetHeight = clampDimension(Math.round(height * ratio));
     const targetWidth = Math.max(1, Math.round(width * ratio));
     const targetHeight = Math.max(1, Math.round(height * ratio));
 
@@ -72,6 +77,8 @@ export const generateSoftSymmetry = async (
   try {
     const image = await loadImage(imgSrc);
     const canvas = document.createElement('canvas');
+    canvas.width = clampDimension(width || image.width);
+    canvas.height = clampDimension(height || image.height);
     canvas.width = Math.max(1, width || image.width);
     canvas.height = Math.max(1, height || image.height);
 
@@ -108,6 +115,8 @@ export const generateSymmetryTwins = async (
 ): Promise<{ left: string; right: string }> => {
   try {
     const image = await loadImage(imgSrc);
+    const targetWidth = clampDimension(width || image.width);
+    const targetHeight = clampDimension(height || image.height);
     const targetWidth = Math.max(1, width || image.width);
     const targetHeight = Math.max(1, height || image.height);
 
