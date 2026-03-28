@@ -20,7 +20,6 @@ import FaceSymmetryGuide from './pages/FaceSymmetryGuide';
 
 // Hooks
 import { useAnalysisFlow } from './hooks/useAnalysisFlow';
-import { useAnalysisLimit } from './hooks/useAnalysisLimit';
 import { useAnalysisHistory } from './hooks/useAnalysisHistory';
 import { useWeeklyChallenge } from './hooks/useWeeklyChallenge';
 import { useDailyStreak } from './hooks/useDailyStreak';
@@ -32,7 +31,6 @@ function MainApp() {
   const { t } = useTranslation();
   // State for UI navigation and modals
   const [reportStep, setReportStep] = useState(0);
-  const [isUnlocked, setIsUnlocked] = useState(false);
   const [exportType, setExportType] = useState<'result' | 'symmetry' | 'full'>('result');
   const [isExporting, setIsExporting] = useState(false);
   const [exportSuccess, setExportSuccess] = useState(false);
@@ -44,7 +42,6 @@ function MainApp() {
   const shareCardRef = useRef<HTMLDivElement>(null);
 
   // Custom Hooks
-  const { isLocked, incrementCount, unlock } = useAnalysisLimit();
   const { history: analysisHistory, saveToHistory, getPreviousScan } = useAnalysisHistory();
   const { challenge, incrementWeeklyScan } = useWeeklyChallenge();
   const { streakData, incrementStreak } = useDailyStreak();
@@ -57,7 +54,6 @@ function MainApp() {
     
     try {
       console.log('[DEBUG] ON_ANALYSIS_COMPLETE_START', result.overallScore);
-      incrementCount();
       saveToHistory(result.overallScore);
       incrementWeeklyScan();
       incrementStreak();
@@ -65,7 +61,7 @@ function MainApp() {
     } catch (err) {
       console.error('[DEBUG] ON_ANALYSIS_COMPLETE_ERROR', err);
     }
-  }, [getPreviousScan, incrementCount, saveToHistory, incrementWeeklyScan, incrementStreak]);
+  }, [getPreviousScan, saveToHistory, incrementWeeklyScan, incrementStreak]);
 
   const analysis = useAnalysisFlow({
     onAnalysisComplete
@@ -74,7 +70,6 @@ function MainApp() {
   const resetApp = useCallback(() => {
     analysis.resetAnalysis();
     setReportStep(0);
-    setIsUnlocked(false);
   }, [analysis]);
 
   // Export Logic
@@ -141,6 +136,9 @@ function MainApp() {
   // Scroll to top on route change
   useEffect(() => {
     window.scrollTo(0, 0);
+    if (location.pathname !== '/') {
+      analysis.stopCamera();
+    }
   }, [location.pathname]);
 
   return (
@@ -192,13 +190,10 @@ function MainApp() {
                   isAnalyzing={analysis.isAnalyzing}
                   analysisProgress={analysis.analysisProgress}
                   analysisStatus={analysis.analysisStatus}
-                  scanQuality={analysis.scanQuality}
                   isCameraReady={analysis.isCameraReady}
                   videoRef={analysis.videoRef}
                   canvasRef={analysis.canvasRef}
-                  onAnalyze={analysis.analyzeImage}
                   onFileUpload={analysis.handleFileUpload}
-                  isLocked={isLocked}
                   image={analysis.capturedImage}
                   capturePhoto={analysis.capturePhoto}
                   startCamera={analysis.startCamera}
@@ -210,7 +205,7 @@ function MainApp() {
                   scanningLandmarks={analysis.scanningLandmarks}
                   error={analysis.error}
                   engineStatus={analysis.engineStatus}
-                  onUnlock={unlock}
+                  onRetry={analysis.resetAnalysis}
                 />
               ) : (
                 <ReportView 
@@ -218,8 +213,6 @@ function MainApp() {
                   result={analysis.result}
                   reportStep={reportStep}
                   setReportStep={setReportStep}
-                  isUnlocked={isUnlocked}
-                  setIsUnlocked={setIsUnlocked}
                   image={analysis.capturedImage}
                   symmetryStrength={analysis.symmetryStrength}
                   setSymmetryStrength={analysis.setSymmetryStrength}

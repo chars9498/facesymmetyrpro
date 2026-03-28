@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Face Symmetry Pro",
+    "appName": "Face Symmetry",
     "aiAnalysis": "AI面部分析",
     "reset": "重置",
     "cancel": "取消",
@@ -18,14 +18,15 @@
     "generating": "生成中..."
   },
   "landing": {
-    "title": "Face Symmetry Pro",
+    "title": "Face Symmetry",
     "subtitle": "AI面部平衡分析",
     "cameraStart": "开始相机",
     "uploadPhoto": "上传照片",
     "guideText": "将脸部对准引导框",
-    "alignment": "对齐",
-    "lighting": "光照",
     "capture": "拍摄",
+    "retryCapture": "重新拍摄",
+    "chooseDifferentPhoto": "选择其他照片",
+    "retryGuide": "请使用仅有一人的清晰正面照片，保持充足光线，并让整张脸完整位于引导框内。",
     "analyzing": "分析中...",
     "onDeviceAi": "100% 本地AI分析",
     "backToHome": "返回主页",
@@ -36,8 +37,8 @@
     "liveAi": "实时AI",
     "assessment": "面部对称性与平衡评估",
     "overallScore": "整体平衡分数",
-    "globalDatabase": "全球数据库",
-    "topPercentile": "前 {{percentile}}%",
+    "topPercentile": "估计前 {{percentile}}%",
+    "estimateDisclaimer": "此结果为AI估算，仅供参考。",
     "summaryTitle": "AI分析摘要",
     "visualAnalysis": "视觉网格分析",
     "midline": "中线",
@@ -166,7 +167,6 @@
     "modelFail": "AI模型加载失败。请刷新。",
     "noFace": "未检测到脸部。请在光线更好的情况下重试。",
     "generic": "出错了。请重试。",
-    "limitReached": "已达到分析限制。请解锁以继续。",
     "initFailed": "无法初始化面部识别引擎。请刷新页面或稍后重试。",
     "modelNotReady": "面部检测模型尚未就绪。",
     "invalidDimensions": "图像尺寸无效。",
@@ -181,6 +181,13 @@
     "cameraStartFailed": "无法启动相机。",
     "cameraPermissionDenied": "相机权限被拒绝。请在浏览器设置中允许访问。",
     "cameraNotFound": "未找到相机。",
+    "emptyFile": "该文件为空。请选择其他照片。",
+    "unsupportedFormat": "不支持的图片格式。请选择 JPG 或 PNG 照片。",
+    "fileTooLarge": "文件过大。请选择 5MB 以内的图片。",
+    "lowResolution": "图片分辨率过低。请使用更清晰的照片。",
+    "noFaceDetected": "未找到人脸。请使用正面照片。",
+    "multipleFacesDetected": "请使用仅有一人的照片。",
+    "faceTooSmallOrTilted": "人脸过小或倾斜。请使用居中的正面照片。",
     "invalidLandmarks": "提供的特征点无效。"
   },
   "privacy": {
@@ -194,34 +201,26 @@
   "privacyPage": {
     "title": "隐私政策",
     "heroTitle": "隐私至上架构",
-    "heroDesc": "Face Symmetry Pro 的设计严格遵循隐私至上的原则。我们相信您的生物识别数据仅属于您自己。我们的应用程序旨在完全在您的设备上运行，无需将您的照片上传到服务器。",
+    "heroDesc": "Face Symmetry 的设计严格遵循隐私至上的原则。我们相信您的生物识别数据仅属于您自己。我们的应用程序旨在完全在您的设备上运行，无需将您的照片上传到服务器。",
     "noUploads": "无服务器上传",
     "noUploadsDesc": "您的照片在您的浏览器/应用程序内存中本地处理。它们永远不会传输到我们的服务器或任何第三方云端。",
     "noStorage": "无数据存储",
     "noStorageDesc": "我们不存储您的照片。一旦您关闭应用程序或重置分析，处理后的图像数据将从内存中清除。",
     "noAccounts": "无需帐户",
-    "noAccountsDesc": "您无需创建帐户即可使用 Face Symmetry Pro。我们不收集您的姓名、电子邮件或任何个人标识符。",
+    "noAccountsDesc": "您无需创建帐户即可使用 Face Symmetry。我们不收集您的姓名、电子邮件或任何个人标识符。",
     "onDeviceAi": "设备端 AI",
     "onDeviceAiDesc": "面部关键点检测和对称性分析是使用设备端机器学习模型 (MediaPipe) 执行的。",
     "section1Title": "1. 我们收集的信息",
-    "section1Desc": "Face Symmetry Pro **不收集、存储或共享**任何个人信息或生物识别数据。该应用程序仅为了执行您请求的分析而需要访问您的摄像头或照片库。此访问由系统的标准照片选择器或摄像头界面处理。",
+    "section1Desc": "Face Symmetry **不收集、存储或共享**任何个人信息或生物识别数据。该应用程序仅为了执行您请求的分析而需要访问您的摄像头或照片库。此访问由系统的标准照片选择器或摄像头界面处理。",
     "section2Title": "2. 我们如何使用信息",
     "section2Desc": "您提供的任何照片仅在分析会话期间**使用**。从您的面部提取的数学关键点用于计算对称性分数，并在之后立即丢弃。",
     "section3Title": "3. 第三方服务",
     "section3Desc": "我们使用 Google 的 MediaPipe 进行设备端面部识别。该库在本地运行，在此应用程序的分析过程中不会将您的面部数据发送到 Google 服务器。",
     "section4Title": "4. 非医疗工具",
-    "section4Desc": "Face Symmetry Pro 是一款用于审美和教育目的的**参考分析工具**。它**不是医疗诊断应用程序**。提供的结果基于几何计算，不应用于医疗或手术决策。",
+    "section4Desc": "Face Symmetry 是一款用于审美和教育目的的**参考分析工具**。它**不是医疗诊断应用程序**。提供的结果基于几何计算，不应用于医疗或手术决策。",
     "section5Title": "5. 联系我们",
     "section5Desc": "如果您对我们的隐私做法有任何疑问，请通过 chars9498@gmail.com 与我们联系。",
     "lastUpdated": "最后更新：2026年3月14日"
-  },
-  "unlock": {
-    "title": "已达到每日限制",
-    "description": "您已使用完每日 2 次免费分析。解锁无限访问权限以继续。",
-    "benefit1": "无限次每日分析",
-    "benefit2": "完整的对称性分析",
-    "benefit3": "对称双胞胎模拟",
-    "button": "解锁 Pro – $2.99"
   },
   "shareModal": {
     "title": "导出结果",
@@ -258,7 +257,7 @@
     "step4Title": "4. 本地浏览器处理",
     "step4PrivacyTitle": "隐私至上架构",
     "step4PrivacyDesc": "我们技术最关键的部分在于它的运行位置。所有的 AI 模型和数学计算都在您的浏览器中使用您的设备硬件直接执行。您的摄像头馈送和照片永远不会上传到服务器。这确保了您的生物识别数据始终保持私密和安全。",
-    "footerNote": "Face Symmetry Pro 是一款旨在帮助您了解面部结构的教育和娱乐工具。提供的结果基于 2D 图像的数学分析，不应用于医疗或诊断目的。"
+    "footerNote": "Face Symmetry 是一款旨在帮助您了解面部结构的教育和娱乐工具。提供的结果基于 2D 图像的数学分析，不应用于医疗或诊断目的。"
   },
   "guide": {
     "title": "面部对称性指南",
@@ -291,7 +290,7 @@
     "uniqueTitle": "4. 拥抱您独特的平衡",
     "characterTitle": "个性重于完美",
     "characterDesc": "虽然探索面部对称性很有趣，但请记住，您独特的特征才是成就您的原因。不对称往往是赋予面部个性、魅力和性格的因素。将此工具作为一种更多了解您面部结构的方式，但不要让它定义您的自我价值感或美感。",
-    "footerNote": "Face Symmetry Pro 是一款旨在帮助您了解面部结构的教育和娱乐工具。提供的结果基于 2D 图像的数学分析，不应用于医疗或诊断目的。"
+    "footerNote": "Face Symmetry 是一款旨在帮助您了解面部结构的教育和娱乐工具。提供的结果基于 2D 图像的数学分析，不应用于医疗或诊断目的。"
   },
   "footer": {
     "resources": "资源",
@@ -299,7 +298,7 @@
     "howItWorks": "工作原理",
     "guide": "面部对称性指南",
     "connect": "连接",
-    "rights": "© 2026 Face Symmetry Pro. All rights reserved.",
+    "rights": "© 2026 Face Symmetry. All rights reserved.",
     "home": "主页",
     "privacy": "隐私",
     "technology": "技术"
@@ -476,6 +475,7 @@
       "analyzingFeatures": "正在分析面部特征...",
       "calculatingScore": "正在计算平衡分数...",
       "generatingPersonalized": "正在生成个性化报告...",
+      "renderingResults": "正在生成结果...",
       "enhancing": "正在优化图像质量...",
       "retrying": "无法检测到特征点。正在重试..."
     },
@@ -544,8 +544,8 @@
     "liveAi": "实时 AI",
     "assessment": "AI 生物识别评估",
     "overallScore": "整体平衡分数",
-    "topPercentile": "前 {{percentile}}%",
-    "globalDatabase": "全球数据库对比",
+    "topPercentile": "估计前 {{percentile}}%",
+    "estimateDisclaimer": "此结果为AI估算，仅供参考。",
     "summaryTitle": "AI 分析摘要",
     "visualAnalysis": "视觉分析",
     "midline": "中线",
@@ -586,7 +586,7 @@
       "title": "隐私政策",
       "lastUpdated": "最后更新：2026年3月17日",
       "zeroStorageTitle": "零服务器存储",
-      "zeroStorageDesc": "Face Symmetry Pro 采用 \"Privacy by Design\"（隐私设计）理念。与将照片上传到远程服务器进行处理的传统面部分析工具不同，我们的应用程序在您的设备上本地执行所有计算。当您授予相机访问权限或上传照片时，图像数据保留在您的浏览器内存中。我们没有存储您图像的后端数据库，也从不通过互联网传输您的生物识别数据。",
+      "zeroStorageDesc": "Face Symmetry 采用 \"Privacy by Design\"（隐私设计）理念。与将照片上传到远程服务器进行处理的传统面部分析工具不同，我们的应用程序在您的设备上本地执行所有计算。当您授予相机访问权限或上传照片时，图像数据保留在您的浏览器内存中。我们没有存储您图像的后端数据库，也从不通过互联网传输您的生物识别数据。",
       "noCollectTitle": "1. 我们不收集的信息",
       "noCollectDesc": "我们相信您的面部是您最私密的数据。因此，我们构建了这个工具，使其在不收集以下任何信息的情况下运行：",
       "noImages": "无面部图像",
@@ -600,7 +600,7 @@
       "thirdPartyTitle": "4. 第三方服务",
       "thirdPartyDesc": "我们的应用程序使用 MediaPipe 和 TensorFlow.js 库来执行面部关键点检测。这些库从内容分发网络 (CDN) 加载。虽然这些服务可能会记录基本的请求数据（如您的 IP 地址）以提供文件，但它们不会从我们的应用程序接收您的相机流或任何图像数据。",
       "userControlTitle": "5. 用户控制和同意",
-      "userControlDesc": "通过使用 Face Symmetry Pro，您同意为了对称性分析的目的对您的图像进行本地处理。您可以随时通过浏览器设置撤销相机权限。由于我们不存储任何数据，因此没有可以删除的 \"账户\" 或可以请求的 \"数据\"——您的隐私自然受到应用程序架构的保护。",
+      "userControlDesc": "通过使用 Face Symmetry，您同意为了对称性分析的目的对您的图像进行本地处理。您可以随时通过浏览器设置撤销相机权限。由于我们不存储任何数据，因此没有可以删除的 \"账户\" 或可以请求的 \"数据\"——您的隐私自然受到应用程序架构的保护。",
       "footerNote": "如果您对本隐私政策或我们处理您数据的方式有任何疑问，请随时通过我们的官方渠道与我们联系。我们致力于透明度和用户安全。"
     }
   }
