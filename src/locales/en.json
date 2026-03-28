@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Face Symmetry Pro",
+    "appName": "Face Symmetry",
     "aiAnalysis": "AI Facial Analysis",
     "reset": "Reset",
     "cancel": "Cancel",
@@ -18,14 +18,15 @@
     "generating": "Generating..."
   },
   "landing": {
-    "title": "Face Symmetry Pro",
+    "title": "Face Symmetry",
     "subtitle": "AI Facial Balance Analysis",
     "cameraStart": "Camera Start",
     "uploadPhoto": "Upload Photo",
     "guideText": "Center your face in the guide",
-    "alignment": "Alignment",
-    "lighting": "Lighting",
     "capture": "Capture",
+    "retryCapture": "Retake",
+    "chooseDifferentPhoto": "Choose another photo",
+    "retryGuide": "Use a clear front-facing photo with one person, good lighting, and enough distance so your full face fits inside the guide.",
     "analyzing": "Analyzing...",
     "onDeviceAi": "100% On-Device AI Analysis",
     "backToHome": "Back to Home",
@@ -36,8 +37,8 @@
     "liveAi": "Live AI",
     "assessment": "Facial Symmetry & Balance Assessment",
     "overallScore": "Overall Balance Score",
-    "globalDatabase": "Global Database",
-    "topPercentile": "Top {{percentile}}%",
+    "topPercentile": "Estimated top {{percentile}}%",
+    "estimateDisclaimer": "This result is an AI-based estimate for entertainment purposes only.",
     "summaryTitle": "AI Analysis Summary",
     "visualAnalysis": "Visual Mesh Analysis",
     "midline": "Midline",
@@ -166,7 +167,6 @@
     "modelFail": "AI model failed to load. Please refresh.",
     "noFace": "No face detected. Please try again with better lighting.",
     "generic": "Something went wrong. Please try again.",
-    "limitReached": "Analysis limit reached. Please unlock to continue.",
     "initFailed": "Failed to initialize face recognition engine. Please refresh or try again later.",
     "modelNotReady": "Face detection model is not ready.",
     "invalidDimensions": "Invalid image dimensions.",
@@ -181,6 +181,13 @@
     "cameraStartFailed": "Could not start camera.",
     "cameraPermissionDenied": "Camera permission was denied. Please allow access in your browser settings.",
     "cameraNotFound": "Camera not found.",
+    "emptyFile": "This file is empty. Please choose another photo.",
+    "unsupportedFormat": "Unsupported image format. Please choose a JPG or PNG photo.",
+    "fileTooLarge": "This file is too large. Please choose an image under 5MB.",
+    "lowResolution": "This image is too small. Please use a higher-resolution photo.",
+    "noFaceDetected": "Could not find a face. Please use a front-facing photo.",
+    "multipleFacesDetected": "Please use a photo with only one person.",
+    "faceTooSmallOrTilted": "The face is too small or tilted. Please use a centered front-facing photo.",
     "invalidLandmarks": "Invalid landmarks provided."
   },
   "privacy": {
@@ -194,34 +201,26 @@
   "privacyPage": {
     "title": "Privacy Policy",
     "heroTitle": "Privacy-First Architecture",
-    "heroDesc": "Face Symmetry Pro is designed with a strict privacy-first approach. We believe your biometric data is yours alone. Our app is built to function entirely on your device without ever needing to upload your photos to a server.",
+    "heroDesc": "Face Symmetry is designed with a strict privacy-first approach. We believe your biometric data is yours alone. Our app is built to function entirely on your device without ever needing to upload your photos to a server.",
     "noUploads": "No Server Uploads",
     "noUploadsDesc": "Your photos are processed locally in your browser/app memory. They are never transmitted to our servers or any third-party cloud.",
     "noStorage": "No Data Storage",
     "noStorageDesc": "We do not store your photos. Once you close the app or reset the analysis, the processed image data is cleared from memory.",
     "noAccounts": "No Accounts",
-    "noAccountsDesc": "You don't need to create an account to use Face Symmetry Pro. We don't collect your name, email, or any personal identifiers.",
+    "noAccountsDesc": "You don't need to create an account to use Face Symmetry. We don't collect your name, email, or any personal identifiers.",
     "onDeviceAi": "On-Device AI",
     "onDeviceAiDesc": "The facial landmark detection and symmetry analysis are performed using on-device machine learning models (MediaPipe).",
     "section1Title": "1. Information We Collect",
-    "section1Desc": "Face Symmetry Pro **does not collect, store, or share** any personal information or biometric data. The app requires access to your camera or photo library solely to perform the analysis you request. This access is handled by the system's standard photo picker or camera interface.",
+    "section1Desc": "Face Symmetry **does not collect, store, or share** any personal information or biometric data. The app requires access to your camera or photo library solely to perform the analysis you request. This access is handled by the system's standard photo picker or camera interface.",
     "section2Title": "2. How We Use Information",
     "section2Desc": "Any photo you provide is used **only** for the duration of the analysis session. The mathematical landmarks extracted from your face are used to calculate symmetry scores and are discarded immediately after.",
     "section3Title": "3. Third-Party Services",
     "section3Desc": "We use Google's MediaPipe for on-device facial recognition. This library runs locally and does not send your facial data to Google servers during the analysis process in this application.",
     "section4Title": "4. Not a Medical Tool",
-    "section4Desc": "Face Symmetry Pro is a **reference analysis tool** for aesthetic and educational purposes. It is **not a medical diagnostic app**. The results provided are based on geometric calculations and should not be used for medical or surgical decisions.",
+    "section4Desc": "Face Symmetry is a **reference analysis tool** for aesthetic and educational purposes. It is **not a medical diagnostic app**. The results provided are based on geometric calculations and should not be used for medical or surgical decisions.",
     "section5Title": "5. Contact Us",
     "section5Desc": "If you have any questions about our privacy practices, please contact us at chars9498@gmail.com.",
     "lastUpdated": "Last Updated: March 14, 2026"
-  },
-  "unlock": {
-    "title": "Daily Limit Reached",
-    "description": "You've used your 2 free daily analyses. Unlock unlimited access to continue.",
-    "benefit1": "Unlimited daily analyses",
-    "benefit2": "Full symmetry breakdown",
-    "benefit3": "Symmetry twin simulation",
-    "button": "Unlock Pro – $2.99"
   },
   "shareModal": {
     "title": "Export Result",
@@ -258,7 +257,7 @@
     "step4Title": "4. Local Browser Processing",
     "step4PrivacyTitle": "Privacy-First Architecture",
     "step4PrivacyDesc": "The most critical part of our technology is where it runs. All the AI models and mathematical calculations are executed directly in your browser using your device's hardware. Your camera feed and photos are never uploaded to a server. This ensures that your biometric data remains private and secure at all times.",
-    "footerNote": "Face Symmetry Pro is an educational and entertainment tool designed to help you understand your facial structure. The results provided are based on mathematical analysis of 2D images and should not be used for medical or diagnostic purposes."
+    "footerNote": "Face Symmetry is an educational and entertainment tool designed to help you understand your facial structure. The results provided are based on mathematical analysis of 2D images and should not be used for medical or diagnostic purposes."
   },
   "guide": {
     "title": "Face Symmetry Guide",
@@ -291,7 +290,7 @@
     "uniqueTitle": "4. Embracing Your Unique Balance",
     "characterTitle": "Character Over Perfection",
     "characterDesc": "While it's fun to explore your facial symmetry, remember that your unique features are what make you who you are. Asymmetry is often what gives a face its character, charm, and personality. Use this tool as a way to learn more about your facial structure, but don't let it define your sense of self-worth or beauty.",
-    "footerNote": "Face Symmetry Pro is an educational and entertainment tool designed to help you understand your facial structure. The results provided are based on mathematical analysis of 2D images and should not be used for medical or diagnostic purposes."
+    "footerNote": "Face Symmetry is an educational and entertainment tool designed to help you understand your facial structure. The results provided are based on mathematical analysis of 2D images and should not be used for medical or diagnostic purposes."
   },
   "footer": {
     "resources": "Resources",
@@ -299,7 +298,7 @@
     "howItWorks": "How It Works",
     "guide": "Face Symmetry Guide",
     "connect": "Connect",
-    "rights": "© 2026 Face Symmetry Pro. All rights reserved.",
+    "rights": "© 2026 Face Symmetry. All rights reserved.",
     "home": "Home",
     "privacy": "Privacy",
     "technology": "Technology"
@@ -509,6 +508,7 @@
       "analyzingFeatures": "Analyzing facial features...",
       "calculatingScore": "Calculating balance score...",
       "generatingPersonalized": "Generating personalized report...",
+      "renderingResults": "Generating results...",
       "enhancing": "Enhancing image quality...",
       "retrying": "Could not detect landmarks from this image. Retrying..."
     },
@@ -577,8 +577,8 @@
     "liveAi": "Live AI",
     "assessment": "AI Biometric Assessment",
     "overallScore": "Overall Balance Score",
-    "topPercentile": "Top {{percentile}}%",
-    "globalDatabase": "Global Database Comparison",
+    "topPercentile": "Estimated top {{percentile}}%",
+    "estimateDisclaimer": "This result is an AI-based estimate for entertainment purposes only.",
     "summaryTitle": "AI Analysis Summary",
     "visualAnalysis": "Visual Analysis",
     "midline": "Midline",
@@ -619,7 +619,7 @@
       "title": "Privacy Policy",
       "lastUpdated": "Last Updated: March 17, 2026",
       "zeroStorageTitle": "Zero Server Storage",
-      "zeroStorageDesc": "Face Symmetry Pro is designed with a \"Privacy by Design\" philosophy. Unlike traditional facial analysis tools that upload your photos to a remote server for processing, our application performs all calculations locally on your device. When you grant camera access or upload a photo, the image data stays within your browser's memory. We do not have a backend database that stores your images, and we never transmit your biometric data over the internet.",
+      "zeroStorageDesc": "Face Symmetry is designed with a \"Privacy by Design\" philosophy. Unlike traditional facial analysis tools that upload your photos to a remote server for processing, our application performs all calculations locally on your device. When you grant camera access or upload a photo, the image data stays within your browser's memory. We do not have a backend database that stores your images, and we never transmit your biometric data over the internet.",
       "noCollectTitle": "1. Information We Do Not Collect",
       "noCollectDesc": "We believe that your face is your most private data. Therefore, we have built this tool to function without collecting any of the following:",
       "noImages": "No Facial Images",
@@ -633,7 +633,7 @@
       "thirdPartyTitle": "4. Third-Party Services",
       "thirdPartyDesc": "Our application uses MediaPipe and TensorFlow.js libraries to perform the facial landmark detection. These libraries are loaded from content delivery networks (CDNs). While these services may log basic request data (like your IP address) to serve the files, they do not receive your camera feed or any image data from our application.",
       "userControlTitle": "5. User Control and Consent",
-      "userControlDesc": "By using Face Symmetry Pro, you consent to the local processing of your images for the purpose of symmetry analysis. You can revoke camera permissions at any time through your browser settings. Since we do not store any data, there is no \"account\" to delete or \"data\" to request—your privacy is naturally protected by the architecture of the app.",
+      "userControlDesc": "By using Face Symmetry, you consent to the local processing of your images for the purpose of symmetry analysis. You can revoke camera permissions at any time through your browser settings. Since we do not store any data, there is no \"account\" to delete or \"data\" to request—your privacy is naturally protected by the architecture of the app.",
       "footerNote": "If you have any questions about this Privacy Policy or how we handle your data, please feel free to contact us through our official channels. We are committed to transparency and user security."
     }
   }
