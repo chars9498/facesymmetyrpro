@@ -24,7 +24,11 @@ export const WeeklyChallenge: React.FC<WeeklyChallengeProps> = ({ scans, lastSca
       <p className="mt-2 text-xs text-white/60">
         {clamped >= target ? t('challenge.completed') : t('challenge.moreScans', { count: target - clamped })}
       </p>
-      {lastScanDate ? <p className="mt-1 text-[11px] text-white/40">Last scan: {lastScanDate}</p> : null}
+      {lastScanDate ? (
+        <p className="mt-1 text-[11px] text-white/40">
+          {t('challenge.lastScan', { date: lastScanDate })}
+        </p>
+      ) : null}
     </section>
   );
 };

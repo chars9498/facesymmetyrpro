@@ -17,7 +17,11 @@ export const DailyStreak: React.FC<DailyStreakProps> = ({ streak, lastScanDate }
     <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
       <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-white/70">{t('streak.title')}</h3>
       <p className="text-sm text-white/90">{t('streak.days', { count: streak })}</p>
-      {lastScanDate ? <p className="mt-1 text-[11px] text-white/40">Last scan: {lastScanDate}</p> : null}
+      {lastScanDate ? (
+        <p className="mt-1 text-[11px] text-white/40">
+          {t('streak.lastScan', { date: lastScanDate })}
+        </p>
+      ) : null}
     </section>
   );
 };
