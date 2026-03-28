@@ -157,3 +157,12 @@ export const generateSymmetryTwins = async (
     return { left: imgSrc, right: imgSrc };
   }
 };
+
+const imageProcessor = {
+  resizeImage,
+  enhanceImage,
+  generateSoftSymmetry,
+  generateSymmetryTwins,
+};
+
+export default imageProcessor;
