@@ -1,22 +1,17 @@
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Camera, Upload, RefreshCw, Maximize2, AlertCircle, Info } from 'lucide-react';
+import { Camera, Upload, RefreshCw, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import { FaceMeshCanvas } from './FaceMeshCanvas';
-import { UnlockAnalysis } from './UnlockAnalysis';
-import { cn } from '../lib/utils';
 
 interface LandingViewProps {
   isAnalyzing: boolean;
   analysisProgress: number;
   analysisStatus: string;
-  scanQuality: any;
   isCameraReady: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  onAnalyze: (image: string) => void;
   onFileUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  isLocked: boolean;
   // These are needed for the preview state if we want to keep it in LandingView
   image?: string | null;
   capturePhoto?: () => void;
@@ -29,20 +24,17 @@ interface LandingViewProps {
   scanningLandmarks?: any[] | null;
   error?: string | null;
   engineStatus?: 'idle' | 'loading' | 'ready' | 'failed' | 'failed-temporary';
-  onUnlock?: () => void;
+  onRetry?: () => void;
 }
 
 export const LandingView: React.FC<LandingViewProps> = ({
   isAnalyzing,
   analysisProgress,
   analysisStatus,
-  scanQuality,
   isCameraReady,
   videoRef,
   canvasRef,
-  onAnalyze,
   onFileUpload,
-  isLocked,
   image,
   capturePhoto,
   startCamera,
@@ -54,11 +46,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
   scanningLandmarks = null,
   error = null,
   engineStatus = 'idle',
-  onUnlock
+  onRetry
 }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showPaywall, setShowPaywall] = React.useState(false);
 
   const handleStartCamera = () => {
     if (startCamera) {
@@ -70,13 +61,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
     fileInputRef.current?.click();
   };
 
-  const handleUnlock = () => {
-    if (onUnlock) {
-      onUnlock();
-    }
-    setShowPaywall(false);
-  };
-
   return (
     <motion.div 
       key="landing"
@@ -85,19 +69,16 @@ export const LandingView: React.FC<LandingViewProps> = ({
       exit={{ opacity: 0, y: -20 }}
       className="space-y-6"
     >
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={onFileUpload}
+        accept="image/*"
+        className="hidden"
+      />
+
       <section className="bg-white/5 rounded-3xl border border-white/10 shadow-2xl overflow-hidden relative group backdrop-blur-sm">
-        {showPaywall ? (
-          <div className="p-6 min-h-[400px] flex flex-col justify-center">
-            <UnlockAnalysis onUnlock={handleUnlock} />
-            <button 
-              type="button"
-              onClick={() => setShowPaywall(false)}
-              className="mt-4 text-white/40 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors"
-            >
-              {t('landing.backToHome')}
-            </button>
-          </div>
-        ) : !image && !isCameraReady ? (
+        {!image && !isCameraReady ? (
           <div className="aspect-[4/5] flex flex-col items-center justify-center p-12 text-center space-y-8">
             <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-2 border border-emerald-500/20 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
               <Camera size={40} />
@@ -131,13 +112,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <Upload size={18} />
                 {t('landing.uploadPhoto')}
               </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={onFileUpload} 
-                accept="image/*" 
-                className="hidden" 
-              />
             </div>
           </div>
         ) : isCameraReady ? (
@@ -172,40 +146,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
                   {t('landing.guideText')}
                 </p>
-              </div>
-
-              {/* Scan Quality Indicator */}
-              <div className="absolute top-6 left-6 flex flex-col gap-2">
-                <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-3 space-y-2 min-w-[120px]">
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">{t('landing.alignment')}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn(
-                        "text-[7px] font-bold uppercase",
-                        scanQuality.alignment === 'Good' ? "text-emerald-400" : 
-                        scanQuality.alignment === 'Fair' ? "text-yellow-400" : "text-red-400"
-                      )}>{t(`quality.${scanQuality.alignment.toLowerCase()}`)}</span>
-                      <div className={cn(
-                        "w-2 h-2 rounded-full",
-                        scanQuality.alignment === 'Good' ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : 
-                        scanQuality.alignment === 'Fair' ? "bg-yellow-500 shadow-[0_0_8px_#eab308]" : "bg-red-500 shadow-[0_0_8px_#ef4444]"
-                      )} />
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between gap-4">
-                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">{t('landing.lighting')}</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn(
-                        "text-[7px] font-bold uppercase",
-                        scanQuality.lighting === 'Good' ? "text-emerald-400" : "text-red-400"
-                      )}>{t(`quality.${scanQuality.lighting.toLowerCase().replace(' ', '')}`)}</span>
-                      <div className={cn(
-                        "w-2 h-2 rounded-full",
-                        scanQuality.lighting === 'Good' ? "bg-emerald-500 shadow-[0_0_8px_#10b981]" : "bg-red-500 shadow-[0_0_8px_#ef4444]"
-                      )} />
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -287,6 +227,31 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <p className="text-sm font-mono break-all">{error}</p>
             </div>
           </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => {
+                if (isCameraReady && capturePhoto) {
+                  capturePhoto();
+                  return;
+                }
+                onRetry?.();
+              }}
+              className="flex-1 rounded-xl bg-white/10 px-4 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white hover:bg-white/15 transition-all"
+            >
+              {t('landing.retryCapture')}
+            </button>
+            <button
+              type="button"
+              onClick={handleUploadClick}
+              className="flex-1 rounded-xl border border-white/10 bg-transparent px-4 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white/80 hover:bg-white/5 transition-all"
+            >
+              {t('landing.chooseDifferentPhoto')}
+            </button>
+          </div>
+          <p className="text-[11px] leading-relaxed text-white/50">
+            {t('landing.retryGuide')}
+          </p>
         </div>
       )}
     </motion.div>

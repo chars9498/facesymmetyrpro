@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'motion/react';
-import { User, Trophy, Zap, Sparkles, Lock, Check, CreditCard, Scan, Download, RotateCcw, TrendingUp, Maximize2, BarChart3, Share2 } from 'lucide-react';
+import { User, Trophy, Zap, Sparkles, Check, Scan, Download, RotateCcw, TrendingUp, Maximize2, BarChart3, Share2 } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
 import { cn } from '../lib/utils';
 import { type AnalysisResult } from '../services/analysisEngine';
@@ -16,8 +16,6 @@ interface ReportViewProps {
   result: AnalysisResult;
   reportStep: number;
   setReportStep: (step: number) => void;
-  isUnlocked: boolean;
-  setIsUnlocked: (unlocked: boolean) => void;
   image: string | null;
   symmetryStrength: number;
   setSymmetryStrength: (strength: number) => void;
@@ -48,8 +46,6 @@ export const ReportView: React.FC<ReportViewProps> = ({
   result,
   reportStep,
   setReportStep,
-  isUnlocked,
-  setIsUnlocked,
   image,
   symmetryStrength,
   setSymmetryStrength,
@@ -138,7 +134,6 @@ export const ReportView: React.FC<ReportViewProps> = ({
                       </div>
                       <div className="text-right">
                         <div className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">{t('report.topPercentile', { percentile: result.percentile })}</div>
-                        <div className="text-[8px] font-bold text-white/30 uppercase tracking-tighter">{t('report.globalDatabase')}</div>
                       </div>
                     </div>
 
@@ -150,6 +145,10 @@ export const ReportView: React.FC<ReportViewProps> = ({
                         className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-600 to-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]"
                       />
                     </div>
+
+                    <p className="mb-4 text-[11px] leading-relaxed text-white/45">
+                      {t('report.estimateDisclaimer')}
+                    </p>
 
                     <div className="grid grid-cols-4 gap-2">
                       {Object.entries(result.landmarks || {}).map(([key, data]: [string, any]) => (
@@ -527,7 +526,6 @@ export const ReportView: React.FC<ReportViewProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setIsUnlocked(true);
                     setReportStep(1);
                   }}
                   className="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white font-black uppercase tracking-[0.15em] py-4 rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.3)] transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-[11px]"
